@@ -9,7 +9,7 @@
 - Linked tests: repo:scripts/test_check_repository_boundaries.py
 - Compatibility promise: Clean-copy bootstrap does not intentionally alter public Rust APIs, serialized shapes, or operation IDs.
 - Required evidence: contract, behavioral, static
-- Sensitivity: not-required
+- Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-storage-contract-change; concurrency=not-applicable:no-concurrency-contract-change; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003
 
 ## INV-002 — Foundation has no dependency escape or reverse capability edge
@@ -21,7 +21,7 @@
 - Linked tests: repo:scripts/test_check_repository_boundaries.py
 - Compatibility promise: Consumers can build from a clean clone without a sibling repository.
 - Required evidence: contract
-- Sensitivity: not-required
+- Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-storage-contract-change; concurrency=not-applicable:no-concurrency-contract-change; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003
 
 ## INV-003 — Bootstrap cannot authorize publication or source removal
@@ -33,5 +33,5 @@
 - Linked tests: repo:scripts/test_check_release_plan.py
 - Compatibility promise: rust-packages remains the active source/release owner until later gates complete.
 - Required evidence: contract
-- Sensitivity: not-required
+- Sensitivity: optional
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-state-migration; concurrency=not-applicable:no-concurrent-release; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003

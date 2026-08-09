@@ -11,10 +11,12 @@ test-corpora/
 .video-analysis-models/
 .model-runtime/
 .agent-loop/
+/.agent-loop/verification/
 .env
 .env.*
 !.env.example
 *.log
+__pycache__/
 coverage/
 .nyc_output/
 node_modules/
