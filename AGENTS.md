@@ -9,8 +9,9 @@ This repository contains 60 domain-neutral Rust packages. Read `CONTEXT.md`, `do
 - Keep CLI/server/WASM adapters with their wrapped libraries until a separate usage and semver decision authorizes removal.
 - Do not add Bun/npm surfaces here.
 - Do not publish, tag, release, or remove source from `rust-packages` without an exact release issue and validated publishing manifest.
-- The `.harness/` profile is draft. Harness audits and runs are optional,
-  non-authoritative feedback until maintainers explicitly activate it; the
+- The `.harness/` profile is draft. Its structural audit is required for this
+  bootstrap, but remains non-authoritative; targeted and full Harness runs are
+  optional until maintainers explicitly activate the profile. The
   issue-required repository checks remain the handoff authority.
 
 ## Checks

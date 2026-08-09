@@ -35,6 +35,15 @@ class RepositoryBoundaryTests(unittest.TestCase):
         ownership["packages"][0]["target_repository"] = "rust-packages"
         self.assertTrue(any("wrong target repository" in e for e in validate(self.metadata, ownership)))
 
+    def test_phase_a_record_field_drift_fails(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        record = next(
+            item for item in ownership["packages"] if "provenance" not in item
+        )
+        record["current_domain"] = "unreviewed-domain"
+        errors = validate(self.metadata, ownership)
+        self.assertTrue(any("source ownership records" in e for e in errors), errors)
+
     def test_adapter_must_wrap_a_workspace_library(self) -> None:
         ownership = copy.deepcopy(self.ownership)
         adapter = next(r for r in ownership["packages"] if r["package_kind"] == "CLI")

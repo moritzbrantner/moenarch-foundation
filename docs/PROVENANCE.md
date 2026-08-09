@@ -41,6 +41,9 @@ byte-identical copy:
   to the foundation-only, non-publishing bootstrap contract.
 - `docs/repository-split/package-ownership.json` was filtered to the exact 58
   Phase-A foundation Cargo records plus the two append-only contract records.
+  The validator binds the canonical, name-sorted JSON digest of those 60 source
+  ownership records at the extraction commit, so drift in reviewed ownership
+  fields fails closed.
   `docs/repository-split/release-plan.json` was authored as an exact
   non-publishing inventory.
 - `scripts/repository_split.py`, both validators and tests, and the scoped
@@ -50,10 +53,11 @@ byte-identical copy:
 All copied Rust sources remain available in `rust-packages` at the extraction commit. Dual-licensed material retains the repository's MIT OR Apache-2.0 terms through `LICENSE-MIT` and `LICENSE-APACHE`. No additional notice file existed in the literal extraction scope. No Bun/npm packages, generated build output, vendored projects, external media, or source history were copied.
 
 The draft Harness profile was detected from the empty destination before
-mutation and audited after authoring. Draft Harness audits and runs are
-optional, non-authoritative discovery/structural evidence only. They do not
-activate policy, imply that Cargo checks ran, or replace the issue-required
-repository checks as handoff authority.
+mutation and audited after authoring. Its exact-base structural audit is a
+required bootstrap check, but remains non-authoritative; targeted and full
+Harness runs are optional until maintainers explicitly activate the profile.
+Harness evidence does not imply that Cargo checks ran or replace the
+issue-required repository checks as handoff authority.
 
 The Harness profile binds the source issue and parent PRD as external
 requirements. Their bodies and digests are captured only in ignored local

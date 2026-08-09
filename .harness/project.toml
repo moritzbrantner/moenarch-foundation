@@ -1,7 +1,7 @@
 schema_version = 1
 profile_status = "draft"
 project_id = "moritzbrantner/moenarch-foundation"
-default_base_ref = "HEAD"
+default_base_ref = "origin/main"
 maturity = "growing"
 project_kinds = ["library", "cli", "native-processing"]
 verification_surface_globs = [".harness/**", ".github/workflows/**", ".editorconfig", "LICENSE-APACHE", "LICENSE-MIT", "Cargo.toml", "Cargo.lock", "scripts/**", "docs/repository-split/**"]

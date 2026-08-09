@@ -72,7 +72,7 @@
       "name": "moenarch-media-core",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": []
     },
@@ -82,7 +82,7 @@
       "name": "moenarch-runtime-core",
       "new_version": "0.2.0",
       "old_version": "0.2.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": []
     },
@@ -92,7 +92,7 @@
       "name": "moenarch-runtime-onnx",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": []
     },
@@ -102,7 +102,7 @@
       "name": "moenarch-audio-contracts",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core"
@@ -114,7 +114,7 @@
       "name": "moenarch-data-inversion-core",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -127,7 +127,7 @@
       "name": "moenarch-graph-analysis-core",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -140,7 +140,7 @@
       "name": "moenarch-jobs-core",
       "new_version": "0.1.1",
       "old_version": "0.1.1",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core"
@@ -152,7 +152,7 @@
       "name": "moenarch-math-geometry-2d",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -165,7 +165,7 @@
       "name": "moenarch-numbers-core",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -178,7 +178,7 @@
       "name": "moenarch-tensor-data",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -191,7 +191,7 @@
       "name": "moenarch-vector-analysis-core",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -204,7 +204,7 @@
       "name": "moenarch-data-inversion-core-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-data-inversion-core",
@@ -217,7 +217,7 @@
       "name": "moenarch-data-inversion-core-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-data-inversion-core",
@@ -230,7 +230,7 @@
       "name": "moenarch-data-inversion-core-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-data-inversion-core",
@@ -243,7 +243,7 @@
       "name": "moenarch-graph-analysis-core-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-graph-analysis-core",
@@ -256,7 +256,7 @@
       "name": "moenarch-graph-analysis-core-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-graph-analysis-core",
@@ -269,7 +269,7 @@
       "name": "moenarch-graph-analysis-core-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-graph-analysis-core",
@@ -282,7 +282,7 @@
       "name": "moenarch-jobs-core-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-jobs-core",
@@ -295,7 +295,7 @@
       "name": "moenarch-jobs-core-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-jobs-core",
@@ -308,7 +308,7 @@
       "name": "moenarch-jobs-core-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-jobs-core",
@@ -321,7 +321,7 @@
       "name": "moenarch-math-geometry-2d-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-geometry-2d",
@@ -334,7 +334,7 @@
       "name": "moenarch-math-geometry-2d-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-geometry-2d",
@@ -347,7 +347,7 @@
       "name": "moenarch-math-geometry-2d-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-geometry-2d",
@@ -360,7 +360,7 @@
       "name": "moenarch-math-linear",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -375,7 +375,7 @@
       "name": "moenarch-math-signal-core",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -389,7 +389,7 @@
       "name": "moenarch-model-runtime",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-jobs-core",
@@ -402,7 +402,7 @@
       "name": "moenarch-numbers-core-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-numbers-core",
@@ -415,7 +415,7 @@
       "name": "moenarch-numbers-core-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-numbers-core",
@@ -428,7 +428,7 @@
       "name": "moenarch-numbers-core-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-numbers-core",
@@ -441,7 +441,7 @@
       "name": "moenarch-tensor-data-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -454,7 +454,7 @@
       "name": "moenarch-tensor-data-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -467,7 +467,7 @@
       "name": "moenarch-tensor-data-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -480,7 +480,7 @@
       "name": "moenarch-vector-analysis-core-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -493,7 +493,7 @@
       "name": "moenarch-vector-analysis-core-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -506,7 +506,7 @@
       "name": "moenarch-vector-analysis-core-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -519,7 +519,7 @@
       "name": "moenarch-vector-analysis-index",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
@@ -533,7 +533,7 @@
       "name": "moenarch-math-linear-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-linear",
@@ -546,7 +546,7 @@
       "name": "moenarch-math-linear-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-linear",
@@ -559,7 +559,7 @@
       "name": "moenarch-math-linear-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-linear",
@@ -572,7 +572,7 @@
       "name": "moenarch-math-signal-core-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-signal-core",
@@ -585,7 +585,7 @@
       "name": "moenarch-math-signal-core-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-signal-core",
@@ -598,7 +598,7 @@
       "name": "moenarch-math-signal-core-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-signal-core",
@@ -611,7 +611,7 @@
       "name": "moenarch-math-sparse-data",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-linear",
@@ -627,7 +627,7 @@
       "name": "moenarch-math-statistics",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-linear",
@@ -642,7 +642,7 @@
       "name": "moenarch-model-runtime-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-model-runtime",
@@ -655,7 +655,7 @@
       "name": "moenarch-model-runtime-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-model-runtime",
@@ -668,7 +668,7 @@
       "name": "moenarch-model-runtime-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-model-runtime",
@@ -681,7 +681,7 @@
       "name": "moenarch-vector-analysis-index-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -694,7 +694,7 @@
       "name": "moenarch-vector-analysis-index-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -707,7 +707,7 @@
       "name": "moenarch-vector-analysis-index-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-runtime-core",
@@ -720,7 +720,7 @@
       "name": "moenarch-dense-data",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-linear",
@@ -736,7 +736,7 @@
       "name": "moenarch-math-sparse-data-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-sparse-data",
@@ -749,7 +749,7 @@
       "name": "moenarch-math-sparse-data-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-sparse-data",
@@ -762,7 +762,7 @@
       "name": "moenarch-math-sparse-data-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-sparse-data",
@@ -775,7 +775,7 @@
       "name": "moenarch-math-statistics-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-statistics",
@@ -788,7 +788,7 @@
       "name": "moenarch-math-statistics-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-statistics",
@@ -801,7 +801,7 @@
       "name": "moenarch-math-statistics-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-math-statistics",
@@ -814,7 +814,7 @@
       "name": "moenarch-dense-data-cli",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-dense-data",
@@ -827,7 +827,7 @@
       "name": "moenarch-dense-data-server",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-dense-data",
@@ -840,7 +840,7 @@
       "name": "moenarch-dense-data-wasm",
       "new_version": "0.1.0",
       "old_version": "0.1.0",
-      "owner": "moritzbrantner/moenarch-foundation",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
         "moenarch-dense-data",
@@ -848,6 +848,7 @@
       ]
     }
   ],
+  "active_release_owner": "moritzbrantner/rust-packages",
   "phase_a_baseline": "d032ad2890c1df3c6a5b9eff024562f00d017fce",
   "publication_authorized": false,
   "release_issue": null,
@@ -860,7 +861,8 @@
     "cargo package -p <each-public-package> --locked",
     "python3 scripts/check_repository_boundaries.py --check",
     "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
-    "verification harness audit"
+    "python3 -m unittest discover -s scripts -p 'test_*.py'",
+    "python3 scripts/repository_split.py --harness-audit --base-ref <reviewed-base-sha>"
   ],
   "required_consumer_checks": [],
   "schema_version": 1,

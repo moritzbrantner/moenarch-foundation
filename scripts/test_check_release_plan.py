@@ -22,6 +22,25 @@ class ReleasePlanTests(unittest.TestCase):
     def test_live_nonpublishing_plan_is_valid(self) -> None:
         self.assertEqual(self.errors(self.plan), [])
 
+    def test_nonpublishing_plan_names_current_and_next_release_owners(self) -> None:
+        self.assertEqual(
+            self.plan["active_release_owner"],
+            "moritzbrantner/rust-packages",
+        )
+        self.assertTrue(
+            all(
+                package["intended_next_release_owner"]
+                == "moritzbrantner/moenarch-foundation"
+                for package in self.plan["packages"]
+            )
+        )
+
+    def test_active_release_owner_cannot_move_during_bootstrap(self) -> None:
+        plan = copy.deepcopy(self.plan)
+        plan["active_release_owner"] = "moritzbrantner/moenarch-foundation"
+        errors = self.errors(plan)
+        self.assertTrue(any("wrong active release owner" in error for error in errors))
+
     def test_publication_cannot_be_smuggled_into_bootstrap(self) -> None:
         plan = copy.deepcopy(self.plan)
         plan["packages"][0]["publish"] = True
@@ -44,6 +63,16 @@ class ReleasePlanTests(unittest.TestCase):
         plan["required_checks"] = []
         errors = self.errors(plan)
         self.assertTrue(any("complete bootstrap gate set" in error for error in errors), errors)
+
+    def test_required_checks_include_validator_tests_and_exact_base_harness_audit(self) -> None:
+        self.assertIn(
+            "python3 -m unittest discover -s scripts -p 'test_*.py'",
+            self.plan["required_checks"],
+        )
+        self.assertIn(
+            "python3 scripts/repository_split.py --harness-audit --base-ref <reviewed-base-sha>",
+            self.plan["required_checks"],
+        )
 
     def test_real_internal_dependency_cannot_be_deleted(self) -> None:
         plan = copy.deepcopy(self.plan)
@@ -72,10 +101,13 @@ class ReleasePlanTests(unittest.TestCase):
 
     def test_wrong_owner_and_missing_package_are_rejected(self) -> None:
         plan = copy.deepcopy(self.plan)
-        plan["packages"][0]["owner"] = "moritzbrantner/rust-packages"
+        plan["packages"][0]["intended_next_release_owner"] = (
+            "moritzbrantner/rust-packages"
+        )
         plan["packages"].pop()
         errors = self.errors(plan)
         self.assertTrue(any("60 owned packages" in e for e in errors))
+        self.assertTrue(any("wrong intended next release owner" in e for e in errors))
 
     def test_wrong_dependency_order_is_rejected(self) -> None:
         plan = copy.deepcopy(self.plan)

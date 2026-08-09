@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -16,6 +18,9 @@ SOURCE_REPOSITORY = "moritzbrantner/rust-packages"
 DESTINATION_REPOSITORY = "moritzbrantner/moenarch-foundation"
 PHASE_A_BASELINE = "d032ad2890c1df3c6a5b9eff024562f00d017fce"
 EXTRACTION_SHA = "364627c233b314807ba4f21298ada4cf63333bed"
+SOURCE_OWNERSHIP_RECORDS_SHA256 = (
+    "6d1ae73c470e4e6adaf83705c315e47faa9189db5ce6ab0541c8b711305b9540"
+)
 
 
 def load_json(path: Path) -> dict:
@@ -49,10 +54,22 @@ def ownership_records(document: dict) -> list[dict]:
     return records if isinstance(records, list) else []
 
 
+def ownership_records_sha256(document: dict) -> str:
+    records = sorted(
+        ownership_records(document),
+        key=lambda record: str(record.get("current_package_name")),
+    )
+    encoded = json.dumps(records, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def main() -> int:
-    if sys.argv[1:] != ["--harness-audit"]:
-        print("usage: repository_split.py --harness-audit", file=sys.stderr)
-        return 2
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--harness-audit", action="store_true")
+    parser.add_argument("--base-ref", required=True)
+    args = parser.parse_args()
+    if not args.harness_audit:
+        parser.error("--harness-audit is required")
     codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
     harness = (
         codex_home
@@ -66,6 +83,8 @@ def main() -> int:
             "audit",
             "--repo-root",
             str(ROOT),
+            "--base-ref",
+            args.base_ref,
             "--requirements-bundle",
             str(requirements),
             "--json",

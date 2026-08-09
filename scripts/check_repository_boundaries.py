@@ -17,8 +17,11 @@ from repository_split import (
     PHASE_A_BASELINE,
     ROOT,
     SOURCE_REPOSITORY,
+    SOURCE_OWNERSHIP_RECORDS_SHA256,
     cargo_metadata,
+    inside_root,
     load_json,
+    ownership_records_sha256,
 )
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -48,6 +51,7 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
         "source_repository": SOURCE_REPOSITORY,
         "phase_a_baseline": PHASE_A_BASELINE,
         "extraction_sha": EXTRACTION_SHA,
+        "source_ownership_records_sha256": SOURCE_OWNERSHIP_RECORDS_SHA256,
     }
     for key, expected in expected_header.items():
         if ownership.get(key) != expected:
@@ -72,6 +76,8 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
         errors.append("ownership entries absent from cargo metadata: " + ", ".join(extra))
     if len(records) != 60:
         errors.append(f"ownership must contain exactly 60 packages, found {len(records)}")
+    if ownership_records_sha256(ownership) != SOURCE_OWNERSHIP_RECORDS_SHA256:
+        errors.append("source ownership records differ from the extraction inventory")
     for record in records:
         name = record.get("current_package_name")
         if record.get("target_repository") != "moenarch-foundation":
@@ -82,12 +88,10 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
         if not isinstance(manifest, str):
             errors.append(f"{name}: missing manifest_path")
             continue
-        path = (root / manifest).resolve()
-        try:
-            path.relative_to(root.resolve())
-        except ValueError:
+        path = inside_root(root, manifest)
+        if path is None:
             errors.append(f"{name}: manifest_path escapes repository")
-        if not path.is_file():
+        elif not path.is_file():
             errors.append(f"{name}: manifest_path does not exist")
         if record.get("package_kind") in {"CLI", "server", "WASM"}:
             wrapped = record.get("wrapped_library")

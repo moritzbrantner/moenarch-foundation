@@ -17,7 +17,9 @@ from repository_split import (
     OWNERSHIP_PATH,
     RELEASE_PLAN_PATH,
     ROOT,
+    SOURCE_REPOSITORY,
     cargo_metadata,
+    inside_root,
     load_json,
 )
 
@@ -29,7 +31,8 @@ REQUIRED_CHECKS = {
     "cargo package -p <each-public-package> --locked",
     "python3 scripts/check_repository_boundaries.py --check",
     "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
-    "verification harness audit",
+    "python3 -m unittest discover -s scripts -p 'test_*.py'",
+    "python3 scripts/repository_split.py --harness-audit --base-ref <reviewed-base-sha>",
 }
 
 
@@ -89,6 +92,8 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         errors.append("schema_version must be 1")
     if plan.get("repository") != DESTINATION_REPOSITORY:
         errors.append("wrong repository")
+    if plan.get("active_release_owner") != SOURCE_REPOSITORY:
+        errors.append("wrong active release owner")
     if plan.get("source_sha") != EXTRACTION_SHA:
         errors.append("source_sha must match extraction SHA")
     if plan.get("publication_authorized") is not False:
@@ -113,8 +118,8 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
     for package in packages:
         name = package.get("name")
         record = owned.get(name, {})
-        if package.get("owner") != DESTINATION_REPOSITORY:
-            errors.append(f"{name}: wrong owner")
+        if package.get("intended_next_release_owner") != DESTINATION_REPOSITORY:
+            errors.append(f"{name}: wrong intended next release owner")
         if package.get("publish") is not False:
             errors.append(f"{name}: publication is not authorized")
         if package.get("new_version") != package.get("old_version"):
@@ -140,12 +145,10 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
             errors.append(f"{name}: nonpublishing plan must not declare a tag")
         if package.get("manifest_path") != record.get("manifest_path"):
             errors.append(f"{name}: manifest_path differs from ownership")
-        manifest = (root / str(package.get("manifest_path"))).resolve()
-        try:
-            manifest.relative_to(root.resolve())
-        except ValueError:
+        manifest = inside_root(root, str(package.get("manifest_path")))
+        if manifest is None:
             errors.append(f"{name}: manifest_path escapes repository")
-        if not manifest.is_file():
+        elif not manifest.is_file():
             errors.append(f"{name}: manifest_path does not exist")
         actual_dependencies = {
             dependency["name"]

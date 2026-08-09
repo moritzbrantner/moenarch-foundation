@@ -1352,5 +1352,6 @@
   "repository_dependencies": [],
   "review_issue": "https://github.com/moritzbrantner/rust-packages/issues/110",
   "schema_version": 1,
-  "source_repository": "moritzbrantner/rust-packages"
+  "source_repository": "moritzbrantner/rust-packages",
+  "source_ownership_records_sha256": "6d1ae73c470e4e6adaf83705c315e47faa9189db5ce6ab0541c8b711305b9540"
 }
