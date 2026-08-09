@@ -1,0 +1,43 @@
+{
+  "packages": [
+    {
+      "current_package_name": "moenarch-foundation-core",
+      "ecosystem": "cargo",
+      "package_kind": "library",
+      "target_repository": "moenarch-foundation",
+      "wrapped_library": null
+    },
+    {
+      "current_package_name": "moenarch-audio-core",
+      "ecosystem": "cargo",
+      "package_kind": "library",
+      "target_repository": "audio-analysis",
+      "wrapped_library": null
+    }
+  ],
+  "target_repository_dependencies": {
+    "audio-analysis": [
+      "moenarch-foundation",
+      "nlp-stack"
+    ],
+    "moenarch-foundation": [],
+    "nlp-stack": [
+      "moenarch-foundation"
+    ],
+    "rust-packages": [
+      "audio-analysis",
+      "moenarch-foundation",
+      "nlp-stack",
+      "spatial-analysis",
+      "visual-analysis"
+    ],
+    "spatial-analysis": [
+      "moenarch-foundation",
+      "visual-analysis"
+    ],
+    "visual-analysis": [
+      "moenarch-foundation",
+      "nlp-stack"
+    ]
+  }
+}

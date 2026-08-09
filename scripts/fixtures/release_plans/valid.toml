@@ -1,0 +1,33 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+source_sha = "2222222222222222222222222222222222222222"
+default_branch_base_sha = "1111111111111111111111111111111111111111"
+release_issue = "https://github.com/moritzbrantner/moenarch-foundation/issues/111"
+destination_registry = "crates.io"
+dependency_order = ["foundation-a", "foundation-b"]
+required_features = ["default"]
+compatibility_or_deprecation_packages = []
+required_checks = ["cargo package --locked"]
+expected_tags = ["foundation-a-v0.2.0", "foundation-b-v0.2.0"]
+downstream_consumers = ["native-whisperx"]
+required_consumer_checks = ["native-whisperx candidate patch"]
+
+[[packages]]
+name = "foundation-a"
+old_version = "0.1.0"
+new_version = "0.2.0"
+owner = "moritzbrantner/moenarch-foundation"
+publish = true
+manifest_path = "foundation-a/Cargo.toml"
+release_dependencies = []
+expected_tag = "foundation-a-v0.2.0"
+
+[[packages]]
+name = "foundation-b"
+old_version = "0.1.0"
+new_version = "0.2.0"
+owner = "moritzbrantner/moenarch-foundation"
+publish = true
+manifest_path = "foundation-b/Cargo.toml"
+release_dependencies = ["foundation-a"]
+expected_tag = "foundation-b-v0.2.0"

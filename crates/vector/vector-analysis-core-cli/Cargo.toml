@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-vector-analysis-core-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Command-line adapter for the vector-analysis-core library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "vector-analysis-core-cli"
+
+[lib]
+name = "vector_analysis_core_cli"
+
+[[bin]]
+name = "vector-analysis-core-cli"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "0.1.0", path = "../vector-analysis-core" }

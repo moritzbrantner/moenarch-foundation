@@ -1,0 +1,212 @@
+schema_version = 1
+
+[[checks]]
+id = "metadata"
+command = ["cargo","metadata","--format-version","1","--no-deps"]
+scope = ["Cargo.toml","Cargo.lock","crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["static"]
+protected_properties = ["INV-001","INV-002"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001", "repo:.github/workflows/workspace-ci.yml"]
+state_class = "deterministic"
+timeout_seconds = 300
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "Metadata cannot resolve exactly the reviewed workspace."
+independence_group = "metadata-validator"
+
+[[checks]]
+id = "validator-tests"
+command = ["python3","-m","unittest","discover","-s","scripts","-p","test_*.py"]
+scope = ["scripts/**","docs/repository-split/**","Cargo.toml","Cargo.lock"]
+tier = "full"
+blocking = true
+evidence_classes = ["behavioral"]
+protected_properties = ["INV-002","INV-003"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-002"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["python3", "cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "Focused controlled-fault validator tests failed."
+independence_group = "validator-sensitivity"
+sensitivity = [{ property = "INV-002", status = "proven", method = "controlled-fault", reference = "repo:scripts/test_check_repository_boundaries.py" }, { property = "INV-003", status = "proven", method = "controlled-fault", reference = "repo:scripts/test_check_release_plan.py" }]
+
+[[checks]]
+id = "ownership"
+command = ["python3","scripts/check_repository_boundaries.py","--check"]
+scope = ["Cargo.toml","Cargo.lock","crates/**","docs/repository-split/package-ownership.json","scripts/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["contract"]
+protected_properties = ["INV-001","INV-002"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 300
+tools = ["python3", "cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "Ownership, package count, repository boundary, or dependency-source policy differs."
+independence_group = "ownership-validator"
+sensitivity = [{ property = "INV-002", status = "proven", method = "controlled-fault", reference = "repo:scripts/test_check_repository_boundaries.py" }]
+
+[[checks]]
+id = "release-plan"
+command = ["python3","scripts/check_release_plan.py","--check","docs/repository-split/release-plan.json"]
+scope = ["Cargo.toml","Cargo.lock","crates/**","docs/repository-split/**","scripts/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["contract"]
+protected_properties = ["INV-003"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-003"]
+state_class = "deterministic"
+timeout_seconds = 300
+tools = ["python3", "cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "Exact inventory, versions, dependency order, required gates, or non-publishing authorization changed."
+independence_group = "release-validator"
+
+[[checks]]
+id = "format"
+command = ["cargo","fmt","--all","--","--check"]
+scope = ["Cargo.toml","crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["static"]
+protected_properties = ["INV-001"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 300
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "Rust formatting differs."
+independence_group = "cargo-format"
+
+[[checks]]
+id = "clippy"
+command = ["cargo","clippy","--workspace","--all-targets","--all-features","--","-D","warnings"]
+scope = ["Cargo.toml","Cargo.lock","crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["static"]
+protected_properties = ["INV-001","INV-002"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "Strict workspace linting failed."
+independence_group = "cargo-clippy"
+
+[[checks]]
+id = "workspace-tests-all-features"
+command = ["cargo","test","--workspace","--all-features"]
+scope = ["Cargo.toml","Cargo.lock","crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["behavioral"]
+protected_properties = ["INV-001"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "All-feature workspace behavior failed."
+independence_group = "cargo-tests-all"
+
+[[checks]]
+id = "workspace-tests-no-default-features"
+command = ["cargo","test","--workspace","--no-default-features"]
+scope = ["Cargo.toml","Cargo.lock","crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["behavioral"]
+protected_properties = ["INV-001"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "No-default-feature workspace behavior failed."
+independence_group = "cargo-tests-minimal"
+
+[[checks]]
+id = "workspace-docs"
+command = ["cargo","doc","--workspace","--no-deps"]
+scope = ["Cargo.toml","Cargo.lock","crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["static"]
+protected_properties = ["INV-001"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "Workspace documentation failed."
+independence_group = "cargo-doc"
+
+[[checks]]
+id = "package-all"
+command = ["python3","scripts/check_release_plan.py","--package-all","docs/repository-split/release-plan.json"]
+scope = ["Cargo.toml","Cargo.lock","crates/**","docs/repository-split/**","scripts/check_release_plan.py"]
+tier = "full"
+blocking = true
+evidence_classes = ["integration"]
+protected_properties = ["INV-001"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 7200
+tools = ["python3", "cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "very-high"
+success_exit_codes = [0]
+failure_semantics = "One or more package archives failed or tracked manifest hashes changed."
+independence_group = "cargo-package"
+
+[[checks]]
+id = "harness-audit"
+command = ["python3","scripts/repository_split.py","--harness-audit","--base-ref","origin/main"]
+scope = [".harness/**","AGENTS.md",".gitignore",".github/workflows/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["contract"]
+protected_properties = ["INV-003"]
+source_of_truth = ["issue:#110", "issue:#106", "invariant:INV-003"]
+state_class = "deterministic"
+timeout_seconds = 300
+tools = ["python3"]
+services = []
+generated_outputs = []
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "Draft Harness profile audit is invalid."
+independence_group = "harness-audit"

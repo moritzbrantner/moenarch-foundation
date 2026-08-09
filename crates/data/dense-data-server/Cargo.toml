@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-dense-data-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP API adapter for the dense-data library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "dense-data-server"
+
+[lib]
+name = "dense_data_server"
+
+[[bin]]
+name = "dense-data-server"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+dense-data = { package = "moenarch-dense-data", version = "0.1.0", path = "../dense-data" }

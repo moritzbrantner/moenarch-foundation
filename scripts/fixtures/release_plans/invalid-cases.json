@@ -1,0 +1,19 @@
+{
+  "cyclic": {
+    "foundation-a": [
+      "foundation-b"
+    ],
+    "foundation-b": [
+      "foundation-a"
+    ]
+  },
+  "duplicate": [
+    "foundation-a",
+    "foundation-a"
+  ],
+  "wrong-order": [
+    "foundation-b",
+    "foundation-a"
+  ],
+  "wrong-owner": "moritzbrantner/audio-analysis"
+}

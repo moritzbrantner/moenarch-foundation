@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-data-inversion-core-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "HTTP API adapter for the data-inversion-core library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "data-inversion-core-server"
+
+[lib]
+name = "data_inversion_core_server"
+
+[[bin]]
+name = "data-inversion-core-server"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "0.1.0", path = "../data-inversion-core" }

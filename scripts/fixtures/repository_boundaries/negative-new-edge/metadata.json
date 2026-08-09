@@ -1,0 +1,18 @@
+{
+  "packages": [
+    {
+      "dependencies": [
+        {
+          "kind": null,
+          "name": "moenarch-audio-core",
+          "optional": false
+        }
+      ],
+      "name": "moenarch-foundation-core"
+    },
+    {
+      "dependencies": [],
+      "name": "moenarch-audio-core"
+    }
+  ]
+}

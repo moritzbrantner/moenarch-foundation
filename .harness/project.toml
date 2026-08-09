@@ -1,0 +1,15 @@
+schema_version = 1
+profile_status = "draft"
+project_id = "moritzbrantner/moenarch-foundation"
+default_base_ref = "origin/main"
+maturity = "growing"
+project_kinds = ["library", "cli", "native-processing"]
+verification_surface_globs = [".harness/**", ".github/workflows/**", ".editorconfig", "LICENSE-APACHE", "LICENSE-MIT", "Cargo.toml", "Cargo.lock", "scripts/**", "docs/repository-split/**"]
+required_external_sources = [
+  { id = "issue:#110", canonical_url = "https://github.com/moritzbrantner/rust-packages/issues/110", minimum_updated_at = "2026-08-09T12:57:44Z" },
+  { id = "issue:#106", canonical_url = "https://github.com/moritzbrantner/rust-packages/issues/106", minimum_updated_at = "2026-07-30T01:21:45Z" },
+]
+generated_path_globs = ["target/**"]
+selection_fallback_ids = []
+
+[required_risk_categories]

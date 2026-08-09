@@ -1,0 +1,31 @@
+[package]
+name = "moenarch-model-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Generic model specs, bundles, downloads, and job helpers for multimodal runtimes."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "model_runtime"
+
+[dependencies]
+runtime-core.workspace = true
+chrono.workspace = true
+hf-hub.workspace = true
+jobs-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[features]
+default = []
+jobs = []
+
+[dev-dependencies]
+tempfile.workspace = true

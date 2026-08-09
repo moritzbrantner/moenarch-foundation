@@ -1,0 +1,37 @@
+{
+  "default_branch_base_sha": "1111111111111111111111111111111111111111",
+  "compatibility_or_deprecation_packages": [],
+  "dependency_order": ["foundation-a", "foundation-b"],
+  "destination_registry": "crates.io",
+  "downstream_consumers": ["native-whisperx"],
+  "expected_tags": ["foundation-a-v0.2.0", "foundation-b-v0.2.0"],
+  "packages": [
+    {
+      "expected_tag": "foundation-a-v0.2.0",
+      "manifest_path": "foundation-a/Cargo.toml",
+      "name": "foundation-a",
+      "new_version": "0.2.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": true,
+      "release_dependencies": []
+    },
+    {
+      "expected_tag": "foundation-b-v0.2.0",
+      "manifest_path": "foundation-b/Cargo.toml",
+      "name": "foundation-b",
+      "new_version": "0.2.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": true,
+      "release_dependencies": ["foundation-a"]
+    }
+  ],
+  "release_issue": "https://github.com/moritzbrantner/moenarch-foundation/issues/111",
+  "repository": "moritzbrantner/moenarch-foundation",
+  "required_checks": ["cargo package --locked"],
+  "required_consumer_checks": ["native-whisperx candidate patch"],
+  "required_features": ["default"],
+  "schema_version": 1,
+  "source_sha": "2222222222222222222222222222222222222222"
+}

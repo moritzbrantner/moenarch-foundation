@@ -1,0 +1,108 @@
+[workspace]
+members = [
+    "crates/audio/audio-contracts",
+    "crates/bindings/data-inversion-core-wasm",
+    "crates/bindings/dense-data-wasm",
+    "crates/bindings/graph-analysis-core-wasm",
+    "crates/bindings/jobs-core-wasm",
+    "crates/bindings/math-geometry-2d-wasm",
+    "crates/bindings/math-linear-wasm",
+    "crates/bindings/math-signal-core-wasm",
+    "crates/bindings/math-sparse-data-wasm",
+    "crates/bindings/math-statistics-wasm",
+    "crates/bindings/model-runtime-wasm",
+    "crates/bindings/numbers-core-wasm",
+    "crates/bindings/tensor-data-wasm",
+    "crates/bindings/vector-analysis-core-wasm",
+    "crates/bindings/vector-analysis-index-wasm",
+    "crates/data/data-inversion-core",
+    "crates/data/data-inversion-core-cli",
+    "crates/data/data-inversion-core-server",
+    "crates/data/dense-data",
+    "crates/data/dense-data-cli",
+    "crates/data/dense-data-server",
+    "crates/data/graph-analysis-core",
+    "crates/data/graph-analysis-core-cli",
+    "crates/data/graph-analysis-core-server",
+    "crates/data/numbers-core",
+    "crates/data/numbers-core-cli",
+    "crates/data/numbers-core-server",
+    "crates/data/tensor-data",
+    "crates/data/tensor-data-cli",
+    "crates/data/tensor-data-server",
+    "crates/jobs/jobs-core",
+    "crates/jobs/jobs-core-cli",
+    "crates/jobs/jobs-core-server",
+    "crates/math/math-geometry-2d",
+    "crates/math/math-geometry-2d-cli",
+    "crates/math/math-geometry-2d-server",
+    "crates/math/math-linear",
+    "crates/math/math-linear-cli",
+    "crates/math/math-linear-server",
+    "crates/math/math-signal-core",
+    "crates/math/math-signal-core-cli",
+    "crates/math/math-signal-core-server",
+    "crates/math/math-sparse-data",
+    "crates/math/math-sparse-data-cli",
+    "crates/math/math-sparse-data-server",
+    "crates/math/math-statistics",
+    "crates/math/math-statistics-cli",
+    "crates/math/math-statistics-server",
+    "crates/media/media-core",
+    "crates/runtime/model-runtime",
+    "crates/runtime/model-runtime-cli",
+    "crates/runtime/model-runtime-server",
+    "crates/runtime/runtime-core",
+    "crates/runtime/runtime-onnx",
+    "crates/vector/vector-analysis-core",
+    "crates/vector/vector-analysis-core-cli",
+    "crates/vector/vector-analysis-core-server",
+    "crates/vector/vector-analysis-index",
+    "crates/vector/vector-analysis-index-cli",
+    "crates/vector/vector-analysis-index-server",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.95"
+repository = "https://github.com/moritzbrantner/moenarch-foundation"
+homepage = "https://github.com/moritzbrantner/moenarch-foundation"
+documentation = "https://docs.rs/moenarch-foundation"
+keywords = ["data", "math", "runtime", "multimedia", "analysis"]
+categories = ["science", "algorithms", "multimedia"]
+
+[workspace.dependencies]
+chrono = { version = "0.4.42", default-features = false, features = ["clock", "serde"] }
+clap = { version = "4.5.51", features = ["derive"] }
+criterion = "0.5.1"
+faer = { version = "0.24.0", default-features = false, features = ["std", "linalg"] }
+hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
+nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }
+ndarray = "0.17.2"
+ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "ndarray", "load-dynamic", "api-24"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+sha2 = "0.10.9"
+tempfile = "3.23.0"
+thiserror = "2.0.17"
+
+audio-contracts = { package = "moenarch-audio-contracts", version = "0.1.0", path = "crates/audio/audio-contracts" }
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "0.1.0", path = "crates/data/data-inversion-core" }
+dense-data = { package = "moenarch-dense-data", version = "0.1.0", path = "crates/data/dense-data" }
+graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "0.1.0", path = "crates/data/graph-analysis-core" }
+jobs-core = { package = "moenarch-jobs-core", version = "0.1.1", path = "crates/jobs/jobs-core" }
+math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "0.1.0", path = "crates/math/math-geometry-2d" }
+math-linear = { package = "moenarch-math-linear", version = "0.1.0", path = "crates/math/math-linear" }
+math-signal-core = { package = "moenarch-math-signal-core", version = "0.1.0", path = "crates/math/math-signal-core" }
+math-sparse-data = { package = "moenarch-math-sparse-data", version = "0.1.0", path = "crates/math/math-sparse-data" }
+math-statistics = { package = "moenarch-math-statistics", version = "0.1.0", path = "crates/math/math-statistics" }
+media-core = { package = "moenarch-media-core", version = "0.1.0", path = "crates/media/media-core" }
+model-runtime = { package = "moenarch-model-runtime", version = "0.1.0", path = "crates/runtime/model-runtime" }
+numbers-core = { package = "moenarch-numbers-core", version = "0.1.0", path = "crates/data/numbers-core" }
+runtime-core = { package = "moenarch-runtime-core", version = "0.2.0", path = "crates/runtime/runtime-core" }
+tensor-data = { package = "moenarch-tensor-data", version = "0.1.0", path = "crates/data/tensor-data" }
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "0.1.0", path = "crates/vector/vector-analysis-core" }
+vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "0.1.0", path = "crates/vector/vector-analysis-index" }

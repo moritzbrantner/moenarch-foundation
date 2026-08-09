@@ -1,0 +1,27 @@
+[package]
+name = "moenarch-runtime-onnx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Domain-neutral ONNX Runtime session and tensor helpers."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "runtime_onnx"
+
+[dependencies]
+ndarray = { workspace = true, optional = true }
+ort = { workspace = true, optional = true }
+serde.workspace = true
+thiserror.workspace = true
+
+[features]
+default = []
+onnxruntime = ["dep:ort", "dep:ndarray"]
+external-tests = ["onnxruntime"]
