@@ -10,11 +10,13 @@ selection is early feedback only.
 
 ## Workflow
 
-Invoke the Harness from the installed skill:
+Invoke the Harness from the installed skill with an independently resolved,
+exact base commit:
 
 ```bash
+BASE_SHA="$(git rev-parse origin/main^{commit})"
 python3 "${CODEX_HOME:-$HOME/.codex}/skills/moenarch-verification-harness/scripts/verification_harness.py" \
-  audit --repo-root . --json
+  audit --repo-root . --base-ref "$BASE_SHA" --json
 ```
 
 Use `select` or the targeted tier only for optional early feedback. At a clean

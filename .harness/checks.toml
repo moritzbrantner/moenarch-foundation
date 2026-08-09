@@ -194,7 +194,7 @@ independence_group = "cargo-package"
 
 [[checks]]
 id = "harness-audit"
-command = ["python3","scripts/repository_split.py","--harness-audit"]
+command = ["python3","scripts/repository_split.py","--harness-audit","--base-ref","origin/main"]
 scope = [".harness/**","AGENTS.md",".gitignore",".github/workflows/**"]
 tier = "full"
 blocking = true
