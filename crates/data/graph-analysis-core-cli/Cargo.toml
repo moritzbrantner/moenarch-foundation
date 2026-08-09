@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-graph-analysis-core-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Command-line adapter for the graph-analysis-core library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "graph-analysis-core-cli"
+
+[lib]
+name = "graph_analysis_core_cli"
+
+[[bin]]
+name = "graph-analysis-core-cli"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "0.1.0", path = "../graph-analysis-core" }

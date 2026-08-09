@@ -1,0 +1,14 @@
+schema_version = 1
+profile_status = "draft"
+project_id = "moritzbrantner/moenarch-foundation"
+default_base_ref = "origin/main"
+maturity = "growing"
+project_kinds = ["library", "cli", "native-processing"]
+verification_surface_globs = [".harness/**", ".github/workflows/**", "Cargo.toml", "Cargo.lock", "scripts/**", "docs/repository-split/**"]
+generated_path_globs = ["target/**"]
+selection_fallback_ids = ["ownership", "release-plan"]
+
+[required_risk_categories]
+compatibility = ["INV-001"]
+security = ["INV-002"]
+operational = ["INV-003"]

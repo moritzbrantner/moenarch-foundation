@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-jobs-core-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Command-line adapter for the jobs-core library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "jobs-core-cli"
+
+[lib]
+name = "jobs_core_cli"
+
+[[bin]]
+name = "jobs-core-cli"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+jobs-core = { package = "moenarch-jobs-core", version = "0.1.1", path = "../jobs-core" }

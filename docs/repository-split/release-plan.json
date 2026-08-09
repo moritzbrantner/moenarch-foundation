@@ -1,0 +1,868 @@
+{
+  "compatibility_or_deprecation_packages": [],
+  "dependency_order": [
+    "moenarch-media-core",
+    "moenarch-runtime-core",
+    "moenarch-runtime-onnx",
+    "moenarch-audio-contracts",
+    "moenarch-data-inversion-core",
+    "moenarch-graph-analysis-core",
+    "moenarch-jobs-core",
+    "moenarch-math-geometry-2d",
+    "moenarch-numbers-core",
+    "moenarch-tensor-data",
+    "moenarch-vector-analysis-core",
+    "moenarch-data-inversion-core-cli",
+    "moenarch-data-inversion-core-server",
+    "moenarch-data-inversion-core-wasm",
+    "moenarch-graph-analysis-core-cli",
+    "moenarch-graph-analysis-core-server",
+    "moenarch-graph-analysis-core-wasm",
+    "moenarch-jobs-core-cli",
+    "moenarch-jobs-core-server",
+    "moenarch-jobs-core-wasm",
+    "moenarch-math-geometry-2d-cli",
+    "moenarch-math-geometry-2d-server",
+    "moenarch-math-geometry-2d-wasm",
+    "moenarch-math-linear",
+    "moenarch-math-signal-core",
+    "moenarch-model-runtime",
+    "moenarch-numbers-core-cli",
+    "moenarch-numbers-core-server",
+    "moenarch-numbers-core-wasm",
+    "moenarch-tensor-data-cli",
+    "moenarch-tensor-data-server",
+    "moenarch-tensor-data-wasm",
+    "moenarch-vector-analysis-core-cli",
+    "moenarch-vector-analysis-core-server",
+    "moenarch-vector-analysis-core-wasm",
+    "moenarch-vector-analysis-index",
+    "moenarch-math-linear-cli",
+    "moenarch-math-linear-server",
+    "moenarch-math-linear-wasm",
+    "moenarch-math-signal-core-cli",
+    "moenarch-math-signal-core-server",
+    "moenarch-math-signal-core-wasm",
+    "moenarch-math-sparse-data",
+    "moenarch-math-statistics",
+    "moenarch-model-runtime-cli",
+    "moenarch-model-runtime-server",
+    "moenarch-model-runtime-wasm",
+    "moenarch-vector-analysis-index-cli",
+    "moenarch-vector-analysis-index-server",
+    "moenarch-vector-analysis-index-wasm",
+    "moenarch-dense-data",
+    "moenarch-math-sparse-data-cli",
+    "moenarch-math-sparse-data-server",
+    "moenarch-math-sparse-data-wasm",
+    "moenarch-math-statistics-cli",
+    "moenarch-math-statistics-server",
+    "moenarch-math-statistics-wasm",
+    "moenarch-dense-data-cli",
+    "moenarch-dense-data-server",
+    "moenarch-dense-data-wasm"
+  ],
+  "destination_registry": "crates.io",
+  "expected_tags": [],
+  "notes": "Bootstrap inventory only. This manifest authorizes no publication, tags, releases, or version changes.",
+  "packages": [
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/media/media-core/Cargo.toml",
+      "name": "moenarch-media-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": []
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/runtime/runtime-core/Cargo.toml",
+      "name": "moenarch-runtime-core",
+      "new_version": "0.2.0",
+      "old_version": "0.2.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": []
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/runtime/runtime-onnx/Cargo.toml",
+      "name": "moenarch-runtime-onnx",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": []
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/audio/audio-contracts/Cargo.toml",
+      "name": "moenarch-audio-contracts",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/data-inversion-core/Cargo.toml",
+      "name": "moenarch-data-inversion-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/graph-analysis-core/Cargo.toml",
+      "name": "moenarch-graph-analysis-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/jobs/jobs-core/Cargo.toml",
+      "name": "moenarch-jobs-core",
+      "new_version": "0.1.1",
+      "old_version": "0.1.1",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-geometry-2d/Cargo.toml",
+      "name": "moenarch-math-geometry-2d",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/numbers-core/Cargo.toml",
+      "name": "moenarch-numbers-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/tensor-data/Cargo.toml",
+      "name": "moenarch-tensor-data",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/vector/vector-analysis-core/Cargo.toml",
+      "name": "moenarch-vector-analysis-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/data-inversion-core-cli/Cargo.toml",
+      "name": "moenarch-data-inversion-core-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-data-inversion-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/data-inversion-core-server/Cargo.toml",
+      "name": "moenarch-data-inversion-core-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-data-inversion-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/data-inversion-core-wasm/Cargo.toml",
+      "name": "moenarch-data-inversion-core-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-data-inversion-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/graph-analysis-core-cli/Cargo.toml",
+      "name": "moenarch-graph-analysis-core-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-graph-analysis-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/graph-analysis-core-server/Cargo.toml",
+      "name": "moenarch-graph-analysis-core-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-graph-analysis-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/graph-analysis-core-wasm/Cargo.toml",
+      "name": "moenarch-graph-analysis-core-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-graph-analysis-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/jobs/jobs-core-cli/Cargo.toml",
+      "name": "moenarch-jobs-core-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-jobs-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/jobs/jobs-core-server/Cargo.toml",
+      "name": "moenarch-jobs-core-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-jobs-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/jobs-core-wasm/Cargo.toml",
+      "name": "moenarch-jobs-core-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-jobs-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-geometry-2d-cli/Cargo.toml",
+      "name": "moenarch-math-geometry-2d-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-geometry-2d",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-geometry-2d-server/Cargo.toml",
+      "name": "moenarch-math-geometry-2d-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-geometry-2d",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/math-geometry-2d-wasm/Cargo.toml",
+      "name": "moenarch-math-geometry-2d-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-geometry-2d",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-linear/Cargo.toml",
+      "name": "moenarch-math-linear",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core",
+        "moenarch-tensor-data",
+        "moenarch-vector-analysis-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-signal-core/Cargo.toml",
+      "name": "moenarch-math-signal-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-numbers-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/runtime/model-runtime/Cargo.toml",
+      "name": "moenarch-model-runtime",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-jobs-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/numbers-core-cli/Cargo.toml",
+      "name": "moenarch-numbers-core-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-numbers-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/numbers-core-server/Cargo.toml",
+      "name": "moenarch-numbers-core-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-numbers-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/numbers-core-wasm/Cargo.toml",
+      "name": "moenarch-numbers-core-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-numbers-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/tensor-data-cli/Cargo.toml",
+      "name": "moenarch-tensor-data-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-tensor-data"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/tensor-data-server/Cargo.toml",
+      "name": "moenarch-tensor-data-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-tensor-data"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/tensor-data-wasm/Cargo.toml",
+      "name": "moenarch-tensor-data-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-tensor-data"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/vector/vector-analysis-core-cli/Cargo.toml",
+      "name": "moenarch-vector-analysis-core-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/vector/vector-analysis-core-server/Cargo.toml",
+      "name": "moenarch-vector-analysis-core-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/vector-analysis-core-wasm/Cargo.toml",
+      "name": "moenarch-vector-analysis-core-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/vector/vector-analysis-index/Cargo.toml",
+      "name": "moenarch-vector-analysis-index",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-media-core",
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-linear-cli/Cargo.toml",
+      "name": "moenarch-math-linear-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-linear",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-linear-server/Cargo.toml",
+      "name": "moenarch-math-linear-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-linear",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/math-linear-wasm/Cargo.toml",
+      "name": "moenarch-math-linear-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-linear",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-signal-core-cli/Cargo.toml",
+      "name": "moenarch-math-signal-core-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-signal-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-signal-core-server/Cargo.toml",
+      "name": "moenarch-math-signal-core-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-signal-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/math-signal-core-wasm/Cargo.toml",
+      "name": "moenarch-math-signal-core-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-signal-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-sparse-data/Cargo.toml",
+      "name": "moenarch-math-sparse-data",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-linear",
+        "moenarch-media-core",
+        "moenarch-numbers-core",
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-statistics/Cargo.toml",
+      "name": "moenarch-math-statistics",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-linear",
+        "moenarch-media-core",
+        "moenarch-numbers-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/runtime/model-runtime-cli/Cargo.toml",
+      "name": "moenarch-model-runtime-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-model-runtime",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/runtime/model-runtime-server/Cargo.toml",
+      "name": "moenarch-model-runtime-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-model-runtime",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/model-runtime-wasm/Cargo.toml",
+      "name": "moenarch-model-runtime-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-model-runtime",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/vector/vector-analysis-index-cli/Cargo.toml",
+      "name": "moenarch-vector-analysis-index-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-index"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/vector/vector-analysis-index-server/Cargo.toml",
+      "name": "moenarch-vector-analysis-index-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-index"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/vector-analysis-index-wasm/Cargo.toml",
+      "name": "moenarch-vector-analysis-index-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-runtime-core",
+        "moenarch-vector-analysis-index"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/dense-data/Cargo.toml",
+      "name": "moenarch-dense-data",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-linear",
+        "moenarch-math-statistics",
+        "moenarch-media-core",
+        "moenarch-numbers-core",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-sparse-data-cli/Cargo.toml",
+      "name": "moenarch-math-sparse-data-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-sparse-data",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-sparse-data-server/Cargo.toml",
+      "name": "moenarch-math-sparse-data-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-sparse-data",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/math-sparse-data-wasm/Cargo.toml",
+      "name": "moenarch-math-sparse-data-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-sparse-data",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-statistics-cli/Cargo.toml",
+      "name": "moenarch-math-statistics-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-statistics",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/math/math-statistics-server/Cargo.toml",
+      "name": "moenarch-math-statistics-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-statistics",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/math-statistics-wasm/Cargo.toml",
+      "name": "moenarch-math-statistics-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-math-statistics",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/dense-data-cli/Cargo.toml",
+      "name": "moenarch-dense-data-cli",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-dense-data",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/data/dense-data-server/Cargo.toml",
+      "name": "moenarch-dense-data-server",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-dense-data",
+        "moenarch-runtime-core"
+      ]
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/bindings/dense-data-wasm/Cargo.toml",
+      "name": "moenarch-dense-data-wasm",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-dense-data",
+        "moenarch-runtime-core"
+      ]
+    }
+  ],
+  "phase_a_baseline": "d032ad2890c1df3c6a5b9eff024562f00d017fce",
+  "publication_authorized": false,
+  "release_issue": null,
+  "repository": "moritzbrantner/moenarch-foundation",
+  "required_checks": [
+    "cargo metadata --format-version 1 --no-deps",
+    "cargo test --workspace --all-features",
+    "cargo test --workspace --no-default-features",
+    "cargo doc --workspace --no-deps",
+    "cargo package -p <each-public-package> --locked",
+    "python3 scripts/check_repository_boundaries.py --check",
+    "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+    "verification harness audit"
+  ],
+  "required_consumer_checks": [],
+  "schema_version": 1,
+  "source_sha": "364627c233b314807ba4f21298ada4cf63333bed"
+}

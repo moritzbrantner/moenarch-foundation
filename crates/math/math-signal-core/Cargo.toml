@@ -1,0 +1,30 @@
+[package]
+name = "moenarch-math-signal-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Shared signal-domain math for windows, frame strides, resampling, and biquad design."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "math_signal_core"
+
+[dependencies]
+media-core.workspace = true
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+numbers-core.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "signal"
+harness = false

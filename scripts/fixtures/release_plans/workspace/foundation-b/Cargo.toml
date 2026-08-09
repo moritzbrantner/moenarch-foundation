@@ -1,0 +1,10 @@
+[package]
+name = "foundation-b"
+version = "0.2.0"
+edition = "2024"
+
+[dependencies]
+foundation-a.workspace = true
+
+[lib]
+path = "src/lib.rs"

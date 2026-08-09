@@ -1,0 +1,19 @@
+[package]
+name = "moenarch-audio-contracts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Cycle-free audio frame, analyzer, and pipeline contracts."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "audio_contracts"
+
+[dependencies]
+media-core.workspace = true

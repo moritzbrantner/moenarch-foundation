@@ -1,0 +1,77 @@
+schema_version = 1
+
+[[checks]]
+id = "ownership"
+command = ["python3", "scripts/check_repository_boundaries.py", "--check"]
+scope = ["Cargo.toml", "Cargo.lock", "crates/**", "docs/repository-split/package-ownership.json", "scripts/check_repository_boundaries.py", "scripts/repository_split.py"]
+tier = "full"
+blocking = true
+evidence_classes = ["contract"]
+protected_properties = ["INV-001", "INV-002"]
+source_of_truth = ["repo:docs/repository-split/package-ownership.json"]
+state_class = "deterministic"
+timeout_seconds = 120
+tools = ["python3", "cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "Ownership, package count, repository boundary, or dependency-source policy differs from the reviewed extraction."
+independence_group = "ownership-validator"
+
+[[checks]]
+id = "release-plan"
+command = ["python3", "scripts/check_release_plan.py", "--check", "docs/repository-split/release-plan.json"]
+scope = ["Cargo.toml", "Cargo.lock", "crates/**", "docs/repository-split/**", "scripts/check_release_plan.py", "scripts/repository_split.py"]
+tier = "full"
+blocking = true
+evidence_classes = ["contract"]
+protected_properties = ["INV-003"]
+source_of_truth = ["repo:docs/repository-split/release-plan.json"]
+state_class = "deterministic"
+timeout_seconds = 120
+tools = ["python3", "cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "low"
+success_exit_codes = [0]
+failure_semantics = "The exact package inventory, dependency order, or non-publishing authorization changed."
+independence_group = "release-validator"
+
+[[checks]]
+id = "workspace-tests-all-features"
+command = ["cargo", "test", "--workspace", "--all-features"]
+scope = ["Cargo.toml", "Cargo.lock", "crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["behavioral"]
+protected_properties = ["INV-001"]
+source_of_truth = ["invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "At least one package behavior or all-feature integration test failed."
+independence_group = "cargo-tests"
+
+[[checks]]
+id = "workspace-docs"
+command = ["cargo", "doc", "--workspace", "--no-deps"]
+scope = ["Cargo.toml", "Cargo.lock", "crates/**"]
+tier = "full"
+blocking = true
+evidence_classes = ["static"]
+protected_properties = ["INV-001"]
+source_of_truth = ["invariant:INV-001"]
+state_class = "deterministic"
+timeout_seconds = 3600
+tools = ["cargo"]
+services = []
+generated_outputs = ["target/**"]
+cost_class = "high"
+success_exit_codes = [0]
+failure_semantics = "Public documentation cannot be generated for the workspace."
+independence_group = "cargo-doc"

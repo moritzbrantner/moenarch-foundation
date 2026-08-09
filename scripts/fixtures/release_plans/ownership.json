@@ -1,0 +1,18 @@
+{
+  "packages": [
+    {
+      "current_package_name": "foundation-a",
+      "ecosystem": "cargo",
+      "manifest_path": "foundation-a/Cargo.toml",
+      "source_version": "0.1.0",
+      "target_repository": "moenarch-foundation"
+    },
+    {
+      "current_package_name": "foundation-b",
+      "ecosystem": "cargo",
+      "manifest_path": "foundation-b/Cargo.toml",
+      "source_version": "0.1.0",
+      "target_repository": "moenarch-foundation"
+    }
+  ]
+}

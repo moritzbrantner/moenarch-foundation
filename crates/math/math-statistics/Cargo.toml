@@ -1,0 +1,31 @@
+[package]
+name = "moenarch-math-statistics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Shared multivariate statistics for dense matrix inputs and streaming observations."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "math_statistics"
+
+[dependencies]
+media-core.workspace = true
+runtime-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+math-linear.workspace = true
+numbers-core.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "multivariate"
+harness = false

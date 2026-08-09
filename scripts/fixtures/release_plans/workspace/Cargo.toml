@@ -1,0 +1,6 @@
+[workspace]
+members = ["foundation-a", "foundation-b"]
+resolver = "2"
+
+[workspace.dependencies]
+foundation-a = { path = "foundation-a", version = "=0.2.0" }

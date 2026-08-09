@@ -1,0 +1,26 @@
+[package]
+name = "moenarch-math-linear-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Command-line adapter for the math-linear library crate."
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+default-run = "math-linear-cli"
+
+[lib]
+name = "math_linear_cli"
+
+[[bin]]
+name = "math-linear-cli"
+path = "src/main.rs"
+
+[dependencies]
+runtime-core.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+math-linear = { package = "moenarch-math-linear", version = "0.1.0", path = "../math-linear" }
