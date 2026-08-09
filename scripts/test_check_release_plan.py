@@ -52,6 +52,24 @@ class ReleasePlanTests(unittest.TestCase):
         errors = self.errors(plan)
         self.assertTrue(any("do not match workspace metadata" in error for error in errors), errors)
 
+    def test_ownership_source_version_is_bound(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        ownership["packages"][0]["source_version"] = "9.9.9"
+        errors = validate(self.plan, ownership, self.metadata)
+        self.assertTrue(any("ownership source_version" in error for error in errors), errors)
+
+    def test_metadata_and_plan_cannot_jointly_forge_source_version(self) -> None:
+        plan = copy.deepcopy(self.plan)
+        metadata = copy.deepcopy(self.metadata)
+        name = plan["packages"][0]["name"]
+        plan["packages"][0]["old_version"] = "9.9.9"
+        plan["packages"][0]["new_version"] = "9.9.9"
+        next(package for package in metadata["packages"] if package["name"] == name)[
+            "version"
+        ] = "9.9.9"
+        errors = validate(plan, self.ownership, metadata)
+        self.assertTrue(any("ownership source_version" in error for error in errors), errors)
+
     def test_wrong_owner_and_missing_package_are_rejected(self) -> None:
         plan = copy.deepcopy(self.plan)
         plan["packages"][0]["owner"] = "moritzbrantner/rust-packages"

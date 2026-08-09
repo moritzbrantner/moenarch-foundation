@@ -120,6 +120,12 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         if package.get("new_version") != package.get("old_version"):
             errors.append(f"{name}: nonpublishing plan must retain version")
         actual_version = metadata_packages.get(name, {}).get("version")
+        source_version = record.get("source_version")
+        if source_version != actual_version:
+            errors.append(
+                f"{name}: ownership source_version does not match workspace "
+                f"version {actual_version!r}"
+            )
         if package.get("old_version") != actual_version:
             errors.append(
                 f"{name}: old_version does not match workspace version "

@@ -25,7 +25,7 @@ Destination-authored or materially adapted support is not represented as a
 byte-identical copy:
 
 - Root `Cargo.toml` was authored with exactly 60 workspace members,
-  destination repository metadata, only required workspace dependencies, and
+  destination repository metadata, selected destination workspace dependencies, and
   an exact `ort = "=2.0.0-rc.12"` constraint. The exact constraint preserves
   the source lockfile-compatible API after unconstrained fresh resolution
   selected incompatible release candidate 13.
@@ -49,7 +49,11 @@ byte-identical copy:
 
 All copied Rust sources remain available in `rust-packages` at the extraction commit. Dual-licensed material retains the repository's MIT OR Apache-2.0 terms through `LICENSE-MIT` and `LICENSE-APACHE`. No additional notice file existed in the literal extraction scope. No Bun/npm packages, generated build output, vendored projects, external media, or source history were copied.
 
-The draft Harness profile was detected from the empty destination before mutation and audited after authoring. Detection and audit are discovery/structural evidence only; they are not authoritative handoff evidence and do not activate policy or imply that Cargo checks ran.
+The draft Harness profile was detected from the empty destination before
+mutation and audited after authoring. Draft Harness audits and runs are
+optional, non-authoritative discovery/structural evidence only. They do not
+activate policy, imply that Cargo checks ran, or replace the issue-required
+repository checks as handoff authority.
 
 The Harness profile binds the source issue and parent PRD as external
 requirements. Their bodies and digests are captured only in ignored local

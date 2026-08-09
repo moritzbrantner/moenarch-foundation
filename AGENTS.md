@@ -9,7 +9,9 @@ This repository contains 60 domain-neutral Rust packages. Read `CONTEXT.md`, `do
 - Keep CLI/server/WASM adapters with their wrapped libraries until a separate usage and semver decision authorizes removal.
 - Do not add Bun/npm surfaces here.
 - Do not publish, tag, release, or remove source from `rust-packages` without an exact release issue and validated publishing manifest.
-- Treat `.harness/` as draft policy until maintainers explicitly activate it.
+- The `.harness/` profile is draft. Harness audits and runs are optional,
+  non-authoritative feedback until maintainers explicitly activate it; the
+  issue-required repository checks remain the handoff authority.
 
 ## Checks
 
@@ -22,9 +24,3 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 ```
 
 For release-oriented work, package every public crate with `cargo package -p <name> --locked` and follow `docs/RELEASE_CHECKLIST.md`. Never weaken checks or report unrun evidence as passing.
-
-<!-- verification-harness:start -->
-## Verification harness
-Run the installed `moenarch-verification-harness` skill's `audit` command before changing verification surfaces.
-Early selection is advisory; `full` remains the handoff gate. See `.harness/README.md`.
-<!-- verification-harness:end -->

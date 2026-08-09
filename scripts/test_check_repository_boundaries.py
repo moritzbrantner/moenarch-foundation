@@ -64,6 +64,33 @@ class RepositoryBoundaryTests(unittest.TestCase):
         errors = validate(metadata, self.ownership)
         self.assertTrue(any("out-of-inventory" in error for error in errors), errors)
 
+    def test_moving_git_branch_with_resolved_hash_fails(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        metadata["packages"][0]["dependencies"].append(
+            {
+                "name": "remote",
+                "source": "git+https://example.invalid/repository?branch=main#"
+                + "a" * 40,
+            }
+        )
+        errors = validate(metadata, self.ownership)
+        self.assertTrue(any("non-immutable Git" in error for error in errors), errors)
+
+    def test_exact_git_revision_and_resolved_hash_is_allowed(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        metadata["packages"][0]["dependencies"].append(
+            {
+                "name": "remote",
+                "source": "git+https://example.invalid/repository?rev="
+                + "b" * 40
+                + "#"
+                + "a" * 40,
+            }
+        )
+        self.assertFalse(
+            any("Git dependency" in error for error in validate(metadata, self.ownership))
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

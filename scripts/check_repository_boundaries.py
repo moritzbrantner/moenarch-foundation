@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from collections import Counter
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from repository_split import (
     DESTINATION_REPOSITORY,
@@ -18,6 +20,24 @@ from repository_split import (
     cargo_metadata,
     load_json,
 )
+
+FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+
+
+def immutable_git_source(source: str) -> bool:
+    """Accept only an exact requested revision plus Cargo's resolved commit."""
+
+    if not source.startswith("git+"):
+        return True
+    parsed = urlsplit(source[4:])
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    revisions = query.get("rev", [])
+    return (
+        set(query) == {"rev"}
+        and len(revisions) == 1
+        and FULL_SHA_RE.fullmatch(revisions[0]) is not None
+        and FULL_SHA_RE.fullmatch(parsed.fragment) is not None
+    )
 
 
 def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
@@ -98,8 +118,10 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
                 except ValueError:
                     errors.append(f"{package['name']}: dependency path escapes repository")
             source = dependency.get("source") or ""
-            if source.startswith("git+") and "#" not in source:
-                errors.append(f"{package['name']}: moving Git dependency {source}")
+            if not immutable_git_source(source):
+                errors.append(
+                    f"{package['name']}: non-immutable Git dependency {source}"
+                )
     return errors
 
 
