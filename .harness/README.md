@@ -15,8 +15,8 @@ exact base commit:
 
 ```bash
 BASE_SHA="$(git rev-parse origin/main^{commit})"
-python3 "${CODEX_HOME:-$HOME/.codex}/skills/moenarch-verification-harness/scripts/verification_harness.py" \
-  audit --repo-root . --base-ref "$BASE_SHA" --json
+python3 scripts/repository_split.py \
+  --harness-audit --base-ref "$BASE_SHA"
 ```
 
 Use `select` or the targeted tier only for optional early feedback. At a clean
