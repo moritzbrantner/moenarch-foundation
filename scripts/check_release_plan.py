@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import sys
+import subprocess
+import tempfile
 from collections import Counter
 from pathlib import Path
 
@@ -17,6 +20,67 @@ from repository_split import (
     cargo_metadata,
     load_json,
 )
+
+REQUIRED_CHECKS = {
+    "cargo metadata --format-version 1 --no-deps",
+    "cargo test --workspace --all-features",
+    "cargo test --workspace --no-default-features",
+    "cargo doc --workspace --no-deps",
+    "cargo package -p <each-public-package> --locked",
+    "python3 scripts/check_repository_boundaries.py --check",
+    "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+    "verification harness audit",
+}
+
+
+def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
+    paths = [root / "Cargo.toml"] + [
+        root / record["manifest_path"] for record in ownership.get("packages", [])
+    ]
+    return {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in paths
+    }
+
+
+def package_all(plan: dict, ownership: dict, root: Path = ROOT) -> list[str]:
+    """Package every crate without publishing or mutating tracked manifests."""
+
+    before = manifest_hashes(root, ownership)
+    patch_lines = ["[patch.crates-io]"]
+    records = {
+        record["current_package_name"]: record
+        for record in ownership.get("packages", [])
+    }
+    for name in sorted(records):
+        crate = (root / records[name]["manifest_path"]).parent.resolve()
+        patch_lines.append(f'"{name}" = {{ path = "{crate}" }}')
+    failures: list[str] = []
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+        config.write("\n".join(patch_lines) + "\n")
+        config.flush()
+        for name in plan.get("dependency_order", []):
+            completed = subprocess.run(
+                [
+                    "cargo",
+                    "package",
+                    "-p",
+                    name,
+                    "--locked",
+                    "--config",
+                    config.name,
+                ],
+                cwd=root,
+                check=False,
+            )
+            if completed.returncode:
+                failures.append(name)
+            else:
+                print(f"PACKAGED {name}")
+    after = manifest_hashes(root, ownership)
+    if before != after:
+        failures.append("tracked Cargo manifests changed during packaging")
+    return failures
 
 
 def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> list[str]:
@@ -40,7 +104,10 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         errors.append("duplicate package names: " + ", ".join(duplicates))
     if len(packages) != 60 or set(names) != set(owned):
         errors.append("release plan must name all and only the 60 owned packages")
-    metadata_names = {package["name"] for package in metadata.get("packages", [])}
+    metadata_packages = {
+        package["name"]: package for package in metadata.get("packages", [])
+    }
+    metadata_names = set(metadata_packages)
     if set(names) != metadata_names:
         errors.append("release plan does not match Cargo metadata")
     for package in packages:
@@ -52,6 +119,17 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
             errors.append(f"{name}: publication is not authorized")
         if package.get("new_version") != package.get("old_version"):
             errors.append(f"{name}: nonpublishing plan must retain version")
+        actual_version = metadata_packages.get(name, {}).get("version")
+        if package.get("old_version") != actual_version:
+            errors.append(
+                f"{name}: old_version does not match workspace version "
+                f"{actual_version!r}"
+            )
+        if package.get("new_version") != actual_version:
+            errors.append(
+                f"{name}: new_version does not match workspace version "
+                f"{actual_version!r}"
+            )
         if package.get("expected_tag") is not None:
             errors.append(f"{name}: nonpublishing plan must not declare a tag")
         if package.get("manifest_path") != record.get("manifest_path"):
@@ -63,6 +141,19 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
             errors.append(f"{name}: manifest_path escapes repository")
         if not manifest.is_file():
             errors.append(f"{name}: manifest_path does not exist")
+        actual_dependencies = {
+            dependency["name"]
+            for dependency in metadata_packages.get(name, {}).get("dependencies", [])
+            if dependency.get("name") in metadata_names
+            and dependency.get("kind") != "dev"
+        }
+        planned_dependencies = package.get("release_dependencies")
+        if not isinstance(planned_dependencies, list):
+            errors.append(f"{name}: release_dependencies must be a list")
+        elif set(planned_dependencies) != actual_dependencies:
+            errors.append(
+                f"{name}: release_dependencies do not match workspace metadata"
+            )
     order = plan.get("dependency_order")
     if not isinstance(order, list) or len(order) != len(set(order)) or set(order) != set(names):
         errors.append("dependency_order must contain each package exactly once")
@@ -75,20 +166,33 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         errors.append("nonpublishing plan must have no expected tags")
     if plan.get("release_issue") is not None:
         errors.append("nonpublishing plan must not claim a release issue")
+    required_checks = plan.get("required_checks")
+    if not isinstance(required_checks, list) or set(required_checks) != REQUIRED_CHECKS:
+        errors.append("required_checks must match the complete bootstrap gate set")
     return errors
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--package-all", action="store_true")
     parser.add_argument("plan", nargs="?", type=Path, default=RELEASE_PLAN_PATH)
     args = parser.parse_args()
-    errors = validate(load_json(args.plan), load_json(OWNERSHIP_PATH), cargo_metadata())
+    plan = load_json(args.plan)
+    ownership = load_json(OWNERSHIP_PATH)
+    errors = validate(plan, ownership, cargo_metadata())
     if errors:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
-    print("release plan passes: 60 packages retained at source versions; publication is not authorized")
+    if args.package_all:
+        failures = package_all(plan, ownership)
+        if failures:
+            print("error: packaging failed: " + ", ".join(failures), file=sys.stderr)
+            return 1
+        print("package verification passes: 60 packages; tracked manifest hashes unchanged")
+    else:
+        print("release plan passes: 60 packages retained at source versions; publication is not authorized")
     return 0
 
 

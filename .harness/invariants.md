@@ -21,7 +21,7 @@
 - Linked tests: repo:scripts/test_check_repository_boundaries.py
 - Compatibility promise: Consumers can build from a clean clone without a sibling repository.
 - Required evidence: contract
-- Sensitivity: optional
+- Sensitivity: required
 - Risk dimensions: security=covered:INV-002; recovery=covered:INV-003; persistence=not-applicable:no-storage-contract-change; concurrency=not-applicable:no-concurrency-contract-change; migration=covered:INV-003; partial-failure=covered:INV-003; operational=covered:INV-003
 
 ## INV-003 — Bootstrap cannot authorize publication or source removal

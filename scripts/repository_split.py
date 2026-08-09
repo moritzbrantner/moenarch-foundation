@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,3 +47,33 @@ def inside_root(root: Path, value: str, base: Path | None = None) -> Path | None
 def ownership_records(document: dict) -> list[dict]:
     records = document.get("packages", [])
     return records if isinstance(records, list) else []
+
+
+def main() -> int:
+    if sys.argv[1:] != ["--harness-audit"]:
+        print("usage: repository_split.py --harness-audit", file=sys.stderr)
+        return 2
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    harness = (
+        codex_home
+        / "skills/moenarch-verification-harness/scripts/verification_harness.py"
+    )
+    requirements = ROOT / ".agent-loop/verification/requirements.json"
+    return subprocess.run(
+        [
+            sys.executable,
+            str(harness),
+            "audit",
+            "--repo-root",
+            str(ROOT),
+            "--requirements-bundle",
+            str(requirements),
+            "--json",
+        ],
+        cwd=ROOT,
+        check=False,
+    ).returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

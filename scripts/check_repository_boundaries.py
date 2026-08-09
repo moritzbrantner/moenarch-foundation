@@ -36,6 +36,10 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     if not isinstance(records, list):
         return errors + ["packages must be a list"]
     names = [record.get("current_package_name") for record in records]
+    owners = {
+        record.get("current_package_name"): record.get("target_repository")
+        for record in records
+    }
     duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
     if duplicates:
         errors.append("packages classified more than once: " + ", ".join(duplicates))
@@ -71,6 +75,22 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
                 errors.append(f"{name}: invalid wrapped_library {wrapped!r}")
     for package in cargo_packages.values():
         for dependency in package.get("dependencies", []):
+            dependency_name = dependency.get("name")
+            if (
+                isinstance(dependency_name, str)
+                and dependency_name.startswith("moenarch-")
+                and dependency_name not in cargo_packages
+            ):
+                errors.append(
+                    f"{package['name']}: out-of-inventory Moenarch dependency "
+                    f"{dependency_name}"
+                )
+            dependency_owner = owners.get(dependency_name)
+            if dependency_owner and dependency_owner != "moenarch-foundation":
+                errors.append(
+                    f"{package['name']}: forbidden foundation dependency on "
+                    f"{dependency_name} owned by {dependency_owner}"
+                )
             dep_path = dependency.get("path")
             if dep_path:
                 try:

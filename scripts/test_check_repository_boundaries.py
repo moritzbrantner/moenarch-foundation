@@ -5,9 +5,13 @@ from __future__ import annotations
 
 import copy
 import unittest
+from pathlib import Path
 
 from check_repository_boundaries import validate
 from repository_split import OWNERSHIP_PATH, cargo_metadata, load_json
+
+ROOT = Path(__file__).resolve().parents[1]
+NEGATIVE = ROOT / "scripts/fixtures/repository_boundaries/negative-new-edge"
 
 
 class RepositoryBoundaryTests(unittest.TestCase):
@@ -41,6 +45,24 @@ class RepositoryBoundaryTests(unittest.TestCase):
         metadata = copy.deepcopy(self.metadata)
         metadata["packages"][0]["dependencies"].append({"name": "outside", "path": "/tmp/outside"})
         self.assertTrue(any("escapes repository" in e for e in validate(metadata, self.ownership)))
+
+    def test_checked_in_cross_capability_edge_fixture_fails(self) -> None:
+        errors = validate(
+            load_json(NEGATIVE / "metadata.json"),
+            load_json(NEGATIVE / "ownership.json"),
+        )
+        self.assertTrue(
+            any("forbidden foundation dependency" in error for error in errors),
+            errors,
+        )
+
+    def test_out_of_inventory_moenarch_dependency_fails(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        metadata["packages"][0]["dependencies"].append(
+            {"name": "moenarch-unreviewed-capability", "kind": None}
+        )
+        errors = validate(metadata, self.ownership)
+        self.assertTrue(any("out-of-inventory" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

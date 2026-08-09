@@ -32,6 +32,26 @@ class ReleasePlanTests(unittest.TestCase):
         plan["packages"][0]["new_version"] = "9.9.9"
         self.assertTrue(any("retain version" in e for e in self.errors(plan)))
 
+    def test_forged_equal_versions_are_rejected(self) -> None:
+        plan = copy.deepcopy(self.plan)
+        plan["packages"][0]["old_version"] = "9.9.9"
+        plan["packages"][0]["new_version"] = "9.9.9"
+        errors = self.errors(plan)
+        self.assertTrue(any("workspace version" in error for error in errors), errors)
+
+    def test_required_checks_cannot_be_deleted(self) -> None:
+        plan = copy.deepcopy(self.plan)
+        plan["required_checks"] = []
+        errors = self.errors(plan)
+        self.assertTrue(any("complete bootstrap gate set" in error for error in errors), errors)
+
+    def test_real_internal_dependency_cannot_be_deleted(self) -> None:
+        plan = copy.deepcopy(self.plan)
+        package = next(item for item in plan["packages"] if item["release_dependencies"])
+        package["release_dependencies"] = []
+        errors = self.errors(plan)
+        self.assertTrue(any("do not match workspace metadata" in error for error in errors), errors)
+
     def test_wrong_owner_and_missing_package_are_rejected(self) -> None:
         plan = copy.deepcopy(self.plan)
         plan["packages"][0]["owner"] = "moritzbrantner/rust-packages"

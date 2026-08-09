@@ -1,7 +1,36 @@
-# Draft verification profile
+# Optional verification profile
 
-This five-file profile is discovery-stage input for the Verification Intelligence Harness. It is deliberately `draft`, cannot produce authoritative handoff evidence, and is not repository policy until a maintainer explicitly reviews and activates it.
+This `draft` profile describes optional independent verification for
+`moritzbrantner/moenarch-foundation`. It supplements the repository's normal verification
+contract and does not add a worker-scheduling gate.
 
-Audit it with the installed `moenarch-verification-harness` script and `--repo-root . --json`.
+The active command and surface map comes from `.harness/checks.toml`. The full
+tier runs every blocking check declared there with `tier = "full"`; targeted
+selection is early feedback only.
 
-The ordinary issue-required Cargo checks remain authoritative. A successful profile audit validates structure only and must not be reported as evidence that configured checks ran.
+## Workflow
+
+Invoke the Harness from the installed skill:
+
+```bash
+python3 "${CODEX_HOME:-$HOME/.codex}/skills/moenarch-verification-harness/scripts/verification_harness.py" \
+  audit --repo-root . --json
+```
+
+Use `select` or the targeted tier only for optional early feedback. At a clean
+exact candidate head, run the full tier with an independently resolved base and
+exact head:
+
+```bash
+python3 "${CODEX_HOME:-$HOME/.codex}/skills/moenarch-verification-harness/scripts/verification_harness.py" \
+  run --repo-root . --tier full \
+  --base-ref BASE_SHA --expected-base-sha BASE_SHA --head-sha HEAD_SHA --json
+```
+
+Report any failure or evidence gap honestly. A Harness result does not replace
+the repository's normal exact-head verification evidence.
+
+Generated output is limited to the ignored paths declared by the checks.
+Harness, Git, review, and result state are never generated output. Keep raw
+logs, command output, prompts, secrets, environment values, and private issue
+bodies out of committed files.

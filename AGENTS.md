@@ -22,3 +22,9 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 ```
 
 For release-oriented work, package every public crate with `cargo package -p <name> --locked` and follow `docs/RELEASE_CHECKLIST.md`. Never weaken checks or report unrun evidence as passing.
+
+<!-- verification-harness:start -->
+## Verification harness
+Run the installed `moenarch-verification-harness` skill's `audit` command before changing verification surfaces.
+Early selection is advisory; `full` remains the handoff gate. See `.harness/README.md`.
+<!-- verification-harness:end -->
