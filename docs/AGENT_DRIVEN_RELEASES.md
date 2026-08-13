@@ -5,14 +5,31 @@ Issue #110 and the release-control setup issue authorize no publication.
 bootstrap inventory: every package retains its source version, `publish` is
 false, tags are absent, and `release_issue` is null.
 
+The draft Harness profile has one required bootstrap-only structural audit for
+setup issue #3 and PR #5. Capture the ignored external-requirements bundle and
+run:
+
+```bash
+python3 scripts/repository_split.py --harness-audit \
+  --base-ref fa25668b2598be34d6c86de2234961969cebfb9b
+```
+
+Record the exact candidate head and valid audit result on the pull request.
+This structural result is non-authoritative and does not replace the recurring
+`.agent-loop.toml` checks. Because the profile remains draft and the reviewed
+base is bootstrap-specific, the command is deliberately not a recurring Agent
+Loop or CI gate; do not substitute `origin/main` or a moving placeholder.
+
 ## Destination-local authorization
 
 A future release starts with a separate open issue in
 `moritzbrantner/moenarch-foundation`. The issue must carry `release:approved`
 and its checked TOML manifest must bind this repository, the issue number, and
 an exact 40-character source commit. The issue body must contain
-`Release manifest SHA-256: <digest>` for the checked manifest's exact bytes. An
-issue in `rust-packages` or another repository cannot authorize this publisher.
+`Release control head SHA: <sha>` for the exact publication/control commit and
+`Release manifest SHA-256: <digest>` for the checked manifest's exact bytes.
+Both lines are revalidated before every release effect. An issue in
+`rust-packages` or another repository cannot authorize this publisher.
 
 The Agent Loop first verifies the exact head using the ordered commands in
 `.agent-loop.toml`. Its receipt-gated master publication action then invokes
@@ -63,7 +80,9 @@ in a second commit. `source_sha` names the first commit. Publication runs from
 the second commit's exact Agent Loop head, and the hook requires the only path
 changed between those commits to be the selected manifest. It therefore proves
 the package source is exactly `source_sha` while the manifest is itself checked
-at the exact publication head.
+at the exact publication head. Identical manifest bytes on another control
+commit are not authorized: that commit needs its own exact control-head line in
+the still-open destination issue.
 
 ## Publisher guarantees
 

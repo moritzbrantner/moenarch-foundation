@@ -2,6 +2,10 @@ schema_version = 1
 max_workers = 2
 
 [verification]
+# The draft Harness structural audit is a one-time bootstrap check against the
+# independently reviewed base, not recurring authoritative Agent Loop evidence.
+# Record its exact-base result on the bootstrap PR; do not add origin/main or a
+# placeholder base here. The commands below remain the recurring handoff gate.
 commands = [
   "cargo metadata --format-version 1 --no-deps",
   "python3 scripts/check_repository_boundaries.py --check",

@@ -368,7 +368,11 @@ def _select_manifest(
 
 
 def _validate_issue(
-    issue: dict[str, Any], repository: str, number: int, manifest_sha256: str
+    issue: dict[str, Any],
+    repository: str,
+    number: int,
+    head: str,
+    manifest_sha256: str,
 ) -> None:
     expected_url = f"https://github.com/{repository}/issues/{number}"
     labels = {
@@ -380,8 +384,20 @@ def _validate_issue(
         raise ReleaseError("destination-local release issue must be open")
     if AUTHORIZATION_LABEL not in labels:
         raise ReleaseError(f"destination-local release issue lacks {AUTHORIZATION_LABEL}")
-    authorization = f"Release manifest SHA-256: {manifest_sha256}"
-    if authorization not in str(issue.get("body") or "").splitlines():
+    body_lines = str(issue.get("body") or "").splitlines()
+    head_authorization = f"Release control head SHA: {head}"
+    head_authorizations = [
+        line for line in body_lines if line.startswith("Release control head SHA: ")
+    ]
+    if head_authorizations != [head_authorization]:
+        raise ReleaseError(
+            "destination-local issue does not authorize the exact release control head"
+        )
+    manifest_authorization = f"Release manifest SHA-256: {manifest_sha256}"
+    manifest_authorizations = [
+        line for line in body_lines if line.startswith("Release manifest SHA-256: ")
+    ]
+    if manifest_authorizations != [manifest_authorization]:
         raise ReleaseError("destination-local issue does not authorize the exact manifest digest")
 
 
@@ -569,6 +585,7 @@ def _revalidate_authority(
         effects.issue(repository, issue_number),
         repository,
         issue_number,
+        head,
         manifest_digest,
     )
 
@@ -692,7 +709,7 @@ def run_release(
         raise ReleaseError("exact head differs from source_sha by more than its release manifest")
     manifest_digest = hashlib.sha256((root / manifest_path).read_bytes()).hexdigest()
     issue = effects.issue(repository, issue_number)
-    _validate_issue(issue, repository, issue_number, manifest_digest)
+    _validate_issue(issue, repository, issue_number, head, manifest_digest)
     packages, releases = _validate_manifest(root, manifest, effects.cargo_metadata())
 
     registry_records: list[dict[str, Any] | None] = []

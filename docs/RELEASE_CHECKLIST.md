@@ -12,7 +12,9 @@ For a future authorized release:
    manifest paths, dependency order, tags, optional GitHub Releases, required
    checks, and consumer evidence.
 3. Commit the exact package source first, then add only its release manifest in
-   the control commit. Put the manifest's SHA-256 digest in the issue body.
+   the control commit. Put the exact control commit as
+   `Release control head SHA: <sha>` and the manifest's digest as
+   `Release manifest SHA-256: <digest>` in the issue body.
 4. Require a clean exact commit and run the ordered `.agent-loop.toml`
    verification. Package every public crate and prove no path escape, local
    patch, or moving-branch Git dependency survives packaging.

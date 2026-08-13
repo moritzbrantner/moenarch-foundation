@@ -111,7 +111,7 @@ class FakeEffects:
 
     def source_is_ancestor(self, source: str, head: str) -> bool:
         self._record(f"ancestor:{source}:{head}")
-        return source == SOURCE and head == HEAD
+        return source == SOURCE and head == self.sha
 
     def changed_paths(self, source: str, head: str) -> list[str]:
         self._record(f"changed:{source}:{head}")
@@ -254,7 +254,12 @@ def write_fixture(
 
 def authorize_manifest(root: Path, effects: FakeEffects) -> None:
     digest = hashlib.sha256((root / "releases/release.toml").read_bytes()).hexdigest()
-    effects.issue_payload["body"] = f"Release manifest SHA-256: {digest}"
+    effects.issue_payload["body"] = "\n".join(
+        (
+            f"Release control head SHA: {effects.sha}",
+            f"Release manifest SHA-256: {digest}",
+        )
+    )
 
 
 def write_manifest(
@@ -366,9 +371,42 @@ class PublishReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
-            effects.issue_payload["body"] = "Release manifest SHA-256: " + "0" * 64
+            effects.issue_payload["body"] = "\n".join(
+                (
+                    f"Release control head SHA: {HEAD}",
+                    "Release manifest SHA-256: " + "0" * 64,
+                )
+            )
             with self.assertRaisesRegex(publish_release.ReleaseError, "exact manifest digest"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_issue_authorizes_the_exact_control_head_even_for_same_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            other_head = "d" * 40
+            effects.sha = other_head
+            environment = {**ENVIRONMENT, "AGENT_LOOP_HEAD_SHA": other_head}
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "exact release control head"
+            ):
+                publish_release.run_release(root, environment, effects)
+            self.assertNotIn("publish:foundation-a", effects.calls)
+
+    def test_issue_refuses_ambiguous_control_head_authorization(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.issue_payload["body"] += (
+                f"\nRelease control head SHA: {'d' * 40}"
+            )
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "exact release control head"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertNotIn("publish:foundation-a", effects.calls)
 
     def test_source_commit_may_differ_only_by_the_checked_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -556,6 +594,32 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertFalse(any(call.startswith("publish:") for call in effects.calls))
             self.assertFalse(any(call.startswith("create-tag:") for call in effects.calls))
             self.assertFalse(any(call.startswith("push-tag:") for call in effects.calls))
+
+    def test_control_head_authorization_changed_after_packaging_stops_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            digest = hashlib.sha256(
+                (root / "releases/release.toml").read_bytes()
+            ).hexdigest()
+            effects.transition(
+                "package:foundation-a@1.0.0",
+                1,
+                lambda: effects.issue_payload.update(
+                    body="\n".join(
+                        (
+                            f"Release control head SHA: {'d' * 40}",
+                            f"Release manifest SHA-256: {digest}",
+                        )
+                    )
+                ),
+            )
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "exact release control head"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertNotIn("publish:foundation-a", effects.calls)
 
     def test_authorization_revoked_after_first_visibility_stops_next_publish(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

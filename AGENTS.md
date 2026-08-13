@@ -15,8 +15,9 @@ canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
 - Do not add Bun/npm surfaces here.
 - Do not publish, tag, release, or remove source from `rust-packages` without an exact release issue and validated publishing manifest.
 - Release authorization must be an open issue in this repository carrying
-  `release:approved` and bound by one checked manifest to the exact source head.
-  Cross-repository issues are dependency records, not publication authority.
+  `release:approved` and bound by one checked manifest to the exact source head
+  and exact publication/control head. Cross-repository issues are dependency
+  records, not publication authority.
 - The `.harness/` profile is draft. Its structural audit is required for this
   bootstrap, but remains non-authoritative; targeted and full Harness runs are
   optional until maintainers explicitly activate the profile. The

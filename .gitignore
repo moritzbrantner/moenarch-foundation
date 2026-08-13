@@ -11,6 +11,7 @@ test-corpora/
 .video-analysis-models/
 .model-runtime/
 .agent-loop/
+/.agent-loop/verification/
 .env
 .env.*
 !.env.example
