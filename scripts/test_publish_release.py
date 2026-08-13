@@ -521,20 +521,28 @@ class PublishReleaseTests(unittest.TestCase):
     def test_cargo_effects_pin_package_and_publish_to_crates_io(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            archive = root / "target/package/foundation-a-1.0.0.crate"
-            archive.parent.mkdir(parents=True)
-            archive.write_bytes(b"archive")
-            completed = publish_release.subprocess.CompletedProcess([], 0, "", "")
-            with mock.patch.object(
-                publish_release.subprocess, "run", return_value=completed
-            ) as run:
-                effects = publish_release.CommandEffects(root)
-                effects.package(
-                    "foundation-a",
-                    "1.0.0",
-                    {"foundation-a": str(root / "foundation-a")},
-                )
-                effects.publish("foundation-a")
+            with tempfile.TemporaryDirectory() as external:
+                external_target = Path(external)
+                archive = external_target / "package/foundation-a-1.0.0.crate"
+                archive.parent.mkdir(parents=True)
+                archive.write_bytes(b"archive")
+                completed = publish_release.subprocess.CompletedProcess([], 0, "", "")
+                with (
+                    mock.patch.dict(
+                        publish_release.os.environ,
+                        {"CARGO_TARGET_DIR": str(external_target)},
+                    ),
+                    mock.patch.object(
+                        publish_release.subprocess, "run", return_value=completed
+                    ) as run,
+                ):
+                    effects = publish_release.CommandEffects(root)
+                    effects.package(
+                        "foundation-a",
+                        "1.0.0",
+                        {"foundation-a": str(root / "foundation-a")},
+                    )
+                    effects.publish("foundation-a")
             commands = [call.args[0] for call in run.call_args_list]
             package_command = next(command for command in commands if command[1] == "package")
             self.assertEqual(package_command[:7], [
@@ -559,6 +567,29 @@ class PublishReleaseTests(unittest.TestCase):
                 ],
                 commands,
             )
+
+    def test_relative_cargo_target_directory_is_resolved_from_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "custom-target/package/foundation-a-1.0.0.crate"
+            archive.parent.mkdir(parents=True)
+            archive.write_bytes(b"archive")
+            completed = publish_release.subprocess.CompletedProcess([], 0, "", "")
+            with (
+                mock.patch.dict(
+                    publish_release.os.environ,
+                    {"CARGO_TARGET_DIR": "custom-target"},
+                ),
+                mock.patch.object(
+                    publish_release.subprocess, "run", return_value=completed
+                ),
+            ):
+                checksum = publish_release.CommandEffects(root).package(
+                    "foundation-a",
+                    "1.0.0",
+                    {"foundation-a": str(root / "foundation-a")},
+                )
+            self.assertEqual(checksum, hashlib.sha256(b"archive").hexdigest())
 
     def test_cargo_packages_downstream_with_unpublished_local_dependency(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

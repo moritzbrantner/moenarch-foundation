@@ -212,7 +212,12 @@ class CommandEffects:
                 ],
                 capture=False,
             )
-        target = Path(os.environ.get("CARGO_TARGET_DIR", self.root / "target"))
+        configured_target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
+        target = (
+            configured_target
+            if configured_target.is_absolute()
+            else self.root / configured_target
+        )
         archive = target / "package" / f"{name}-{version}.crate"
         try:
             return hashlib.sha256(archive.read_bytes()).hexdigest()
