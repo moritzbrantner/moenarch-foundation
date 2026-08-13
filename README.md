@@ -16,10 +16,12 @@ cargo metadata --format-version 1 --no-deps
 python3 scripts/check_repository_boundaries.py --check
 python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
 python3 -m unittest discover -s scripts -p 'test_*.py'
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo test --workspace --no-default-features
 cargo doc --workspace --no-deps
-python3 scripts/check_release_plan.py --check --package-all docs/repository-split/release-plan.json
+python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
 ```
 
 No issue or manifest in this bootstrap authorizes publishing, tagging,

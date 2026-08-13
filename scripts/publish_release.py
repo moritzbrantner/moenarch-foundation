@@ -9,6 +9,7 @@ replace only network and process boundaries.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -31,12 +32,14 @@ ROOT_FIELDS = {
     "schema_version",
     "repository",
     "issue",
-    "head_sha",
+    "source_sha",
     "registry",
     "dependency_order",
     "expected_tags",
     "packages",
     "github_releases",
+    "required_checks",
+    "required_consumer_checks",
 }
 PACKAGE_FIELDS = {
     "name",
@@ -58,10 +61,13 @@ class Effects(Protocol):
     def head(self) -> str: ...
     def clean(self) -> bool: ...
     def tracked_manifests(self) -> list[str]: ...
+    def source_is_ancestor(self, source: str, head: str) -> bool: ...
+    def changed_paths(self, source: str, head: str) -> list[str]: ...
     def issue(self, repository: str, number: int) -> dict[str, Any]: ...
     def cargo_metadata(self) -> dict[str, Any]: ...
     def registry_version(self, name: str, version: str) -> dict[str, Any] | None: ...
-    def package(self, name: str) -> None: ...
+    def verify(self, command: str) -> None: ...
+    def package(self, name: str, version: str) -> str: ...
     def publish(self, name: str) -> None: ...
     def wait_for_registry(self) -> None: ...
     def local_tag_target(self, tag: str) -> str | None: ...
@@ -111,6 +117,16 @@ class CommandEffects:
     def clean(self) -> bool:
         return not self._run(["git", "status", "--porcelain"]).stdout.strip()
 
+    def source_is_ancestor(self, source: str, head: str) -> bool:
+        return self._run(
+            ["git", "merge-base", "--is-ancestor", source, head],
+            allow_failure=True,
+        ).returncode == 0
+
+    def changed_paths(self, source: str, head: str) -> list[str]:
+        output = self._run(["git", "diff", "--name-only", source, head]).stdout
+        return sorted(line.strip() for line in output.splitlines() if line.strip())
+
     def tracked_manifests(self) -> list[str]:
         output = self._run(
             ["git", "ls-tree", "-r", "--name-only", "HEAD", "--", "releases"]
@@ -131,7 +147,7 @@ class CommandEffects:
                 "--repo",
                 repository,
                 "--json",
-                "number,state,url,labels",
+                "number,state,url,labels,body",
             ]
         ).stdout
         try:
@@ -169,11 +185,26 @@ class CommandEffects:
             raise ReleaseError("crates.io returned an invalid version record")
         return record
 
-    def package(self, name: str) -> None:
-        self._run(["cargo", "package", "-p", name, "--locked"], capture=False)
+    def verify(self, command: str) -> None:
+        self._run(["bash", "-lc", command], capture=False)
+
+    def package(self, name: str, version: str) -> str:
+        self._run(
+            ["cargo", "package", "-p", name, "--locked", "--registry", "crates-io"],
+            capture=False,
+        )
+        target = Path(os.environ.get("CARGO_TARGET_DIR", self.root / "target"))
+        archive = target / "package" / f"{name}-{version}.crate"
+        try:
+            return hashlib.sha256(archive.read_bytes()).hexdigest()
+        except OSError as error:
+            raise ReleaseError(f"cannot checksum packaged archive {archive}: {error}") from error
 
     def publish(self, name: str) -> None:
-        self._run(["cargo", "publish", "-p", name, "--locked"], capture=False)
+        self._run(
+            ["cargo", "publish", "-p", name, "--locked", "--registry", "crates-io"],
+            capture=False,
+        )
 
     def wait_for_registry(self) -> None:
         time.sleep(5)
@@ -294,23 +325,23 @@ def _select_manifest(
     candidates: list[tuple[str, dict[str, Any]]],
     repository: str,
     issue: int,
-    head: str,
 ) -> tuple[str, dict[str, Any]]:
     matches = [
         item
         for item in candidates
         if item[1].get("repository") == repository
         and item[1].get("issue") == issue
-        and item[1].get("head_sha") == head
     ]
     if not matches:
-        raise ReleaseError("no checked release manifest matches repository, issue, and head")
+        raise ReleaseError("no checked release manifest matches repository and issue")
     if len(matches) != 1:
-        raise ReleaseError("multiple checked release manifests match repository, issue, and head")
+        raise ReleaseError("multiple checked release manifests match repository and issue")
     return matches[0]
 
 
-def _validate_issue(issue: dict[str, Any], repository: str, number: int) -> None:
+def _validate_issue(
+    issue: dict[str, Any], repository: str, number: int, manifest_sha256: str
+) -> None:
     expected_url = f"https://github.com/{repository}/issues/{number}"
     labels = {
         label.get("name") for label in issue.get("labels", []) if isinstance(label, dict)
@@ -321,16 +352,20 @@ def _validate_issue(issue: dict[str, Any], repository: str, number: int) -> None
         raise ReleaseError("destination-local release issue must be open")
     if AUTHORIZATION_LABEL not in labels:
         raise ReleaseError(f"destination-local release issue lacks {AUTHORIZATION_LABEL}")
+    authorization = f"Release manifest SHA-256: {manifest_sha256}"
+    if authorization not in str(issue.get("body") or "").splitlines():
+        raise ReleaseError("destination-local issue does not authorize the exact manifest digest")
 
 
 def _validate_registry_record(
-    record: dict[str, Any], name: str, version: str
+    record: dict[str, Any], name: str, version: str, checksum: str | None = None
 ) -> None:
     record_name = record.get("crate") or record.get("name")
     if (
         record_name != name
         or record.get("num") != version
         or record.get("yanked") is not False
+        or (checksum is not None and record.get("checksum") != checksum)
     ):
         raise ReleaseError(f"registry conflict for {name} {version}")
 
@@ -345,6 +380,18 @@ def _validate_manifest(
         raise ReleaseError("release manifest schema_version must be 1")
     if manifest.get("registry") != REGISTRY:
         raise ReleaseError(f"release manifest registry must be {REGISTRY}")
+    source_sha = manifest.get("source_sha")
+    if not isinstance(source_sha, str) or re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
+        raise ReleaseError("release manifest source_sha must be a full lowercase commit SHA")
+    config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
+    configured_checks = config.get("verification", {}).get("commands")
+    if manifest.get("required_checks") != configured_checks:
+        raise ReleaseError("required_checks must exactly match .agent-loop.toml")
+    consumer_checks = manifest.get("required_consumer_checks")
+    if not isinstance(consumer_checks, list) or any(
+        not isinstance(command, str) or not command.strip() for command in consumer_checks
+    ):
+        raise ReleaseError("required_consumer_checks must be a string array")
 
     raw_packages = manifest.get("packages")
     if not isinstance(raw_packages, list) or not raw_packages:
@@ -491,20 +538,26 @@ def run_release(
         raise ReleaseError("publication checkout must be clean")
 
     candidates = _load_candidates(root, effects.tracked_manifests())
-    manifest_path, manifest = _select_manifest(candidates, repository, issue_number, head)
+    manifest_path, manifest = _select_manifest(candidates, repository, issue_number)
     _unknown_fields(manifest, ROOT_FIELDS, "release manifest")
+    source_sha = _string(manifest.get("source_sha"), "release manifest source_sha")
+    if not effects.source_is_ancestor(source_sha, head):
+        raise ReleaseError("release manifest source_sha is not an ancestor of the exact head")
+    if effects.changed_paths(source_sha, head) != [manifest_path]:
+        raise ReleaseError("exact head differs from source_sha by more than its release manifest")
+    manifest_digest = hashlib.sha256((root / manifest_path).read_bytes()).hexdigest()
     issue = effects.issue(repository, issue_number)
-    _validate_issue(issue, repository, issue_number)
+    _validate_issue(issue, repository, issue_number, manifest_digest)
     packages, releases = _validate_manifest(root, manifest, effects.cargo_metadata())
 
-    registry_present: list[bool] = []
+    registry_records: list[dict[str, Any] | None] = []
     local_tags: dict[str, str | None] = {}
     remote_tags: dict[str, str | None] = {}
     for package in packages:
         record = effects.registry_version(package["name"], package["version"])
         if record is not None:
             _validate_registry_record(record, package["name"], package["version"])
-        registry_present.append(record is not None)
+        registry_records.append(record)
         local_tags[package["tag"]] = effects.local_tag_target(package["tag"])
         remote_tags[package["tag"]] = effects.remote_tag_target(package["tag"])
         for target in (local_tags[package["tag"]], remote_tags[package["tag"]]):
@@ -516,6 +569,7 @@ def run_release(
         ):
             raise ReleaseError(f"tag exists before registry version for {package['name']}")
 
+    registry_present = [record is not None for record in registry_records]
     first_absent = next(
         (index for index, present in enumerate(registry_present) if not present),
         len(packages),
@@ -524,21 +578,33 @@ def run_release(
         raise ReleaseError("registry state is not a published prefix in dependency order")
 
     existing_releases: dict[str, dict[str, Any] | None] = {}
-    packages_by_tag = {package["tag"]: package for package in packages}
-    for release in releases:
-        existing = effects.release(repository, release["tag"])
-        existing_releases[release["tag"]] = existing
-        package = packages_by_tag[release["tag"]]
+    releases_by_tag = {release["tag"]: release for release in releases}
+    for index, package in enumerate(packages):
+        tag = package["tag"]
+        existing = effects.release(repository, tag)
+        release = releases_by_tag.get(tag)
+        if existing is not None and release is None:
+            raise ReleaseError(f"undeclared GitHub Release exists for {tag}")
+        if release is None:
+            continue
+        existing_releases[tag] = existing
         if existing is not None:
-            if not registry_present[packages.index(package)]:
-                raise ReleaseError(f"GitHub Release exists before registry version for {release['tag']}")
-            if remote_tags[release["tag"]] is None:
-                raise ReleaseError(f"GitHub Release exists without its manifest tag: {release['tag']}")
+            if registry_records[index] is None:
+                raise ReleaseError(f"GitHub Release exists before registry version for {tag}")
+            if remote_tags[tag] is None:
+                raise ReleaseError(f"GitHub Release exists without its manifest tag: {tag}")
             _validate_existing_release(existing, release)
 
-    # Package every candidate before the first publishing side effect.
+    for command in manifest["required_consumer_checks"]:
+        effects.verify(command)
+
+    # Package and checksum every candidate before the first publishing side effect.
+    checksums: list[str] = []
     for package in packages:
-        effects.package(package["name"])
+        checksums.append(effects.package(package["name"], package["version"]))
+    for package, record, checksum in zip(packages, registry_records, checksums):
+        if record is not None:
+            _validate_registry_record(record, package["name"], package["version"], checksum)
 
     package_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
@@ -555,7 +621,9 @@ def run_release(
                 raise ReleaseError(
                     f"published {package['name']} {package['version']} is not visible on crates.io"
                 )
-            _validate_registry_record(record, package["name"], package["version"])
+            _validate_registry_record(
+                record, package["name"], package["version"], checksums[index]
+            )
             status = "published-and-verified"
         package_results.append({"name": package["name"], "status": status})
 

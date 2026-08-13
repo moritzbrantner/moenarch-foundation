@@ -10,8 +10,9 @@ false, tags are absent, and `release_issue` is null.
 A future release starts with a separate open issue in
 `moritzbrantner/moenarch-foundation`. The issue must carry `release:approved`
 and its checked TOML manifest must bind this repository, the issue number, and
-the exact 40-character commit from which publication runs. An issue in
-`rust-packages` or another repository cannot authorize this publisher.
+an exact 40-character source commit. The issue body must contain
+`Release manifest SHA-256: <digest>` for the checked manifest's exact bytes. An
+issue in `rust-packages` or another repository cannot authorize this publisher.
 
 The Agent Loop first verifies the exact head using the ordered commands in
 `.agent-loop.toml`. Its receipt-gated master publication action then invokes
@@ -28,10 +29,12 @@ no manifest. A future manifest uses schema v1:
 schema_version = 1
 repository = "moritzbrantner/moenarch-foundation"
 issue = 123
-head_sha = "0123456789abcdef0123456789abcdef01234567"
+source_sha = "0123456789abcdef0123456789abcdef01234567"
 registry = "crates.io"
 dependency_order = ["example-core"]
 expected_tags = ["example-core-v1.2.3"]
+required_checks = ["cargo metadata --format-version 1 --no-deps"]
+required_consumer_checks = ["scripts/check_example_consumer.sh"]
 
 [[packages]]
 name = "example-core"
@@ -50,15 +53,26 @@ notes = "Reviewed release notes."
 `dependency_order`, the `packages` array, and package dependencies must agree
 with Cargo metadata. `expected_tags` must exactly match package tags, and tags
 use `<package>-v<version>`. `github_releases` is optional; every declared
-release must refer to a unique declared tag. Unknown fields fail closed.
+release must refer to a unique declared tag. `required_checks` must exactly
+match `.agent-loop.toml`; consumer commands run again before publication.
+Unknown fields fail closed.
+
+The source and manifest use two commits to avoid a self-referential commit
+hash: first commit the exact release source, then add only the release manifest
+in a second commit. `source_sha` names the first commit. Publication runs from
+the second commit's exact Agent Loop head, and the hook requires the only path
+changed between those commits to be the selected manifest. It therefore proves
+the package source is exactly `source_sha` while the manifest is itself checked
+at the exact publication head.
 
 ## Publisher guarantees
 
 Before its first publishing effect, the hook validates the clean checkout,
 repository, exact head, open issue and label, exactly one matching checked
 manifest, repository ownership, Cargo package/version/manifest identity,
-crates.io eligibility, dependency order, registry state, tags, and existing
-GitHub Releases. It packages every candidate before publication.
+crates.io eligibility, dependency order, registry state and package checksum,
+tags, and existing GitHub Releases. It packages every candidate for the
+explicit `crates-io` Cargo registry before publication.
 
 Registry-present versions are skipped only after their exact non-yanked record
 is verified. Present versions must form a dependency-ordered prefix. The hook

@@ -11,16 +11,19 @@ For a future authorized release:
 2. Confirm repository, issue, immutable head, package names, versions, owners,
    manifest paths, dependency order, tags, optional GitHub Releases, required
    checks, and consumer evidence.
-3. Require a clean exact commit and run the ordered `.agent-loop.toml`
+3. Commit the exact package source first, then add only its release manifest in
+   the control commit. Put the manifest's SHA-256 digest in the issue body.
+4. Require a clean exact commit and run the ordered `.agent-loop.toml`
    verification. Package every public crate and prove no path escape, local
    patch, or moving-branch Git dependency survives packaging.
-4. Run candidate consumer checks before publication.
-5. Let only the receipt-gated Agent Loop master invoke
+5. Run every manifest-declared candidate consumer check before publication.
+6. Let only the receipt-gated Agent Loop master invoke
    `python3 scripts/agent_loop_local_verification.py publish`; do not call Cargo
    publication or the repository hook by hand.
-6. Confirm the hook publishes topologically, verifies each immutable crates.io
-   version, and creates only manifest-declared tags and releases afterward.
-7. On failure, preserve published versions and resume from the first absent
+7. Confirm the hook pins Cargo to `crates-io`, publishes topologically, verifies
+   each packaged checksum against the immutable registry version, and creates
+   only manifest-declared tags and releases afterward.
+8. On failure, preserve published versions and resume from the first absent
    registry version. Never overwrite, delete, republish, or automatically yank.
-8. Run isolated registry-only consumer checks and retain `rust-packages` source
+9. Run isolated registry-only consumer checks and retain `rust-packages` source
    until every destination, compatibility, rollback, and consumer gate passes.

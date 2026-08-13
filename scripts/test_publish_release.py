@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 from typing import Any
+from unittest import mock
 
 
 SCRIPT = Path(__file__).with_name("publish_release.py")
@@ -19,6 +22,11 @@ SPEC.loader.exec_module(publish_release)
 
 REPOSITORY = "moritzbrantner/moenarch-foundation"
 HEAD = "a" * 40
+SOURCE = "b" * 40
+CHECKSUM = "c" * 64
+CONFIG_COMMANDS = tomllib.loads(
+    (SCRIPT.parents[1] / ".agent-loop.toml").read_text(encoding="utf-8")
+)["verification"]["commands"]
 ENVIRONMENT = {
     "AGENT_LOOP_REPOSITORY": REPOSITORY,
     "AGENT_LOOP_ISSUE": "7",
@@ -27,7 +35,12 @@ ENVIRONMENT = {
 
 
 def registry_record(name: str, version: str) -> dict[str, Any]:
-    return {"crate": name, "num": version, "yanked": False}
+    return {
+        "crate": name,
+        "num": version,
+        "yanked": False,
+        "checksum": CHECKSUM,
+    }
 
 
 class ForbiddenEffects:
@@ -51,6 +64,7 @@ class FakeEffects:
             "state": "OPEN",
             "url": f"https://github.com/{REPOSITORY}/issues/7",
             "labels": [{"name": "release:approved"}],
+            "body": "",
         }
         self.metadata = {"packages": packages}
         self.published: set[str] = set()
@@ -76,6 +90,14 @@ class FakeEffects:
         self.calls.append("tracked-manifests")
         return self.manifests
 
+    def source_is_ancestor(self, source: str, head: str) -> bool:
+        self.calls.append(f"ancestor:{source}:{head}")
+        return source == SOURCE and head == HEAD
+
+    def changed_paths(self, source: str, head: str) -> list[str]:
+        self.calls.append(f"changed:{source}:{head}")
+        return ["releases/release.toml"]
+
     def issue(self, repository: str, number: int) -> dict[str, Any]:
         self.calls.append(f"issue:{repository}#{number}")
         return self.issue_payload
@@ -84,14 +106,18 @@ class FakeEffects:
         self.calls.append("cargo-metadata")
         return self.metadata
 
+    def verify(self, command: str) -> None:
+        self.calls.append(f"verify:{command}")
+
     def registry_version(self, name: str, version: str) -> dict[str, Any] | None:
         self.calls.append(f"registry:{name}@{version}")
         if name in self.published:
             return registry_record(name, version)
         return self.registry.get(name)
 
-    def package(self, name: str) -> None:
-        self.calls.append(f"package:{name}")
+    def package(self, name: str, version: str) -> str:
+        self.calls.append(f"package:{name}@{version}")
+        return CHECKSUM
 
     def publish(self, name: str) -> None:
         self.calls.append(f"publish:{name}")
@@ -189,8 +215,19 @@ def write_fixture(
     ownership_path = root / "docs/repository-split/package-ownership.json"
     ownership_path.parent.mkdir(parents=True, exist_ok=True)
     ownership_path.write_text(json.dumps({"packages": ownership}), encoding="utf-8")
+    (root / ".agent-loop.toml").write_text(
+        (SCRIPT.parents[1] / ".agent-loop.toml").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
     write_manifest(root / "releases/release.toml", manifest_packages, releases=releases)
-    return manifest_packages, FakeEffects(metadata_packages)
+    effects = FakeEffects(metadata_packages)
+    authorize_manifest(root, effects)
+    return manifest_packages, effects
+
+
+def authorize_manifest(root: Path, effects: FakeEffects) -> None:
+    digest = hashlib.sha256((root / "releases/release.toml").read_bytes()).hexdigest()
+    effects.issue_payload["body"] = f"Release manifest SHA-256: {digest}"
 
 
 def write_manifest(
@@ -200,17 +237,19 @@ def write_manifest(
     releases: bool = True,
     repository: str = REPOSITORY,
     issue: int = 7,
-    head: str = HEAD,
+    source: str = SOURCE,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "schema_version = 1",
         f"repository = {json.dumps(repository)}",
         f"issue = {issue}",
-        f"head_sha = {json.dumps(head)}",
+        f"source_sha = {json.dumps(source)}",
         'registry = "crates.io"',
         "dependency_order = " + json.dumps([package["name"] for package in packages]),
         "expected_tags = " + json.dumps([package["tag"] for package in packages]),
+        "required_checks = " + json.dumps(CONFIG_COMMANDS),
+        'required_consumer_checks = ["true"]',
     ]
     for package in packages:
         lines.extend(
@@ -281,9 +320,10 @@ class PublishReleaseTests(unittest.TestCase):
             write_manifest(
                 root / "releases/release.toml",
                 [package_record(root, "foundation-a")[0]],
-                head="c" * 40,
+                source="c" * 40,
             )
-            with self.assertRaisesRegex(publish_release.ReleaseError, "no checked release"):
+            authorize_manifest(root, effects)
+            with self.assertRaisesRegex(publish_release.ReleaseError, "source_sha"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_open_destination_issue_requires_authorization_label(self) -> None:
@@ -294,6 +334,25 @@ class PublishReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(publish_release.ReleaseError, "lacks release:approved"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
             self.assertFalse(any(call.startswith("package:") for call in effects.calls))
+
+    def test_issue_authorizes_the_exact_manifest_digest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.issue_payload["body"] = "Release manifest SHA-256: " + "0" * 64
+            with self.assertRaisesRegex(publish_release.ReleaseError, "exact manifest digest"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_source_commit_may_differ_only_by_the_checked_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.changed_paths = lambda source, head: [
+                "crates/foundation-a/src/lib.rs",
+                "releases/release.toml",
+            ]
+            with self.assertRaisesRegex(publish_release.ReleaseError, "more than"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_package_version_ownership_order_and_tag_are_validated(self) -> None:
         cases = (
@@ -314,6 +373,7 @@ class PublishReleaseTests(unittest.TestCase):
                 )
                 mutate(packages)
                 write_manifest(root / "releases/release.toml", packages)
+                authorize_manifest(root, effects)
                 with self.assertRaisesRegex(publish_release.ReleaseError, expected):
                     publish_release.run_release(root, ENVIRONMENT, effects)
                 self.assertFalse(any(call.startswith("publish:") for call in effects.calls))
@@ -340,6 +400,15 @@ class PublishReleaseTests(unittest.TestCase):
                 "foundation-b": registry_record("foundation-b", "1.0.0")
             }
             with self.assertRaisesRegex(publish_release.ReleaseError, "published prefix"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+            effects.registry = {
+                "foundation-a": {
+                    **registry_record("foundation-a", "1.0.0"),
+                    "checksum": "d" * 64,
+                }
+            }
+            with self.assertRaisesRegex(publish_release.ReleaseError, "registry conflict"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_partial_resume_skips_only_registry_verified_prefix(self) -> None:
@@ -394,6 +463,65 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertLess(create_tag_index, push_tag_index)
             self.assertLess(push_tag_index, create_release_index)
             self.assertEqual(result["githubReleases"][0]["status"], "created-and-verified")
+
+    def test_undeclared_existing_github_release_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(
+                root, [("foundation-a", "1.0.0", ())], releases=False
+            )
+            tag = "foundation-a-v1.0.0"
+            effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
+            effects.local_tags[tag] = HEAD
+            effects.remote_tags[tag] = HEAD
+            effects.releases[tag] = {
+                "tagName": tag,
+                "name": "Unreviewed",
+                "body": "Unreviewed",
+                "isDraft": False,
+                "isPrerelease": False,
+            }
+            with self.assertRaisesRegex(publish_release.ReleaseError, "undeclared"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_cargo_effects_pin_package_and_publish_to_crates_io(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            archive = root / "target/package/foundation-a-1.0.0.crate"
+            archive.parent.mkdir(parents=True)
+            archive.write_bytes(b"archive")
+            completed = publish_release.subprocess.CompletedProcess([], 0, "", "")
+            with mock.patch.object(
+                publish_release.subprocess, "run", return_value=completed
+            ) as run:
+                effects = publish_release.CommandEffects(root)
+                effects.package("foundation-a", "1.0.0")
+                effects.publish("foundation-a")
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertIn(
+                [
+                    "cargo",
+                    "package",
+                    "-p",
+                    "foundation-a",
+                    "--locked",
+                    "--registry",
+                    "crates-io",
+                ],
+                commands,
+            )
+            self.assertIn(
+                [
+                    "cargo",
+                    "publish",
+                    "-p",
+                    "foundation-a",
+                    "--locked",
+                    "--registry",
+                    "crates-io",
+                ],
+                commands,
+            )
 
 
 if __name__ == "__main__":
