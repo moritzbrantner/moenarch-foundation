@@ -72,7 +72,10 @@ repository, exact head, open issue and label, exactly one matching checked
 manifest, repository ownership, Cargo package/version/manifest identity,
 crates.io eligibility, dependency order, registry state and package checksum,
 tags, and existing GitHub Releases. It packages every candidate for the
-explicit `crates-io` Cargo registry before publication.
+explicit `crates-io` Cargo registry before publication. A temporary local
+`[patch.crates-io]` covering the reviewed wave lets downstream archives verify
+before their dependencies exist on the registry; it never changes tracked
+manifests and is not passed to `cargo publish`.
 
 Registry-present versions are skipped only after their exact non-yanked record
 is verified. Present versions must form a dependency-ordered prefix. The hook

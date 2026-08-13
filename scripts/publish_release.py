@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import tomllib
 import urllib.error
@@ -67,7 +68,7 @@ class Effects(Protocol):
     def cargo_metadata(self) -> dict[str, Any]: ...
     def registry_version(self, name: str, version: str) -> dict[str, Any] | None: ...
     def verify(self, command: str) -> None: ...
-    def package(self, name: str, version: str) -> str: ...
+    def package(self, name: str, version: str, patches: Mapping[str, str]) -> str: ...
     def publish(self, name: str) -> None: ...
     def wait_for_registry(self) -> None: ...
     def local_tag_target(self, tag: str) -> str | None: ...
@@ -188,11 +189,29 @@ class CommandEffects:
     def verify(self, command: str) -> None:
         self._run(["bash", "-lc", command], capture=False)
 
-    def package(self, name: str, version: str) -> str:
-        self._run(
-            ["cargo", "package", "-p", name, "--locked", "--registry", "crates-io"],
-            capture=False,
+    def package(self, name: str, version: str, patches: Mapping[str, str]) -> str:
+        lines = ["[patch.crates-io]"]
+        lines.extend(
+            f'{json.dumps(package)} = {{ path = {json.dumps(path)} }}'
+            for package, path in sorted(patches.items())
         )
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+            config.write("\n".join(lines) + "\n")
+            config.flush()
+            self._run(
+                [
+                    "cargo",
+                    "package",
+                    "-p",
+                    name,
+                    "--locked",
+                    "--registry",
+                    "crates-io",
+                    "--config",
+                    config.name,
+                ],
+                capture=False,
+            )
         target = Path(os.environ.get("CARGO_TARGET_DIR", self.root / "target"))
         archive = target / "package" / f"{name}-{version}.crate"
         try:
@@ -388,7 +407,7 @@ def _validate_manifest(
     if manifest.get("required_checks") != configured_checks:
         raise ReleaseError("required_checks must exactly match .agent-loop.toml")
     consumer_checks = manifest.get("required_consumer_checks")
-    if not isinstance(consumer_checks, list) or any(
+    if not isinstance(consumer_checks, list) or not consumer_checks or any(
         not isinstance(command, str) or not command.strip() for command in consumer_checks
     ):
         raise ReleaseError("required_consumer_checks must be a string array")
@@ -497,6 +516,25 @@ def _validate_manifest(
     return packages, releases
 
 
+def _revalidate_exact_checkout(
+    root: Path,
+    effects: Effects,
+    repository: str,
+    head: str,
+    source_sha: str,
+    manifest_path: str,
+    manifest_digest: str,
+) -> None:
+    if effects.repository() != repository or effects.head() != head or not effects.clean():
+        raise ReleaseError("publication checkout changed after validation")
+    if manifest_path not in effects.tracked_manifests():
+        raise ReleaseError("selected release manifest is no longer checked at the exact head")
+    if effects.changed_paths(source_sha, head) != [manifest_path]:
+        raise ReleaseError("exact head no longer differs from source_sha only by its manifest")
+    if hashlib.sha256((root / manifest_path).read_bytes()).hexdigest() != manifest_digest:
+        raise ReleaseError("selected release manifest changed after authorization")
+
+
 def _validate_existing_release(
     existing: dict[str, Any], release: dict[str, str]
 ) -> None:
@@ -599,9 +637,26 @@ def run_release(
         effects.verify(command)
 
     # Package and checksum every candidate before the first publishing side effect.
+    patches = {
+        package["name"]: str(
+            _inside(root, package["manifest_path"], "package manifest").parent
+        )
+        for package in packages
+    }
     checksums: list[str] = []
     for package in packages:
-        checksums.append(effects.package(package["name"], package["version"]))
+        checksums.append(
+            effects.package(package["name"], package["version"], patches)
+        )
+    _revalidate_exact_checkout(
+        root,
+        effects,
+        repository,
+        head,
+        source_sha,
+        manifest_path,
+        manifest_digest,
+    )
     for package, record, checksum in zip(packages, registry_records, checksums):
         if record is not None:
             _validate_registry_record(record, package["name"], package["version"], checksum)
@@ -610,6 +665,15 @@ def run_release(
     for index, package in enumerate(packages):
         status = "registry-verified"
         if not registry_present[index]:
+            _revalidate_exact_checkout(
+                root,
+                effects,
+                repository,
+                head,
+                source_sha,
+                manifest_path,
+                manifest_digest,
+            )
             effects.publish(package["name"])
             record = None
             for _ in range(12):
@@ -628,6 +692,15 @@ def run_release(
         package_results.append({"name": package["name"], "status": status})
 
     tag_results: list[dict[str, str]] = []
+    _revalidate_exact_checkout(
+        root,
+        effects,
+        repository,
+        head,
+        source_sha,
+        manifest_path,
+        manifest_digest,
+    )
     for package in packages:
         tag = package["tag"]
         status = "existing"

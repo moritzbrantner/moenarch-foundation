@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import subprocess
 import tempfile
 import tomllib
 import unittest
@@ -115,7 +116,7 @@ class FakeEffects:
             return registry_record(name, version)
         return self.registry.get(name)
 
-    def package(self, name: str, version: str) -> str:
+    def package(self, name: str, version: str, patches: dict[str, str]) -> str:
         self.calls.append(f"package:{name}@{version}")
         return CHECKSUM
 
@@ -354,6 +355,22 @@ class PublishReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(publish_release.ReleaseError, "more than"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
 
+    def test_candidate_consumer_check_is_required(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            manifest = root / "releases/release.toml"
+            manifest.write_text(
+                manifest.read_text(encoding="utf-8").replace(
+                    'required_consumer_checks = ["true"]',
+                    "required_consumer_checks = []",
+                ),
+                encoding="utf-8",
+            )
+            authorize_manifest(root, effects)
+            with self.assertRaisesRegex(publish_release.ReleaseError, "consumer_checks"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
     def test_package_version_ownership_order_and_tag_are_validated(self) -> None:
         cases = (
             ("version", lambda packages: packages[0].update(version="9.9.9")),
@@ -445,6 +462,23 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertFalse(any(call.startswith("push-tag:") for call in effects.calls))
             self.assertFalse(any(call.startswith("create-release:") for call in effects.calls))
 
+    def test_checkout_mutation_during_packaging_stops_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+
+            def mutate_checkout(
+                name: str, version: str, patches: dict[str, str]
+            ) -> str:
+                effects.calls.append(f"package:{name}@{version}")
+                effects.is_clean = False
+                return CHECKSUM
+
+            effects.package = mutate_checkout
+            with self.assertRaisesRegex(publish_release.ReleaseError, "changed"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertNotIn("publish:foundation-a", effects.calls)
+
     def test_registry_verification_precedes_tag_and_release_creation(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -495,21 +529,24 @@ class PublishReleaseTests(unittest.TestCase):
                 publish_release.subprocess, "run", return_value=completed
             ) as run:
                 effects = publish_release.CommandEffects(root)
-                effects.package("foundation-a", "1.0.0")
+                effects.package(
+                    "foundation-a",
+                    "1.0.0",
+                    {"foundation-a": str(root / "foundation-a")},
+                )
                 effects.publish("foundation-a")
             commands = [call.args[0] for call in run.call_args_list]
-            self.assertIn(
-                [
-                    "cargo",
-                    "package",
-                    "-p",
-                    "foundation-a",
-                    "--locked",
-                    "--registry",
-                    "crates-io",
-                ],
-                commands,
-            )
+            package_command = next(command for command in commands if command[1] == "package")
+            self.assertEqual(package_command[:7], [
+                "cargo",
+                "package",
+                "-p",
+                "foundation-a",
+                "--locked",
+                "--registry",
+                "crates-io",
+            ])
+            self.assertEqual(package_command[7], "--config")
             self.assertIn(
                 [
                     "cargo",
@@ -522,6 +559,43 @@ class PublishReleaseTests(unittest.TestCase):
                 ],
                 commands,
             )
+
+    def test_cargo_packages_downstream_with_unpublished_local_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "Cargo.toml").write_text(
+                '[workspace]\nmembers = ["foundation-a", "foundation-b"]\nresolver = "2"\n',
+                encoding="utf-8",
+            )
+            for name in ("foundation-a", "foundation-b"):
+                crate = root / name
+                (crate / "src").mkdir(parents=True)
+                dependencies = (
+                    '\n[dependencies]\nfoundation-a = { version = "1.0.0", path = "../foundation-a" }\n'
+                    if name == "foundation-b"
+                    else ""
+                )
+                (crate / "Cargo.toml").write_text(
+                    f'[package]\nname = "{name}"\nversion = "1.0.0"\nedition = "2021"\nlicense = "MIT"\n'
+                    + dependencies,
+                    encoding="utf-8",
+                )
+                (crate / "src/lib.rs").write_text("pub fn value() -> u8 { 1 }\n")
+            subprocess.run(
+                ["cargo", "generate-lockfile"], cwd=root, check=True, capture_output=True
+            )
+            with mock.patch.dict(
+                publish_release.os.environ, {"CARGO_NET_OFFLINE": "true"}
+            ):
+                checksum = publish_release.CommandEffects(root).package(
+                    "foundation-b",
+                    "1.0.0",
+                    {
+                        "foundation-a": str(root / "foundation-a"),
+                        "foundation-b": str(root / "foundation-b"),
+                    },
+                )
+            self.assertRegex(checksum, r"^[0-9a-f]{64}$")
 
 
 if __name__ == "__main__":
