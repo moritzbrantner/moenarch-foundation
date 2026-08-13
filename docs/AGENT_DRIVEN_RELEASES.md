@@ -84,6 +84,21 @@ at the exact publication head. Identical manifest bytes on another control
 commit are not authorized: that commit needs its own exact control-head line in
 the still-open destination issue.
 
+The control head is publication authority, not a release artifact target.
+Every manifest-declared annotated tag explicitly targets `source_sha`, and its
+GitHub Release identifies that same source through the already-pushed tag. A
+local or remote tag at the control head is therefore an immutable conflict,
+even though that head is the required clean checkout for publication.
+
+When a release PR must merge before publication, preserve the two release
+commits with a merge strategy that leaves `source_sha` as an ancestor of the
+final control head and leaves only the selected manifest changed between them.
+Authorize the exact post-merge control head and manifest digest. Do not squash
+or rebase the two commits after writing the manifest: rewriting can remove the
+recorded source ancestor or combine source and manifest. If either SHA changes,
+stop and prepare a new source commit followed by a manifest-only control commit,
+then update the issue authorization and rerun verification before any effect.
+
 ## Publisher guarantees
 
 Before its first publishing effect, the hook validates the clean checkout,
@@ -108,8 +123,13 @@ for each immutable crates.io version before continuing. It refreshes and
 validates the entire dependency-ordered registry prefix before each publish.
 Only after every package is freshly registry-verified does it create or resume
 manifest-declared tags. Registry, local and remote tag state are refreshed
-before tag effects; registry, remote tag, and GitHub Release state are refreshed
-before release effects. Exact concurrent desired state reconciles
+before tag effects. Each tag is created explicitly at `source_sha`, its local
+target is verified, destination-local control-head authority is refreshed, and
+only then is the tag pushed and its remote source target verified. Before a
+GitHub Release effect, the hook again refreshes the registry and verifies the
+remote tag still targets `source_sha`; it then refreshes control-head authority,
+creates the Release with the existing tag, and verifies both the remote source
+target and Release metadata. Exact concurrent desired state reconciles
 idempotently, while yanked/checksum/tag-target/release-metadata conflicts stop
 without retrying publication, tag push, or release creation. Existing tags and
 releases must exactly agree, so reruns can resume but can never overwrite,

@@ -14,7 +14,9 @@ For a future authorized release:
 3. Commit the exact package source first, then add only its release manifest in
    the control commit. Put the exact control commit as
    `Release control head SHA: <sha>` and the manifest's digest as
-   `Release manifest SHA-256: <digest>` in the issue body.
+   `Release manifest SHA-256: <digest>` in the issue body. If merging before
+   publication, preserve both commits and authorize the exact post-merge head;
+   do not squash or rebase away the `source_sha` ancestry and manifest-only diff.
 4. Require a clean exact commit and run the ordered `.agent-loop.toml`
    verification. Package every public crate and prove no path escape, local
    patch, or moving-branch Git dependency survives packaging.
@@ -23,8 +25,11 @@ For a future authorized release:
    `python3 scripts/agent_loop_local_verification.py publish`; do not call Cargo
    publication or the repository hook by hand.
 7. Confirm the hook pins Cargo to `crates-io`, publishes topologically, verifies
-   each packaged checksum against the immutable registry version, and creates
-   only manifest-declared tags and releases afterward.
+   each packaged checksum against the immutable registry version, creates each
+   manifest-declared tag explicitly at `source_sha`, verifies that exact remote
+   target, and only then creates the tag's manifest-declared GitHub Release.
+   The exact control head remains the checkout and issue-authorization binding;
+   it is never the package tag or Release target.
 8. On failure, preserve published versions and resume from the first absent
    registry version. Never overwrite, delete, republish, or automatically yank.
 9. Run isolated registry-only consumer checks and retain `rust-packages` source

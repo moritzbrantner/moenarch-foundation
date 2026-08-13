@@ -74,6 +74,7 @@ class FakeEffects:
         self.registry: dict[str, dict[str, Any]] = {}
         self.local_tags: dict[str, str] = {}
         self.remote_tags: dict[str, str] = {}
+        self.created_tag_targets: dict[str, str] = {}
         self.releases: dict[str, dict[str, Any]] = {}
         self.fail_publish: str | None = None
         self.fail_create_tag: str | None = None
@@ -157,11 +158,12 @@ class FakeEffects:
         self._record(f"remote-tag:{tag}")
         return self.remote_tags.get(tag)
 
-    def create_tag(self, tag: str, message: str) -> None:
+    def create_tag(self, tag: str, target: str, message: str) -> None:
         self._record(f"create-tag:{tag}")
+        self.created_tag_targets[tag] = target
         if tag == self.fail_create_tag:
             raise publish_release.ReleaseError(f"simulated tag creation failure: {tag}")
-        self.local_tags[tag] = HEAD
+        self.local_tags[tag] = target
 
     def push_tag(self, tag: str) -> None:
         self._record(f"push-tag:{tag}")
@@ -736,6 +738,59 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertNotIn(f"push-tag:{tag}", effects.calls)
             self.assertFalse(any(call.startswith("create-release:") for call in effects.calls))
 
+    def test_tag_at_control_head_is_an_immutable_source_conflict(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.registry["foundation-a"] = registry_record(
+                "foundation-a", "1.0.0"
+            )
+            effects.local_tags[tag] = HEAD
+            effects.remote_tags[tag] = HEAD
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "immutable tag conflict"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertNotIn(f"create-tag:{tag}", effects.calls)
+            self.assertNotIn(f"push-tag:{tag}", effects.calls)
+            self.assertNotIn(f"create-release:{tag}", effects.calls)
+
+    def test_new_tag_is_created_at_source_sha_not_control_head(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+
+            publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertEqual(effects.created_tag_targets[tag], SOURCE)
+            self.assertEqual(effects.local_tags[tag], SOURCE)
+            self.assertEqual(effects.remote_tags[tag], SOURCE)
+
+    def test_existing_source_tag_reconciles_when_control_head_differs(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.registry["foundation-a"] = registry_record(
+                "foundation-a", "1.0.0"
+            )
+            effects.local_tags[tag] = SOURCE
+            effects.remote_tags[tag] = SOURCE
+
+            result = publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertEqual(result["tags"], [{"tag": tag, "status": "existing"}])
+            self.assertEqual(
+                result["githubReleases"],
+                [{"tag": tag, "status": "created-and-verified"}],
+            )
+            self.assertNotIn(f"create-tag:{tag}", effects.calls)
+            self.assertNotIn(f"push-tag:{tag}", effects.calls)
+
     def test_exact_tag_appearing_during_final_authority_reconciles_failed_creation(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -747,7 +802,7 @@ class PublishReleaseTests(unittest.TestCase):
             effects.transition(
                 issue_call,
                 3,
-                lambda: effects.remote_tags.update({tag: HEAD}),
+                lambda: effects.remote_tags.update({tag: SOURCE}),
             )
             publish_release.run_release(root, ENVIRONMENT, effects)
             self.assertEqual(effects.call_counts[f"create-tag:{tag}"], 1)
@@ -762,7 +817,7 @@ class PublishReleaseTests(unittest.TestCase):
             effects.transition(
                 f"create-tag:{tag}",
                 1,
-                lambda: effects.remote_tags.update({tag: HEAD}),
+                lambda: effects.remote_tags.update({tag: SOURCE}),
             )
             publish_release.run_release(root, ENVIRONMENT, effects)
             self.assertEqual(effects.call_counts[f"create-tag:{tag}"], 1)
@@ -777,16 +832,54 @@ class PublishReleaseTests(unittest.TestCase):
             tag = "foundation-a-v1.0.0"
             issue_call = f"issue:{REPOSITORY}#7"
             effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
-            effects.local_tags[tag] = HEAD
+            effects.local_tags[tag] = SOURCE
             effects.fail_push_tag = tag
             effects.transition(
                 issue_call,
                 3,
-                lambda: effects.remote_tags.update({tag: HEAD}),
+                lambda: effects.remote_tags.update({tag: SOURCE}),
             )
             publish_release.run_release(root, ENVIRONMENT, effects)
             self.assertEqual(effects.call_counts[f"push-tag:{tag}"], 1)
             self.assertFalse(any(call.startswith("create-release:") for call in effects.calls))
+
+    def test_authority_revoked_after_tag_creation_stops_before_push_and_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.transition(
+                f"create-tag:{tag}",
+                1,
+                lambda: effects.issue_payload.update(labels=[]),
+            )
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "lacks release:approved"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertEqual(effects.local_tags[tag], SOURCE)
+            self.assertNotIn(f"push-tag:{tag}", effects.calls)
+            self.assertNotIn(f"create-release:{tag}", effects.calls)
+
+    def test_remote_tag_moving_to_control_head_stops_release_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.transition(
+                f"release:{tag}",
+                2,
+                lambda: effects.remote_tags.update({tag: HEAD}),
+            )
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "remote tag conflict"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertNotIn(f"create-release:{tag}", effects.calls)
 
     def test_conflicting_fresh_release_stops_before_release_creation(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -826,8 +919,8 @@ class PublishReleaseTests(unittest.TestCase):
                 "isPrerelease": False,
             }
             effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
-            effects.local_tags[tag] = HEAD
-            effects.remote_tags[tag] = HEAD
+            effects.local_tags[tag] = SOURCE
+            effects.remote_tags[tag] = SOURCE
             effects.fail_create_release = tag
             effects.transition(
                 issue_call,
@@ -869,8 +962,8 @@ class PublishReleaseTests(unittest.TestCase):
             )
             tag = "foundation-a-v1.0.0"
             effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
-            effects.local_tags[tag] = HEAD
-            effects.remote_tags[tag] = HEAD
+            effects.local_tags[tag] = SOURCE
+            effects.remote_tags[tag] = SOURCE
             effects.releases[tag] = {
                 "tagName": tag,
                 "name": "Unreviewed",
@@ -880,6 +973,44 @@ class PublishReleaseTests(unittest.TestCase):
             }
             with self.assertRaisesRegex(publish_release.ReleaseError, "undeclared"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_command_effects_target_source_sha_and_verify_tag_for_release(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            completed = publish_release.subprocess.CompletedProcess([], 0, "", "")
+            with mock.patch.object(
+                publish_release.subprocess, "run", return_value=completed
+            ) as run:
+                effects = publish_release.CommandEffects(root)
+                effects.create_tag(
+                    "foundation-a-v1.0.0", SOURCE, "Release foundation-a 1.0.0"
+                )
+                effects.create_release(
+                    REPOSITORY,
+                    "foundation-a-v1.0.0",
+                    "Release foundation-a 1.0.0",
+                    "Verified immutable release.",
+                )
+
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertIn(
+                [
+                    "git",
+                    "tag",
+                    "--annotate",
+                    "foundation-a-v1.0.0",
+                    SOURCE,
+                    "--message",
+                    "Release foundation-a 1.0.0",
+                ],
+                commands,
+            )
+            release_command = next(
+                command
+                for command in commands
+                if command[:3] == ["gh", "release", "create"]
+            )
+            self.assertIn("--verify-tag", release_command)
 
     def test_cargo_effects_pin_package_and_publish_to_crates_io(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
