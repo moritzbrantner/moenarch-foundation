@@ -57,6 +57,10 @@ class ReleaseError(RuntimeError):
     """A fail-closed release validation or external-operation failure."""
 
 
+def _effect_failure(action: str, error: Exception) -> ReleaseError:
+    return ReleaseError(f"{action} failed without exact concurrent state: {error}")
+
+
 class Effects(Protocol):
     def repository(self) -> str: ...
     def head(self) -> str: ...
@@ -540,6 +544,81 @@ def _revalidate_exact_checkout(
         raise ReleaseError("selected release manifest changed after authorization")
 
 
+def _revalidate_authority(
+    root: Path,
+    effects: Effects,
+    repository: str,
+    issue_number: int,
+    head: str,
+    source_sha: str,
+    manifest_path: str,
+    manifest_digest: str,
+) -> None:
+    """Refresh checkout and destination-local issue authority before an effect."""
+
+    _revalidate_exact_checkout(
+        root,
+        effects,
+        repository,
+        head,
+        source_sha,
+        manifest_path,
+        manifest_digest,
+    )
+    _validate_issue(
+        effects.issue(repository, issue_number),
+        repository,
+        issue_number,
+        manifest_digest,
+    )
+
+
+def _registry_prefix(
+    effects: Effects,
+    packages: list[dict[str, Any]],
+    checksums: list[str],
+) -> list[bool]:
+    """Read and validate one fresh dependency-ordered registry snapshot."""
+
+    present: list[bool] = []
+    for package, checksum in zip(packages, checksums):
+        record = effects.registry_version(package["name"], package["version"])
+        if record is not None:
+            _validate_registry_record(
+                record,
+                package["name"],
+                package["version"],
+                checksum,
+            )
+        present.append(record is not None)
+    first_absent = next(
+        (index for index, is_present in enumerate(present) if not is_present),
+        len(present),
+    )
+    if any(present[first_absent:]):
+        raise ReleaseError("registry state is not a published prefix in dependency order")
+    return present
+
+
+def _tag_state(
+    effects: Effects,
+    packages: list[dict[str, Any]],
+    checksums: list[str],
+    package_index: int,
+    head: str,
+) -> tuple[str | None, str | None]:
+    present = _registry_prefix(effects, packages, checksums)
+    if not all(present):
+        raise ReleaseError("all registry versions must be verified before tags")
+    tag = packages[package_index]["tag"]
+    local = effects.local_tag_target(tag)
+    remote = effects.remote_tag_target(tag)
+    for target in (local, remote):
+        if target is not None and target != head:
+            raise ReleaseError(f"immutable tag conflict for {tag}")
+    return local, remote
+
+
 def _validate_existing_release(
     existing: dict[str, Any], release: dict[str, str]
 ) -> None:
@@ -551,6 +630,29 @@ def _validate_existing_release(
         or existing.get("isPrerelease") is not False
     ):
         raise ReleaseError(f"GitHub Release conflict for {release['tag']}")
+
+
+def _release_state(
+    effects: Effects,
+    repository: str,
+    packages: list[dict[str, Any]],
+    checksums: list[str],
+    package_index: int,
+    head: str,
+    release: dict[str, str] | None,
+) -> dict[str, Any] | None:
+    present = _registry_prefix(effects, packages, checksums)
+    if not all(present):
+        raise ReleaseError("all registry versions must be verified before GitHub Releases")
+    tag = packages[package_index]["tag"]
+    if effects.remote_tag_target(tag) != head:
+        raise ReleaseError(f"remote tag conflict for GitHub Release {tag}")
+    existing = effects.release(repository, tag)
+    if existing is not None:
+        if release is None:
+            raise ReleaseError(f"undeclared GitHub Release exists for {tag}")
+        _validate_existing_release(existing, release)
+    return existing
 
 
 def run_release(
@@ -620,7 +722,6 @@ def run_release(
     if any(registry_present[first_absent:]):
         raise ReleaseError("registry state is not a published prefix in dependency order")
 
-    existing_releases: dict[str, dict[str, Any] | None] = {}
     releases_by_tag = {release["tag"]: release for release in releases}
     for index, package in enumerate(packages):
         tag = package["tag"]
@@ -630,7 +731,6 @@ def run_release(
             raise ReleaseError(f"undeclared GitHub Release exists for {tag}")
         if release is None:
             continue
-        existing_releases[tag] = existing
         if existing is not None:
             if registry_records[index] is None:
                 raise ReleaseError(f"GitHub Release exists before registry version for {tag}")
@@ -662,74 +762,272 @@ def run_release(
         manifest_path,
         manifest_digest,
     )
-    for package, record, checksum in zip(packages, registry_records, checksums):
-        if record is not None:
-            _validate_registry_record(record, package["name"], package["version"], checksum)
+    _registry_prefix(effects, packages, checksums)
 
     package_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
         status = "registry-verified"
-        if not registry_present[index]:
-            _revalidate_exact_checkout(
+        present = _registry_prefix(effects, packages, checksums)
+        if not present[index]:
+            _revalidate_authority(
                 root,
                 effects,
                 repository,
+                issue_number,
                 head,
                 source_sha,
                 manifest_path,
                 manifest_digest,
             )
-            effects.publish(package["name"])
+            # Close the authority-refresh window before the one-shot publish.
+            present = _registry_prefix(effects, packages, checksums)
+            if present[index]:
+                package_results.append(
+                    {"name": package["name"], "status": "registry-verified"}
+                )
+                continue
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                source_sha,
+                manifest_path,
+                manifest_digest,
+            )
+            try:
+                effects.publish(package["name"])
+            except Exception as error:
+                _revalidate_authority(
+                    root,
+                    effects,
+                    repository,
+                    issue_number,
+                    head,
+                    source_sha,
+                    manifest_path,
+                    manifest_digest,
+                )
+                if _registry_prefix(effects, packages, checksums)[index]:
+                    package_results.append(
+                        {"name": package["name"], "status": "registry-verified"}
+                    )
+                    continue
+                raise _effect_failure(f"publish {package['name']}", error) from error
             record = None
             for _ in range(12):
                 record = effects.registry_version(package["name"], package["version"])
                 if record is not None:
+                    _validate_registry_record(
+                        record,
+                        package["name"],
+                        package["version"],
+                        checksums[index],
+                    )
                     break
                 effects.wait_for_registry()
             if record is None:
                 raise ReleaseError(
                     f"published {package['name']} {package['version']} is not visible on crates.io"
                 )
-            _validate_registry_record(
-                record, package["name"], package["version"], checksums[index]
-            )
             status = "published-and-verified"
         package_results.append({"name": package["name"], "status": status})
 
     tag_results: list[dict[str, str]] = []
-    _revalidate_exact_checkout(
-        root,
-        effects,
-        repository,
-        head,
-        source_sha,
-        manifest_path,
-        manifest_digest,
-    )
-    for package in packages:
+    for index, package in enumerate(packages):
         tag = package["tag"]
         status = "existing"
-        if local_tags[tag] is None:
-            effects.create_tag(tag, f"Release {package['name']} {package['version']}")
-            status = "created"
-        if remote_tags[tag] is None:
-            effects.push_tag(tag)
-            status = "created-and-pushed" if status == "created" else "pushed"
-        if effects.remote_tag_target(tag) != head:
+        local, remote = _tag_state(effects, packages, checksums, index, head)
+        if remote is not None:
+            tag_results.append({"tag": tag, "status": status})
+            continue
+        if local is None:
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                source_sha,
+                manifest_path,
+                manifest_digest,
+            )
+            local, remote = _tag_state(effects, packages, checksums, index, head)
+            if remote is not None:
+                tag_results.append({"tag": tag, "status": status})
+                continue
+            if local is None:
+                _revalidate_authority(
+                    root,
+                    effects,
+                    repository,
+                    issue_number,
+                    head,
+                    source_sha,
+                    manifest_path,
+                    manifest_digest,
+                )
+                try:
+                    effects.create_tag(
+                        tag, f"Release {package['name']} {package['version']}"
+                    )
+                except Exception as error:
+                    _revalidate_authority(
+                        root,
+                        effects,
+                        repository,
+                        issue_number,
+                        head,
+                        source_sha,
+                        manifest_path,
+                        manifest_digest,
+                    )
+                    local, remote = _tag_state(
+                        effects, packages, checksums, index, head
+                    )
+                    if local != head and remote != head:
+                        raise _effect_failure(f"create tag {tag}", error) from error
+                else:
+                    status = "created"
+            local, remote = _tag_state(effects, packages, checksums, index, head)
+            if remote is None and local != head:
+                raise ReleaseError(f"local tag verification failed for {tag}")
+        if remote is None:
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                source_sha,
+                manifest_path,
+                manifest_digest,
+            )
+            local, remote = _tag_state(effects, packages, checksums, index, head)
+            if remote is None:
+                _revalidate_authority(
+                    root,
+                    effects,
+                    repository,
+                    issue_number,
+                    head,
+                    source_sha,
+                    manifest_path,
+                    manifest_digest,
+                )
+                try:
+                    effects.push_tag(tag)
+                except Exception as error:
+                    _revalidate_authority(
+                        root,
+                        effects,
+                        repository,
+                        issue_number,
+                        head,
+                        source_sha,
+                        manifest_path,
+                        manifest_digest,
+                    )
+                    _, remote = _tag_state(effects, packages, checksums, index, head)
+                    if remote != head:
+                        raise _effect_failure(f"push tag {tag}", error) from error
+                else:
+                    status = "created-and-pushed" if status == "created" else "pushed"
+        _, remote = _tag_state(effects, packages, checksums, index, head)
+        if remote != head:
             raise ReleaseError(f"remote tag verification failed for {tag}")
         tag_results.append({"tag": tag, "status": status})
 
     release_results: list[dict[str, str]] = []
-    for release in releases:
+    for index, package in enumerate(packages):
+        release = releases_by_tag.get(package["tag"])
+        existing = _release_state(
+            effects,
+            repository,
+            packages,
+            checksums,
+            index,
+            head,
+            release,
+        )
+        if release is None:
+            continue
         status = "existing"
-        if existing_releases[release["tag"]] is None:
-            effects.create_release(
-                repository, release["tag"], release["title"], release["notes"]
+        if existing is None:
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                source_sha,
+                manifest_path,
+                manifest_digest,
             )
-            created = effects.release(repository, release["tag"])
+            existing = _release_state(
+                effects,
+                repository,
+                packages,
+                checksums,
+                index,
+                head,
+                release,
+            )
+            if existing is not None:
+                release_results.append({"tag": release["tag"], "status": status})
+                continue
+            _revalidate_authority(
+                root,
+                effects,
+                repository,
+                issue_number,
+                head,
+                source_sha,
+                manifest_path,
+                manifest_digest,
+            )
+            try:
+                effects.create_release(
+                    repository, release["tag"], release["title"], release["notes"]
+                )
+            except Exception as error:
+                _revalidate_authority(
+                    root,
+                    effects,
+                    repository,
+                    issue_number,
+                    head,
+                    source_sha,
+                    manifest_path,
+                    manifest_digest,
+                )
+                existing = _release_state(
+                    effects,
+                    repository,
+                    packages,
+                    checksums,
+                    index,
+                    head,
+                    release,
+                )
+                if existing is None:
+                    raise _effect_failure(
+                        f"create GitHub Release {release['tag']}", error
+                    ) from error
+                release_results.append({"tag": release["tag"], "status": status})
+                continue
+            created = _release_state(
+                effects,
+                repository,
+                packages,
+                checksums,
+                index,
+                head,
+                release,
+            )
             if created is None:
                 raise ReleaseError(f"GitHub Release verification failed for {release['tag']}")
-            _validate_existing_release(created, release)
             status = "created-and-verified"
         release_results.append({"tag": release["tag"], "status": status})
 

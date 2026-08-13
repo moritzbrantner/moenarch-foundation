@@ -77,15 +77,26 @@ explicit `crates-io` Cargo registry before publication. A temporary local
 before their dependencies exist on the registry; it never changes tracked
 manifests and is not passed to `cargo publish`.
 
+Immediately before every publish, tag creation, tag push, and GitHub Release
+creation, the hook freshly revalidates the exact checkout and re-fetches the
+destination-local issue, including its open state, `release:approved` label,
+and exact manifest digest. Revocation stops before the next effect.
+
 Registry-present versions are skipped only after their exact non-yanked record
 is verified. Present versions must form a dependency-ordered prefix. The hook
 publishes from the first absent version, stops at the first failure, and waits
-for each immutable crates.io version before continuing. Only after every
-package is registry-verified does it create or resume manifest-declared tags
-and GitHub Releases. Existing tags and releases must exactly agree, so reruns
-can resume but can never overwrite, delete, republish, infer, or automatically
-yank anything. Cargo credentials remain in Cargo's normal credential mechanism
-and must never be printed or copied into repository files.
+for each immutable crates.io version before continuing. It refreshes and
+validates the entire dependency-ordered registry prefix before each publish.
+Only after every package is freshly registry-verified does it create or resume
+manifest-declared tags. Registry, local and remote tag state are refreshed
+before tag effects; registry, remote tag, and GitHub Release state are refreshed
+before release effects. Exact concurrent desired state reconciles
+idempotently, while yanked/checksum/tag-target/release-metadata conflicts stop
+without retrying publication, tag push, or release creation. Existing tags and
+releases must exactly agree, so reruns can resume but can never overwrite,
+delete, republish, infer, or automatically yank anything. Cargo credentials
+remain in Cargo's normal credential mechanism and must never be printed or
+copied into repository files.
 
 Source removal from `rust-packages` remains a later gate after registry-only
 consumer evidence.

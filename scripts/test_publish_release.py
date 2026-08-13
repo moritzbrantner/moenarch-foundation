@@ -11,7 +11,7 @@ import tempfile
 import tomllib
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from unittest import mock
 
 
@@ -56,6 +56,8 @@ class ForbiddenEffects:
 class FakeEffects:
     def __init__(self, packages: list[dict[str, Any]]) -> None:
         self.calls: list[str] = []
+        self.call_counts: dict[str, int] = {}
+        self.transitions: dict[tuple[str, int], Callable[[], None]] = {}
         self.repo = REPOSITORY
         self.sha = HEAD
         self.is_clean = True
@@ -74,85 +76,109 @@ class FakeEffects:
         self.remote_tags: dict[str, str] = {}
         self.releases: dict[str, dict[str, Any]] = {}
         self.fail_publish: str | None = None
+        self.fail_create_tag: str | None = None
+        self.fail_push_tag: str | None = None
+        self.fail_create_release: str | None = None
+
+    def _record(self, call: str) -> None:
+        self.calls.append(call)
+        count = self.call_counts.get(call, 0) + 1
+        self.call_counts[call] = count
+        transition = self.transitions.get((call, count))
+        if transition is not None:
+            transition()
+
+    def transition(
+        self, call: str, count: int, callback: Callable[[], None]
+    ) -> None:
+        self.transitions[(call, count)] = callback
 
     def repository(self) -> str:
-        self.calls.append("repository")
+        self._record("repository")
         return self.repo
 
     def head(self) -> str:
-        self.calls.append("head")
+        self._record("head")
         return self.sha
 
     def clean(self) -> bool:
-        self.calls.append("clean")
+        self._record("clean")
         return self.is_clean
 
     def tracked_manifests(self) -> list[str]:
-        self.calls.append("tracked-manifests")
+        self._record("tracked-manifests")
         return self.manifests
 
     def source_is_ancestor(self, source: str, head: str) -> bool:
-        self.calls.append(f"ancestor:{source}:{head}")
+        self._record(f"ancestor:{source}:{head}")
         return source == SOURCE and head == HEAD
 
     def changed_paths(self, source: str, head: str) -> list[str]:
-        self.calls.append(f"changed:{source}:{head}")
+        self._record(f"changed:{source}:{head}")
         return ["releases/release.toml"]
 
     def issue(self, repository: str, number: int) -> dict[str, Any]:
-        self.calls.append(f"issue:{repository}#{number}")
+        self._record(f"issue:{repository}#{number}")
         return self.issue_payload
 
     def cargo_metadata(self) -> dict[str, Any]:
-        self.calls.append("cargo-metadata")
+        self._record("cargo-metadata")
         return self.metadata
 
     def verify(self, command: str) -> None:
-        self.calls.append(f"verify:{command}")
+        self._record(f"verify:{command}")
 
     def registry_version(self, name: str, version: str) -> dict[str, Any] | None:
-        self.calls.append(f"registry:{name}@{version}")
+        self._record(f"registry:{name}@{version}")
+        if name in self.registry:
+            return self.registry[name]
         if name in self.published:
             return registry_record(name, version)
-        return self.registry.get(name)
+        return None
 
     def package(self, name: str, version: str, patches: dict[str, str]) -> str:
-        self.calls.append(f"package:{name}@{version}")
+        self._record(f"package:{name}@{version}")
         return CHECKSUM
 
     def publish(self, name: str) -> None:
-        self.calls.append(f"publish:{name}")
+        self._record(f"publish:{name}")
         if name == self.fail_publish:
             raise publish_release.ReleaseError(f"simulated publish failure: {name}")
         self.published.add(name)
 
     def wait_for_registry(self) -> None:
-        self.calls.append("wait")
+        self._record("wait")
 
     def local_tag_target(self, tag: str) -> str | None:
-        self.calls.append(f"local-tag:{tag}")
+        self._record(f"local-tag:{tag}")
         return self.local_tags.get(tag)
 
     def remote_tag_target(self, tag: str) -> str | None:
-        self.calls.append(f"remote-tag:{tag}")
+        self._record(f"remote-tag:{tag}")
         return self.remote_tags.get(tag)
 
     def create_tag(self, tag: str, message: str) -> None:
-        self.calls.append(f"create-tag:{tag}")
+        self._record(f"create-tag:{tag}")
+        if tag == self.fail_create_tag:
+            raise publish_release.ReleaseError(f"simulated tag creation failure: {tag}")
         self.local_tags[tag] = HEAD
 
     def push_tag(self, tag: str) -> None:
-        self.calls.append(f"push-tag:{tag}")
+        self._record(f"push-tag:{tag}")
+        if tag == self.fail_push_tag:
+            raise publish_release.ReleaseError(f"simulated tag push failure: {tag}")
         self.remote_tags[tag] = self.local_tags[tag]
 
     def release(self, repository: str, tag: str) -> dict[str, Any] | None:
-        self.calls.append(f"release:{tag}")
+        self._record(f"release:{tag}")
         return self.releases.get(tag)
 
     def create_release(
         self, repository: str, tag: str, title: str, notes: str
     ) -> None:
-        self.calls.append(f"create-release:{tag}")
+        self._record(f"create-release:{tag}")
+        if tag == self.fail_create_release:
+            raise publish_release.ReleaseError(f"simulated release creation failure: {tag}")
         self.releases[tag] = {
             "tagName": tag,
             "name": title,
@@ -486,8 +512,10 @@ class PublishReleaseTests(unittest.TestCase):
             result = publish_release.run_release(root, ENVIRONMENT, effects)
             tag = "foundation-a-v1.0.0"
             publish_index = effects.calls.index("publish:foundation-a")
-            verified_index = len(effects.calls) - 1 - effects.calls[::-1].index(
-                "registry:foundation-a@1.0.0"
+            verified_index = next(
+                index
+                for index, call in enumerate(effects.calls[publish_index + 1 :], publish_index + 1)
+                if call == "registry:foundation-a@1.0.0"
             )
             create_tag_index = effects.calls.index(f"create-tag:{tag}")
             push_tag_index = effects.calls.index(f"push-tag:{tag}")
@@ -497,6 +525,277 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertLess(create_tag_index, push_tag_index)
             self.assertLess(push_tag_index, create_release_index)
             self.assertEqual(result["githubReleases"][0]["status"], "created-and-verified")
+
+    def test_every_release_effect_has_fresh_issue_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            publish_release.run_release(root, ENVIRONMENT, effects)
+            mutations = (
+                "publish:foundation-a",
+                "create-tag:foundation-a-v1.0.0",
+                "push-tag:foundation-a-v1.0.0",
+                "create-release:foundation-a-v1.0.0",
+            )
+            for mutation in mutations:
+                with self.subTest(mutation=mutation):
+                    index = effects.calls.index(mutation)
+                    self.assertEqual(effects.calls[index - 1], f"issue:{REPOSITORY}#7")
+
+    def test_authorization_revoked_after_packaging_stops_before_publication(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.transition(
+                "package:foundation-a@1.0.0",
+                1,
+                lambda: effects.issue_payload.update(labels=[]),
+            )
+            with self.assertRaisesRegex(publish_release.ReleaseError, "lacks release:approved"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertFalse(any(call.startswith("publish:") for call in effects.calls))
+            self.assertFalse(any(call.startswith("create-tag:") for call in effects.calls))
+            self.assertFalse(any(call.startswith("push-tag:") for call in effects.calls))
+
+    def test_authorization_revoked_after_first_visibility_stops_next_publish(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(
+                root,
+                [
+                    ("foundation-a", "1.0.0", ()),
+                    ("foundation-b", "1.0.0", ("foundation-a",)),
+                ],
+            )
+            registry_call = "registry:foundation-a@1.0.0"
+
+            def revoke_on_first_visibility() -> None:
+                effects.transition(
+                    registry_call,
+                    effects.call_counts.get(registry_call, 0) + 1,
+                    lambda: effects.issue_payload.update(labels=[]),
+                )
+
+            effects.transition("publish:foundation-a", 1, revoke_on_first_visibility)
+            with self.assertRaisesRegex(publish_release.ReleaseError, "lacks release:approved"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertIn("publish:foundation-a", effects.calls)
+            self.assertNotIn("publish:foundation-b", effects.calls)
+            self.assertFalse(any(call.startswith("create-tag:") for call in effects.calls))
+            self.assertFalse(any(call.startswith("push-tag:") for call in effects.calls))
+
+    def test_fresh_registry_yank_stops_before_tagging(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.transition(
+                "registry:foundation-a@1.0.0",
+                5,
+                lambda: effects.registry.update(
+                    {
+                        "foundation-a": {
+                            **registry_record("foundation-a", "1.0.0"),
+                            "yanked": True,
+                        }
+                    }
+                ),
+            )
+            with self.assertRaisesRegex(publish_release.ReleaseError, "registry conflict"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertIn("publish:foundation-a", effects.calls)
+            self.assertNotIn("create-tag:foundation-a-v1.0.0", effects.calls)
+
+    def test_concurrent_exact_registry_publish_is_reconciled_without_republish(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.transition(
+                "registry:foundation-a@1.0.0",
+                3,
+                lambda: effects.registry.update(
+                    {"foundation-a": registry_record("foundation-a", "1.0.0")}
+                ),
+            )
+            result = publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertNotIn("publish:foundation-a", effects.calls)
+            self.assertEqual(
+                result["packages"],
+                [{"name": "foundation-a", "status": "registry-verified"}],
+            )
+
+    def test_exact_registry_appearing_during_final_authority_reconciles_failed_publish(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            issue_call = f"issue:{REPOSITORY}#7"
+            effects.fail_publish = "foundation-a"
+            effects.transition(
+                issue_call,
+                3,
+                lambda: effects.registry.update(
+                    {"foundation-a": registry_record("foundation-a", "1.0.0")}
+                ),
+            )
+            result = publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts["publish:foundation-a"], 1)
+            self.assertEqual(result["packages"][0]["status"], "registry-verified")
+
+    def test_failed_publish_reconciles_concurrent_exact_registry_without_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            effects.fail_publish = "foundation-a"
+            effects.transition(
+                "publish:foundation-a",
+                1,
+                lambda: effects.registry.update(
+                    {"foundation-a": registry_record("foundation-a", "1.0.0")}
+                ),
+            )
+            result = publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts["publish:foundation-a"], 1)
+            self.assertEqual(result["packages"][0]["status"], "registry-verified")
+
+    def test_conflicting_fresh_tag_stops_before_tag_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.transition(
+                f"remote-tag:{tag}",
+                2,
+                lambda: effects.remote_tags.update({tag: "d" * 40}),
+            )
+            with self.assertRaisesRegex(publish_release.ReleaseError, "immutable tag conflict"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertNotIn(f"create-tag:{tag}", effects.calls)
+            self.assertNotIn(f"push-tag:{tag}", effects.calls)
+            self.assertFalse(any(call.startswith("create-release:") for call in effects.calls))
+
+    def test_exact_tag_appearing_during_final_authority_reconciles_failed_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            issue_call = f"issue:{REPOSITORY}#7"
+            effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
+            effects.fail_create_tag = tag
+            effects.transition(
+                issue_call,
+                3,
+                lambda: effects.remote_tags.update({tag: HEAD}),
+            )
+            publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts[f"create-tag:{tag}"], 1)
+            self.assertNotIn(f"push-tag:{tag}", effects.calls)
+
+    def test_failed_tag_creation_reconciles_concurrent_exact_tag_without_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.fail_create_tag = tag
+            effects.transition(
+                f"create-tag:{tag}",
+                1,
+                lambda: effects.remote_tags.update({tag: HEAD}),
+            )
+            publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts[f"create-tag:{tag}"], 1)
+            self.assertNotIn(f"push-tag:{tag}", effects.calls)
+
+    def test_exact_remote_tag_during_final_authority_reconciles_failed_push_once(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(
+                root, [("foundation-a", "1.0.0", ())], releases=False
+            )
+            tag = "foundation-a-v1.0.0"
+            issue_call = f"issue:{REPOSITORY}#7"
+            effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
+            effects.local_tags[tag] = HEAD
+            effects.fail_push_tag = tag
+            effects.transition(
+                issue_call,
+                3,
+                lambda: effects.remote_tags.update({tag: HEAD}),
+            )
+            publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts[f"push-tag:{tag}"], 1)
+            self.assertFalse(any(call.startswith("create-release:") for call in effects.calls))
+
+    def test_conflicting_fresh_release_stops_before_release_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.transition(
+                f"release:{tag}",
+                2,
+                lambda: effects.releases.update(
+                    {
+                        tag: {
+                            "tagName": tag,
+                            "name": "Conflicting release",
+                            "body": "Not reviewed",
+                            "isDraft": False,
+                            "isPrerelease": False,
+                        }
+                    }
+                ),
+            )
+            with self.assertRaisesRegex(publish_release.ReleaseError, "Release conflict"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertNotIn(f"create-release:{tag}", effects.calls)
+
+    def test_exact_release_during_final_authority_reconciles_failed_creation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            issue_call = f"issue:{REPOSITORY}#7"
+            exact = {
+                "tagName": tag,
+                "name": "Release foundation-a 1.0.0",
+                "body": "Verified immutable release.",
+                "isDraft": False,
+                "isPrerelease": False,
+            }
+            effects.registry["foundation-a"] = registry_record("foundation-a", "1.0.0")
+            effects.local_tags[tag] = HEAD
+            effects.remote_tags[tag] = HEAD
+            effects.fail_create_release = tag
+            effects.transition(
+                issue_call,
+                3,
+                lambda: effects.releases.update({tag: exact}),
+            )
+            publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts[f"create-release:{tag}"], 1)
+
+    def test_failed_release_creation_reconciles_concurrent_exact_release_without_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            tag = "foundation-a-v1.0.0"
+            effects.fail_create_release = tag
+            effects.transition(
+                f"create-release:{tag}",
+                1,
+                lambda: effects.releases.update(
+                    {
+                        tag: {
+                            "tagName": tag,
+                            "name": "Release foundation-a 1.0.0",
+                            "body": "Verified immutable release.",
+                            "isDraft": False,
+                            "isPrerelease": False,
+                        }
+                    }
+                ),
+            )
+            publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertEqual(effects.call_counts[f"create-release:{tag}"], 1)
 
     def test_undeclared_existing_github_release_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
