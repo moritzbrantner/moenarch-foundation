@@ -77,7 +77,7 @@ class Effects(Protocol):
     def wait_for_registry(self) -> None: ...
     def local_tag_target(self, tag: str) -> str | None: ...
     def remote_tag_target(self, tag: str) -> str | None: ...
-    def create_tag(self, tag: str, message: str) -> None: ...
+    def create_tag(self, tag: str, target: str, message: str) -> None: ...
     def push_tag(self, tag: str) -> None: ...
     def release(self, repository: str, tag: str) -> dict[str, Any] | None: ...
     def create_release(
@@ -260,8 +260,8 @@ class CommandEffects:
         }
         return records.get(f"refs/tags/{tag}^{{}}") or records.get(f"refs/tags/{tag}")
 
-    def create_tag(self, tag: str, message: str) -> None:
-        self._run(["git", "tag", "--annotate", tag, "HEAD", "--message", message])
+    def create_tag(self, tag: str, target: str, message: str) -> None:
+        self._run(["git", "tag", "--annotate", tag, target, "--message", message])
 
     def push_tag(self, tag: str) -> None:
         self._run(["git", "push", "origin", f"refs/tags/{tag}"])
@@ -622,7 +622,7 @@ def _tag_state(
     packages: list[dict[str, Any]],
     checksums: list[str],
     package_index: int,
-    head: str,
+    source_sha: str,
 ) -> tuple[str | None, str | None]:
     present = _registry_prefix(effects, packages, checksums)
     if not all(present):
@@ -631,7 +631,7 @@ def _tag_state(
     local = effects.local_tag_target(tag)
     remote = effects.remote_tag_target(tag)
     for target in (local, remote):
-        if target is not None and target != head:
+        if target is not None and target != source_sha:
             raise ReleaseError(f"immutable tag conflict for {tag}")
     return local, remote
 
@@ -655,14 +655,14 @@ def _release_state(
     packages: list[dict[str, Any]],
     checksums: list[str],
     package_index: int,
-    head: str,
+    source_sha: str,
     release: dict[str, str] | None,
 ) -> dict[str, Any] | None:
     present = _registry_prefix(effects, packages, checksums)
     if not all(present):
         raise ReleaseError("all registry versions must be verified before GitHub Releases")
     tag = packages[package_index]["tag"]
-    if effects.remote_tag_target(tag) != head:
+    if effects.remote_tag_target(tag) != source_sha:
         raise ReleaseError(f"remote tag conflict for GitHub Release {tag}")
     existing = effects.release(repository, tag)
     if existing is not None:
@@ -723,7 +723,7 @@ def run_release(
         local_tags[package["tag"]] = effects.local_tag_target(package["tag"])
         remote_tags[package["tag"]] = effects.remote_tag_target(package["tag"])
         for target in (local_tags[package["tag"]], remote_tags[package["tag"]]):
-            if target is not None and target != head:
+            if target is not None and target != source_sha:
                 raise ReleaseError(f"immutable tag conflict for {package['tag']}")
         if record is None and (
             local_tags[package["tag"]] is not None
@@ -855,7 +855,7 @@ def run_release(
     for index, package in enumerate(packages):
         tag = package["tag"]
         status = "existing"
-        local, remote = _tag_state(effects, packages, checksums, index, head)
+        local, remote = _tag_state(effects, packages, checksums, index, source_sha)
         if remote is not None:
             tag_results.append({"tag": tag, "status": status})
             continue
@@ -870,7 +870,7 @@ def run_release(
                 manifest_path,
                 manifest_digest,
             )
-            local, remote = _tag_state(effects, packages, checksums, index, head)
+            local, remote = _tag_state(effects, packages, checksums, index, source_sha)
             if remote is not None:
                 tag_results.append({"tag": tag, "status": status})
                 continue
@@ -887,7 +887,9 @@ def run_release(
                 )
                 try:
                     effects.create_tag(
-                        tag, f"Release {package['name']} {package['version']}"
+                        tag,
+                        source_sha,
+                        f"Release {package['name']} {package['version']}",
                     )
                 except Exception as error:
                     _revalidate_authority(
@@ -901,14 +903,14 @@ def run_release(
                         manifest_digest,
                     )
                     local, remote = _tag_state(
-                        effects, packages, checksums, index, head
+                        effects, packages, checksums, index, source_sha
                     )
-                    if local != head and remote != head:
+                    if local != source_sha and remote != source_sha:
                         raise _effect_failure(f"create tag {tag}", error) from error
                 else:
                     status = "created"
-            local, remote = _tag_state(effects, packages, checksums, index, head)
-            if remote is None and local != head:
+            local, remote = _tag_state(effects, packages, checksums, index, source_sha)
+            if remote is None and local != source_sha:
                 raise ReleaseError(f"local tag verification failed for {tag}")
         if remote is None:
             _revalidate_authority(
@@ -921,7 +923,7 @@ def run_release(
                 manifest_path,
                 manifest_digest,
             )
-            local, remote = _tag_state(effects, packages, checksums, index, head)
+            local, remote = _tag_state(effects, packages, checksums, index, source_sha)
             if remote is None:
                 _revalidate_authority(
                     root,
@@ -946,13 +948,13 @@ def run_release(
                         manifest_path,
                         manifest_digest,
                     )
-                    _, remote = _tag_state(effects, packages, checksums, index, head)
-                    if remote != head:
+                    _, remote = _tag_state(effects, packages, checksums, index, source_sha)
+                    if remote != source_sha:
                         raise _effect_failure(f"push tag {tag}", error) from error
                 else:
                     status = "created-and-pushed" if status == "created" else "pushed"
-        _, remote = _tag_state(effects, packages, checksums, index, head)
-        if remote != head:
+        _, remote = _tag_state(effects, packages, checksums, index, source_sha)
+        if remote != source_sha:
             raise ReleaseError(f"remote tag verification failed for {tag}")
         tag_results.append({"tag": tag, "status": status})
 
@@ -965,7 +967,7 @@ def run_release(
             packages,
             checksums,
             index,
-            head,
+            source_sha,
             release,
         )
         if release is None:
@@ -988,7 +990,7 @@ def run_release(
                 packages,
                 checksums,
                 index,
-                head,
+                source_sha,
                 release,
             )
             if existing is not None:
@@ -1025,7 +1027,7 @@ def run_release(
                     packages,
                     checksums,
                     index,
-                    head,
+                    source_sha,
                     release,
                 )
                 if existing is None:
@@ -1040,7 +1042,7 @@ def run_release(
                 packages,
                 checksums,
                 index,
-                head,
+                source_sha,
                 release,
             )
             if created is None:
