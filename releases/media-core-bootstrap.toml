@@ -1,0 +1,37 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+issue = 4
+source_sha = "625af225fefe292262833fe6139f6b02c7e8159e"
+registry = "crates.io"
+dependency_order = ["moenarch-media-core"]
+expected_tags = ["moenarch-media-core-v0.1.0"]
+required_checks = [
+  "cargo metadata --format-version 1 --no-deps",
+  "python3 scripts/check_repository_boundaries.py --check",
+  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+  "python3 -m unittest discover -s scripts -p 'test_*.py'",
+  "cargo fmt --all -- --check",
+  "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+  "cargo test --workspace --all-features",
+  "cargo test --workspace --no-default-features",
+  "cargo doc --workspace --no-deps",
+  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+]
+required_consumer_checks = [
+  "bash crates/media/media-core/release/check_candidate_consumer.sh",
+  "cargo package -p moenarch-media-core --locked --list",
+  "cargo test -p moenarch-audio-contracts --all-features",
+]
+
+[[packages]]
+name = "moenarch-media-core"
+version = "0.1.0"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/media/media-core/Cargo.toml"
+dependencies = []
+tag = "moenarch-media-core-v0.1.0"
+
+[[github_releases]]
+tag = "moenarch-media-core-v0.1.0"
+title = "Release moenarch-media-core 0.1.0"
+notes = "Initial verified release of the domain-neutral media timing and analysis-event contracts."
