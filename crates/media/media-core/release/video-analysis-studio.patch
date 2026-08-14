@@ -1,0 +1,57 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 9a08276..75f0262 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -15,6 +15,7 @@ audio-analysis-processing = { version = "0.1.0", path = "../rust-packages/crates
+ audio-analysis-recognition = { version = "0.1.0", path = "../rust-packages/crates/audio/audio-analysis-recognition" }
+ text-analysis-features = { version = "0.1.0", path = "../rust-packages/crates/text/text-analysis-features" }
+ text-analysis-transcription = { version = "0.1.0", path = "../rust-packages/crates/text/text-analysis-transcription" }
++media-core = { package = "moenarch-media-core", version = "0.1.0", path = "../rust-packages/crates/media/media-core" }
+ video-analysis-core = { version = "0.1.0", path = "../rust-packages/crates/video/video-analysis-core" }
+ video-analysis-data = { version = "0.1.0", path = "../rust-packages/crates/video/video-analysis-data" }
+ video-analysis-detectors = { version = "0.1.0", path = "../rust-packages/crates/video/video-analysis-detectors" }
+diff --git a/crates/studio-core/Cargo.toml b/crates/studio-core/Cargo.toml
+index e1abee3..bd3a689 100644
+--- a/crates/studio-core/Cargo.toml
++++ b/crates/studio-core/Cargo.toml
+@@ -18,6 +18,7 @@ audio-analysis-processing.workspace = true
+ audio-analysis-recognition.workspace = true
+ text-analysis-features.workspace = true
+ text-analysis-transcription.workspace = true
++media-core.workspace = true
+ video-analysis-core.workspace = true
+ video-analysis-data.workspace = true
+ video-analysis-detectors.workspace = true
+diff --git a/crates/studio-core/src/red_cars.rs b/crates/studio-core/src/red_cars.rs
+index d84cfa4..af69086 100644
+--- a/crates/studio-core/src/red_cars.rs
++++ b/crates/studio-core/src/red_cars.rs
+@@ -647,7 +647,8 @@ fn find_downloaded_video(work_dir: &Path) -> Option<PathBuf> {
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+-    use video_analysis_core::{FramePosition, OwnedVideoFrame, PixelFormat, Timebase, Timestamp};
++    use media_core::{Timebase, Timestamp};
++    use video_analysis_core::{FramePosition, OwnedVideoFrame, PixelFormat};
+ 
+     fn test_frame(rgb: [u8; 3]) -> OwnedVideoFrame {
+         let mut data = Vec::new();
+diff --git a/crates/studio-core/src/youtube.rs b/crates/studio-core/src/youtube.rs
+index adde21e..d1005a6 100644
+--- a/crates/studio-core/src/youtube.rs
++++ b/crates/studio-core/src/youtube.rs
+@@ -4,12 +4,12 @@ use std::path::{Path, PathBuf};
+ use std::process::Command;
+ 
+ use audio_analysis_processing::AudioEnergyAnalyzer;
++use media_core::AnalysisEvent;
+ use serde::{Deserialize, Serialize};
+ use text_analysis_features::TranscriptHeuristicAnalyzer;
+ use text_analysis_transcription::{segment_to_owned_text_segment, TranscriptSegment};
+ use video_analysis_core::{
+-    AnalysisEvent, BoundingBox, Observation, ObservationKind, RealtimeVideoPipeline,
+-    SampledVideoAnalyzer,
++    BoundingBox, Observation, ObservationKind, RealtimeVideoPipeline, SampledVideoAnalyzer,
+ };
+ use video_analysis_data::{
+     BucketAggregator, BucketConfig, DataBucket, DataRecord, DataStreamKind, StreamSummary,

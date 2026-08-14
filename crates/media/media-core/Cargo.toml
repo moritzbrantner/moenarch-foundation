@@ -11,6 +11,7 @@ homepage.workspace = true
 documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
+exclude = ["release/**"]
 
 [lib]
 name = "media_core"

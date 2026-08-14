@@ -60,3 +60,16 @@ only those three imports to `media_core`, and leaves video-domain imports on
 `git diff --check` and standalone Rust formatting checks pass. The exact-type
 compatibility test in this repository proves that the patch is optional until
 the consumer migration is scheduled.
+
+## Release candidate consumer gate
+
+`release/check_candidate_consumer.sh` reconstructs the applicable consumer in
+an OS-temporary sibling checkout. It pins `video-analysis-studio` to
+`93ceeb1c43764be9d31c35258145604559e0a0aa` and the compatible pre-extraction
+`rust-packages` baseline to `c11c945fc13e532588f768f982c3c80a46ab477c`,
+overlays this exact media-core package plus the reviewed #108 compatibility
+re-export, applies the studio import patch, updates only the temporary lockfile,
+and requires `cargo check -p studio-core --locked` to pass. Release fixtures are
+excluded from the published crate archive. Scratch checkouts honor
+`MOENARCH_RELEASE_SCRATCH_ROOT`, then `TMPDIR`, and otherwise use the ignored
+workspace `target` directory so the gate does not depend on `/tmp` capacity.
