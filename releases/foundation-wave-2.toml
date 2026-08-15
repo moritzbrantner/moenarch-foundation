@@ -1,7 +1,7 @@
 schema_version = 1
 repository = "moritzbrantner/moenarch-foundation"
 issue = 13
-source_sha = "3b5a3947c15331cff986ae076fd75242beeab028"
+source_sha = "562fcad7e7f67498472d48d4d5b2e416d5f666e1"
 registry = "crates.io"
 dependency_order = [
   "moenarch-graph-analysis-core",
