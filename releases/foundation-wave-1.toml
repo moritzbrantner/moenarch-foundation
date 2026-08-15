@@ -1,7 +1,7 @@
 schema_version = 1
 repository = "moritzbrantner/moenarch-foundation"
 issue = 8
-source_sha = "e734b1cedc026c184bfcb3880a3496ade8c22890"
+source_sha = "0c04e1434cf51a076ecca0ed67b305ef1771f00b"
 registry = "crates.io"
 dependency_order = [
   "moenarch-runtime-core",
@@ -69,6 +69,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/runtime/runtime-core/Cargo.toml"
 dependencies = []
 tag = "moenarch-runtime-core-v0.2.1"
+published_checksum = "dc237d2007ca2cde1668cf92f5da46fe3d40dd6c8b575bf4938f8daecc931daf"
 
 [[packages]]
 name = "moenarch-runtime-onnx"
