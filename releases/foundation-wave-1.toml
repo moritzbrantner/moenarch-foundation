@@ -2,6 +2,7 @@ schema_version = 1
 repository = "moritzbrantner/moenarch-foundation"
 issue = 8
 source_sha = "0c04e1434cf51a076ecca0ed67b305ef1771f00b"
+repair_source_sha = "7f8016b099cb5b4c8dc09e6c02b4f1232f6353bd"
 registry = "crates.io"
 dependency_order = [
   "moenarch-runtime-core",
@@ -78,6 +79,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/runtime/runtime-onnx/Cargo.toml"
 dependencies = []
 tag = "moenarch-runtime-onnx-v0.1.1"
+published_checksum = "0703aa686314074f579d41cf4c4fbca081dd4e44537a0eea7c4c4acfe661b60f"
 
 [[packages]]
 name = "moenarch-jobs-core"
@@ -86,6 +88,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/jobs/jobs-core/Cargo.toml"
 dependencies = ["moenarch-runtime-core"]
 tag = "moenarch-jobs-core-v0.1.2"
+published_checksum = "b197d9c2b606635898dc59bf6b3c9081ee728c4180e0c5cebfaac408f46aa865"
 
 [[packages]]
 name = "moenarch-math-geometry-2d"
@@ -94,6 +97,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/math/math-geometry-2d/Cargo.toml"
 dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
 tag = "moenarch-math-geometry-2d-v0.1.1"
+published_checksum = "a0ff066f6d921f8eed639cda9a3bc5417da987720ac66babda4591eac3db25b7"
 
 [[packages]]
 name = "moenarch-numbers-core"
@@ -102,6 +106,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/data/numbers-core/Cargo.toml"
 dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
 tag = "moenarch-numbers-core-v0.1.1"
+published_checksum = "c633ffed2e3a7f3d5bf77c0abc55c32685135c882eb431adca3076448da198a3"
 
 [[packages]]
 name = "moenarch-tensor-data"
@@ -110,6 +115,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/data/tensor-data/Cargo.toml"
 dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
 tag = "moenarch-tensor-data-v0.1.1"
+published_checksum = "e427dc74aa15980c5de41730256b2a2a4d48c012ea00353fed70294a4bd8cf3e"
 
 [[packages]]
 name = "moenarch-vector-analysis-core"
@@ -118,6 +124,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/vector/vector-analysis-core/Cargo.toml"
 dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
 tag = "moenarch-vector-analysis-core-v0.1.1"
+published_checksum = "de15a4cd8baa74e92cb2a262f7bebc44889402d8a480a73da59ce8e5e1b352f5"
 
 [[packages]]
 name = "moenarch-data-inversion-core"
@@ -126,6 +133,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/data/data-inversion-core/Cargo.toml"
 dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
 tag = "moenarch-data-inversion-core-v0.1.1"
+published_checksum = "443cb81d0821e403e2be5aabb920e6d82acaf3aa5787c8ca1c51e113c7bb85d7"
 
 [[packages]]
 name = "moenarch-model-runtime"
@@ -134,6 +142,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/runtime/model-runtime/Cargo.toml"
 dependencies = ["moenarch-jobs-core", "moenarch-runtime-core"]
 tag = "moenarch-model-runtime-v0.1.1"
+published_checksum = "325c2c0d9afa3894108d6b2d34b2f6b2f37756601703eec8c95d245d955e2943"
 
 [[packages]]
 name = "moenarch-math-linear"
@@ -147,6 +156,7 @@ dependencies = [
   "moenarch-vector-analysis-core",
 ]
 tag = "moenarch-math-linear-v0.1.1"
+published_checksum = "4b5f3869f538efc98fec1faa771cfc140ff2d5de9030ec8bebfa065b6bbb7659"
 
 [[packages]]
 name = "moenarch-math-signal-core"
@@ -155,6 +165,7 @@ owner = "moritzbrantner/moenarch-foundation"
 manifest_path = "crates/math/math-signal-core/Cargo.toml"
 dependencies = ["moenarch-media-core", "moenarch-numbers-core", "moenarch-runtime-core"]
 tag = "moenarch-math-signal-core-v0.1.1"
+published_checksum = "28dcff2db05cedb51dc2e9a7467776fc21dc7e800aa0370358a06ab27713f671"
 
 [[packages]]
 name = "moenarch-vector-analysis-index"
@@ -167,6 +178,7 @@ dependencies = [
   "moenarch-vector-analysis-core",
 ]
 tag = "moenarch-vector-analysis-index-v0.1.1"
+published_checksum = "90f07138154446288158cdc723d2ac95aec7a5346161c0c790529ab424dfffa8"
 
 [[packages]]
 name = "moenarch-math-sparse-data"
@@ -181,6 +193,7 @@ dependencies = [
   "moenarch-vector-analysis-core",
 ]
 tag = "moenarch-math-sparse-data-v0.1.1"
+published_checksum = "ee51ba648e2bbf68781d00e4b52b95d53a8b315b71ab443ba049408ce73d12ab"
 
 [[github_releases]]
 tag = "moenarch-runtime-core-v0.2.1"

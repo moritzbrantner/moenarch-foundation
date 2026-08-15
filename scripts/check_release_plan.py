@@ -13,7 +13,7 @@ import tomllib
 from collections import Counter
 from pathlib import Path
 
-from publish_release import ReleaseError, validate_manifest
+from publish_release import CONTROL_REPAIR_SCRIPT_PATHS, ReleaseError, validate_manifest
 
 from repository_split import (
     DESTINATION_REPOSITORY,
@@ -264,6 +264,9 @@ def validate_control_binding(
     source_is_ancestor: bool,
     changed_paths: list[str],
     root: Path = ROOT,
+    *,
+    repair_is_ancestor: bool | None = None,
+    repair_changed_paths: list[str] | None = None,
 ) -> list[str]:
     """Validate the destination's source/control two-commit binding."""
 
@@ -273,11 +276,34 @@ def validate_control_binding(
         return ["release manifest source_sha must be a full lowercase commit SHA"]
     if not re.fullmatch(r"[0-9a-f]{40}", head):
         errors.append("release control head must be a full lowercase commit SHA")
-    if source_sha == head or not source_is_ancestor:
-        errors.append("source_sha must be an ancestor of the release control head")
-    expected = [_relative_plan_path(path, root)]
-    if changed_paths != expected:
-        errors.append("release control head must differ from source_sha only by its manifest")
+    manifest_path = _relative_plan_path(path, root)
+    repair_source_sha = manifest.get("repair_source_sha")
+    if repair_source_sha is None:
+        if source_sha == head or not source_is_ancestor:
+            errors.append("source_sha must be an ancestor of the release control head")
+        if changed_paths != [manifest_path]:
+            errors.append(
+                "release control head must differ from source_sha only by its manifest"
+            )
+        return errors
+
+    if (
+        not isinstance(repair_source_sha, str)
+        or re.fullmatch(r"[0-9a-f]{40}", repair_source_sha) is None
+        or repair_source_sha in {source_sha, head}
+        or not source_is_ancestor
+        or repair_is_ancestor is not True
+    ):
+        errors.append(
+            "release manifest control repair must be bound between source_sha and control head"
+        )
+    expected_repair_paths = CONTROL_REPAIR_SCRIPT_PATHS | {manifest_path}
+    if set(changed_paths) != expected_repair_paths:
+        errors.append("release manifest control repair changed outside its fixed surface")
+    if repair_changed_paths != [manifest_path]:
+        errors.append(
+            "release control head must differ from repair_source_sha only by its manifest"
+        )
     return errors
 
 
@@ -302,13 +328,18 @@ def _git_control_binding(manifest: dict, path: Path, root: Path) -> list[str]:
         text=True,
         stdout=subprocess.PIPE,
     ).stdout.strip()
+    repair_source_sha = manifest.get("repair_source_sha")
+    control_source_sha = (
+        repair_source_sha if isinstance(repair_source_sha, str) else source_sha
+    )
+    source_target = control_source_sha if repair_source_sha is not None else head
     ancestor = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", source_sha, head],
+        ["git", "merge-base", "--is-ancestor", source_sha, source_target],
         cwd=root,
         check=False,
     ).returncode == 0
     changed_result = subprocess.run(
-        ["git", "diff", "--name-only", source_sha, head],
+        ["git", "diff", "--name-only", source_sha, source_target],
         cwd=root,
         check=False,
         text=True,
@@ -316,7 +347,36 @@ def _git_control_binding(manifest: dict, path: Path, root: Path) -> list[str]:
         stderr=subprocess.DEVNULL,
     )
     changed = changed_result.stdout.splitlines() if changed_result.returncode == 0 else []
-    return validate_control_binding(manifest, path, head, ancestor, changed, root)
+    if repair_source_sha is None:
+        return validate_control_binding(manifest, path, head, ancestor, changed, root)
+    repair_ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", control_source_sha, head],
+        cwd=root,
+        check=False,
+    ).returncode == 0
+    repair_changed_result = subprocess.run(
+        ["git", "diff", "--name-only", control_source_sha, head],
+        cwd=root,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    repair_changed = (
+        repair_changed_result.stdout.splitlines()
+        if repair_changed_result.returncode == 0
+        else []
+    )
+    return validate_control_binding(
+        manifest,
+        path,
+        head,
+        ancestor,
+        changed,
+        root,
+        repair_is_ancestor=repair_ancestor,
+        repair_changed_paths=repair_changed,
+    )
 
 
 def main() -> int:
