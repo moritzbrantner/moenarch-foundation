@@ -90,19 +90,19 @@ tempfile = "3.23.0"
 thiserror = "2.0.17"
 
 audio-contracts = { package = "moenarch-audio-contracts", version = "0.1.0", path = "crates/audio/audio-contracts" }
-data-inversion-core = { package = "moenarch-data-inversion-core", version = "0.1.0", path = "crates/data/data-inversion-core" }
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1", path = "crates/data/data-inversion-core" }
 dense-data = { package = "moenarch-dense-data", version = "0.1.0", path = "crates/data/dense-data" }
 graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "0.1.0", path = "crates/data/graph-analysis-core" }
-jobs-core = { package = "moenarch-jobs-core", version = "0.1.1", path = "crates/jobs/jobs-core" }
-math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "0.1.0", path = "crates/math/math-geometry-2d" }
-math-linear = { package = "moenarch-math-linear", version = "0.1.0", path = "crates/math/math-linear" }
-math-signal-core = { package = "moenarch-math-signal-core", version = "0.1.0", path = "crates/math/math-signal-core" }
-math-sparse-data = { package = "moenarch-math-sparse-data", version = "0.1.0", path = "crates/math/math-sparse-data" }
+jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2", path = "crates/jobs/jobs-core" }
+math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "=0.1.1", path = "crates/math/math-geometry-2d" }
+math-linear = { package = "moenarch-math-linear", version = "=0.1.1", path = "crates/math/math-linear" }
+math-signal-core = { package = "moenarch-math-signal-core", version = "=0.1.1", path = "crates/math/math-signal-core" }
+math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1", path = "crates/math/math-sparse-data" }
 math-statistics = { package = "moenarch-math-statistics", version = "0.1.0", path = "crates/math/math-statistics" }
-media-core = { package = "moenarch-media-core", version = "0.1.0", path = "crates/media/media-core" }
-model-runtime = { package = "moenarch-model-runtime", version = "0.1.0", path = "crates/runtime/model-runtime" }
-numbers-core = { package = "moenarch-numbers-core", version = "0.1.0", path = "crates/data/numbers-core" }
-runtime-core = { package = "moenarch-runtime-core", version = "0.2.0", path = "crates/runtime/runtime-core" }
-tensor-data = { package = "moenarch-tensor-data", version = "0.1.0", path = "crates/data/tensor-data" }
-vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "0.1.0", path = "crates/vector/vector-analysis-core" }
-vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "0.1.0", path = "crates/vector/vector-analysis-index" }
+media-core = { package = "moenarch-media-core", version = "=0.1.0", path = "crates/media/media-core" }
+model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1", path = "crates/runtime/model-runtime" }
+numbers-core = { package = "moenarch-numbers-core", version = "=0.1.1", path = "crates/data/numbers-core" }
+runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1", path = "crates/runtime/runtime-core" }
+tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
+vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1", path = "crates/vector/vector-analysis-index" }

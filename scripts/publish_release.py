@@ -414,14 +414,20 @@ def _validate_registry_record(
         raise ReleaseError(f"registry conflict for {name} {version}")
 
 
-def _validate_manifest(
+def validate_manifest(
     root: Path,
     manifest: dict[str, Any],
     metadata: dict[str, Any],
-) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    ownership_document: dict[str, Any] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]], list[dict[str, str]]]:
     _unknown_fields(manifest, ROOT_FIELDS, "release manifest")
     if manifest.get("schema_version") != 1:
         raise ReleaseError("release manifest schema_version must be 1")
+    if manifest.get("repository") != EXPECTED_REPOSITORY:
+        raise ReleaseError(f"release manifest repository must be {EXPECTED_REPOSITORY}")
+    issue = manifest.get("issue")
+    if not isinstance(issue, int) or isinstance(issue, bool) or issue < 1:
+        raise ReleaseError("release manifest issue must be a positive integer")
     if manifest.get("registry") != REGISTRY:
         raise ReleaseError(f"release manifest registry must be {REGISTRY}")
     source_sha = manifest.get("source_sha")
@@ -469,11 +475,12 @@ def _validate_manifest(
     if manifest.get("expected_tags") != tags:
         raise ReleaseError("expected_tags must exactly match package tags")
 
-    ownership_file = root / OWNERSHIP_PATH
-    try:
-        ownership_document = json.loads(ownership_file.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
-        raise ReleaseError(f"cannot load package ownership: {error}") from error
+    if ownership_document is None:
+        ownership_file = root / OWNERSHIP_PATH
+        try:
+            ownership_document = json.loads(ownership_file.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise ReleaseError(f"cannot load package ownership: {error}") from error
     owned = {
         record.get("current_package_name"): record
         for record in ownership_document.get("packages", [])
@@ -486,6 +493,7 @@ def _validate_manifest(
     }
     positions = {name: index for index, name in enumerate(names)}
     selected = set(names)
+    prerequisite_names: set[str] = set()
     for package in packages:
         name = package["name"]
         ownership = owned.get(name)
@@ -503,22 +511,81 @@ def _validate_manifest(
         expected_manifest = _inside(root, package["manifest_path"], f"{name} manifest_path")
         if actual_manifest.resolve() != expected_manifest or not expected_manifest.is_file():
             raise ReleaseError(f"{name}: manifest_path does not match Cargo metadata")
+        try:
+            package_manifest = tomllib.loads(
+                expected_manifest.read_text(encoding="utf-8")
+            ).get("package", {})
+        except (OSError, UnicodeError, tomllib.TOMLDecodeError) as error:
+            raise ReleaseError(f"{name}: cannot read Cargo manifest: {error}") from error
+        if package_manifest.get("version") != package["version"]:
+            raise ReleaseError(
+                f"{name}: Cargo manifest must declare its explicit version "
+                f"{package['version']}"
+            )
         if cargo.get("version") != package["version"]:
             raise ReleaseError(f"{name}: version does not match Cargo metadata")
         publish = cargo.get("publish")
         if publish == [] or (isinstance(publish, list) and "crates-io" not in publish):
             raise ReleaseError(f"{name}: Cargo manifest does not permit crates.io publication")
-        actual_dependencies = {
-            dependency.get("name")
+        normal_dependencies = [
+            dependency
             for dependency in cargo.get("dependencies", [])
             if isinstance(dependency, dict)
             and dependency.get("kind") != "dev"
-            and dependency.get("name") in selected
+        ]
+        for dependency in normal_dependencies:
+            dependency_name = dependency.get("name")
+            source = dependency.get("source")
+            if isinstance(source, str) and source.startswith("git+"):
+                raise ReleaseError(
+                    f"{name}: Git dependency {dependency_name} is not publishable"
+                )
+            dependency_path = dependency.get("path")
+            if dependency_path is None:
+                continue
+            resolved_dependency = Path(dependency_path).resolve()
+            try:
+                resolved_dependency.relative_to(root.resolve())
+            except ValueError as error:
+                raise ReleaseError(
+                    f"{name}: path dependency {dependency_name} escapes the repository"
+                ) from error
+            dependency_package = cargo_packages.get(dependency_name)
+            if dependency_package is None:
+                raise ReleaseError(
+                    f"{name}: path dependency {dependency_name} is not an owned workspace package"
+                )
+            dependency_manifest = Path(
+                _string(
+                    dependency_package.get("manifest_path"),
+                    f"{dependency_name} Cargo manifest",
+                )
+            )
+            if resolved_dependency != dependency_manifest.resolve().parent:
+                raise ReleaseError(
+                    f"{name}: path dependency {dependency_name} does not match Cargo metadata"
+                )
+            dependency_version = dependency_package.get("version")
+            if dependency.get("req") != f"={dependency_version}":
+                raise ReleaseError(
+                    f"{name}: {dependency_name} must use the exact version requirement "
+                    f"={dependency_version}"
+                )
+
+        workspace_dependencies = [
+            dependency
+            for dependency in normal_dependencies
+            if dependency.get("name") in cargo_packages
+        ]
+        actual_dependencies = {
+            dependency.get("name") for dependency in workspace_dependencies
         }
         if set(package["dependencies"]) != actual_dependencies:
             raise ReleaseError(f"{name}: dependencies do not match Cargo metadata")
         for dependency in package["dependencies"]:
-            if positions[dependency] >= positions[name]:
+            if dependency not in selected:
+                prerequisite_names.add(dependency)
+            elif positions[dependency] >= positions[name]:
                 raise ReleaseError(f"wrong dependency order: {dependency} must precede {name}")
 
     raw_releases = manifest.get("github_releases", [])
@@ -538,7 +605,17 @@ def _validate_manifest(
             raise ReleaseError("GitHub Releases must reference unique manifest-declared tags")
         release_tags.add(release["tag"])
         releases.append(release)
-    return packages, releases
+    prerequisites = [
+        {
+            "name": name,
+            "version": _string(cargo_packages[name].get("version"), f"{name} version"),
+            "manifest_path": _string(
+                cargo_packages[name].get("manifest_path"), f"{name} Cargo manifest"
+            ),
+        }
+        for name in sorted(prerequisite_names)
+    ]
+    return packages, releases, prerequisites
 
 
 def _revalidate_exact_checkout(
@@ -710,7 +787,22 @@ def run_release(
     manifest_digest = hashlib.sha256((root / manifest_path).read_bytes()).hexdigest()
     issue = effects.issue(repository, issue_number)
     _validate_issue(issue, repository, issue_number, head, manifest_digest)
-    packages, releases = _validate_manifest(root, manifest, effects.cargo_metadata())
+    packages, releases, prerequisites = validate_manifest(
+        root, manifest, effects.cargo_metadata()
+    )
+
+    for prerequisite in prerequisites:
+        record = effects.registry_version(prerequisite["name"], prerequisite["version"])
+        if record is None:
+            raise ReleaseError(
+                f"release prerequisite is not registry-visible: "
+                f"{prerequisite['name']} {prerequisite['version']}"
+            )
+        _validate_registry_record(
+            record,
+            prerequisite["name"],
+            prerequisite["version"],
+        )
 
     registry_records: list[dict[str, Any] | None] = []
     local_tags: dict[str, str | None] = {}
@@ -765,6 +857,12 @@ def run_release(
         )
         for package in packages
     }
+    patches.update(
+        {
+            prerequisite["name"]: str(Path(prerequisite["manifest_path"]).parent)
+            for prerequisite in prerequisites
+        }
+    )
     checksums: list[str] = []
     for package in packages:
         checksums.append(

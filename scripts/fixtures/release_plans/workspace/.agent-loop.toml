@@ -1,0 +1,4 @@
+schema_version = 1
+
+[verification]
+commands = ["cargo metadata --format-version 1 --no-deps"]

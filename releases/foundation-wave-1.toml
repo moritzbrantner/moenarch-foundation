@@ -1,0 +1,247 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+issue = 8
+source_sha = "e734b1cedc026c184bfcb3880a3496ade8c22890"
+registry = "crates.io"
+dependency_order = [
+  "moenarch-runtime-core",
+  "moenarch-runtime-onnx",
+  "moenarch-jobs-core",
+  "moenarch-math-geometry-2d",
+  "moenarch-numbers-core",
+  "moenarch-tensor-data",
+  "moenarch-vector-analysis-core",
+  "moenarch-data-inversion-core",
+  "moenarch-model-runtime",
+  "moenarch-math-linear",
+  "moenarch-math-signal-core",
+  "moenarch-vector-analysis-index",
+  "moenarch-math-sparse-data",
+]
+expected_tags = [
+  "moenarch-runtime-core-v0.2.1",
+  "moenarch-runtime-onnx-v0.1.1",
+  "moenarch-jobs-core-v0.1.2",
+  "moenarch-math-geometry-2d-v0.1.1",
+  "moenarch-numbers-core-v0.1.1",
+  "moenarch-tensor-data-v0.1.1",
+  "moenarch-vector-analysis-core-v0.1.1",
+  "moenarch-data-inversion-core-v0.1.1",
+  "moenarch-model-runtime-v0.1.1",
+  "moenarch-math-linear-v0.1.1",
+  "moenarch-math-signal-core-v0.1.1",
+  "moenarch-vector-analysis-index-v0.1.1",
+  "moenarch-math-sparse-data-v0.1.1",
+]
+required_checks = [
+  "cargo metadata --format-version 1 --no-deps",
+  "python3 scripts/check_repository_boundaries.py --check",
+  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+  "python3 -m unittest discover -s scripts -p 'test_*.py'",
+  "cargo fmt --all -- --check",
+  "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+  "cargo test --workspace --all-features",
+  "cargo test --workspace --no-default-features",
+  "cargo doc --workspace --no-deps",
+  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+]
+required_consumer_checks = [
+  "bash scripts/check_foundation_wave_1_candidate_consumer.sh",
+  "cargo package -p moenarch-runtime-core --locked --list",
+  "cargo package -p moenarch-runtime-onnx --locked --list",
+  "cargo package -p moenarch-jobs-core --locked --list",
+  "cargo package -p moenarch-math-geometry-2d --locked --list",
+  "cargo package -p moenarch-numbers-core --locked --list",
+  "cargo package -p moenarch-tensor-data --locked --list",
+  "cargo package -p moenarch-vector-analysis-core --locked --list",
+  "cargo package -p moenarch-data-inversion-core --locked --list",
+  "cargo package -p moenarch-model-runtime --locked --list",
+  "cargo package -p moenarch-math-linear --locked --list",
+  "cargo package -p moenarch-math-signal-core --locked --list",
+  "cargo package -p moenarch-vector-analysis-index --locked --list",
+  "cargo package -p moenarch-math-sparse-data --locked --list",
+]
+
+[[packages]]
+name = "moenarch-runtime-core"
+version = "0.2.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/runtime/runtime-core/Cargo.toml"
+dependencies = []
+tag = "moenarch-runtime-core-v0.2.1"
+
+[[packages]]
+name = "moenarch-runtime-onnx"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/runtime/runtime-onnx/Cargo.toml"
+dependencies = []
+tag = "moenarch-runtime-onnx-v0.1.1"
+
+[[packages]]
+name = "moenarch-jobs-core"
+version = "0.1.2"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/jobs/jobs-core/Cargo.toml"
+dependencies = ["moenarch-runtime-core"]
+tag = "moenarch-jobs-core-v0.1.2"
+
+[[packages]]
+name = "moenarch-math-geometry-2d"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/math/math-geometry-2d/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
+tag = "moenarch-math-geometry-2d-v0.1.1"
+
+[[packages]]
+name = "moenarch-numbers-core"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/data/numbers-core/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
+tag = "moenarch-numbers-core-v0.1.1"
+
+[[packages]]
+name = "moenarch-tensor-data"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/data/tensor-data/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
+tag = "moenarch-tensor-data-v0.1.1"
+
+[[packages]]
+name = "moenarch-vector-analysis-core"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/vector/vector-analysis-core/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
+tag = "moenarch-vector-analysis-core-v0.1.1"
+
+[[packages]]
+name = "moenarch-data-inversion-core"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/data/data-inversion-core/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
+tag = "moenarch-data-inversion-core-v0.1.1"
+
+[[packages]]
+name = "moenarch-model-runtime"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/runtime/model-runtime/Cargo.toml"
+dependencies = ["moenarch-jobs-core", "moenarch-runtime-core"]
+tag = "moenarch-model-runtime-v0.1.1"
+
+[[packages]]
+name = "moenarch-math-linear"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/math/math-linear/Cargo.toml"
+dependencies = [
+  "moenarch-media-core",
+  "moenarch-runtime-core",
+  "moenarch-tensor-data",
+  "moenarch-vector-analysis-core",
+]
+tag = "moenarch-math-linear-v0.1.1"
+
+[[packages]]
+name = "moenarch-math-signal-core"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/math/math-signal-core/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-numbers-core", "moenarch-runtime-core"]
+tag = "moenarch-math-signal-core-v0.1.1"
+
+[[packages]]
+name = "moenarch-vector-analysis-index"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/vector/vector-analysis-index/Cargo.toml"
+dependencies = [
+  "moenarch-media-core",
+  "moenarch-runtime-core",
+  "moenarch-vector-analysis-core",
+]
+tag = "moenarch-vector-analysis-index-v0.1.1"
+
+[[packages]]
+name = "moenarch-math-sparse-data"
+version = "0.1.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/math/math-sparse-data/Cargo.toml"
+dependencies = [
+  "moenarch-math-linear",
+  "moenarch-media-core",
+  "moenarch-numbers-core",
+  "moenarch-runtime-core",
+  "moenarch-vector-analysis-core",
+]
+tag = "moenarch-math-sparse-data-v0.1.1"
+
+[[github_releases]]
+tag = "moenarch-runtime-core-v0.2.1"
+title = "Release moenarch-runtime-core 0.2.1"
+notes = "Verified foundation wave 1 release of the domain-neutral runtime contracts."
+
+[[github_releases]]
+tag = "moenarch-runtime-onnx-v0.1.1"
+title = "Release moenarch-runtime-onnx 0.1.1"
+notes = "Verified foundation wave 1 release of the ONNX runtime helpers."
+
+[[github_releases]]
+tag = "moenarch-jobs-core-v0.1.2"
+title = "Release moenarch-jobs-core 0.1.2"
+notes = "Verified foundation wave 1 release of the reusable job contracts."
+
+[[github_releases]]
+tag = "moenarch-math-geometry-2d-v0.1.1"
+title = "Release moenarch-math-geometry-2d 0.1.1"
+notes = "Verified foundation wave 1 release of the 2D geometry contracts."
+
+[[github_releases]]
+tag = "moenarch-numbers-core-v0.1.1"
+title = "Release moenarch-numbers-core 0.1.1"
+notes = "Verified foundation wave 1 release of the scalar numeric contracts."
+
+[[github_releases]]
+tag = "moenarch-tensor-data-v0.1.1"
+title = "Release moenarch-tensor-data 0.1.1"
+notes = "Verified foundation wave 1 release of the finite tensor contracts."
+
+[[github_releases]]
+tag = "moenarch-vector-analysis-core-v0.1.1"
+title = "Release moenarch-vector-analysis-core 0.1.1"
+notes = "Verified foundation wave 1 release of the dense vector contracts."
+
+[[github_releases]]
+tag = "moenarch-data-inversion-core-v0.1.1"
+title = "Release moenarch-data-inversion-core 0.1.1"
+notes = "Verified foundation wave 1 release of the inversion metadata contracts."
+
+[[github_releases]]
+tag = "moenarch-model-runtime-v0.1.1"
+title = "Release moenarch-model-runtime 0.1.1"
+notes = "Verified foundation wave 1 release of the model lifecycle helpers."
+
+[[github_releases]]
+tag = "moenarch-math-linear-v0.1.1"
+title = "Release moenarch-math-linear 0.1.1"
+notes = "Verified foundation wave 1 release of the dense matrix contracts."
+
+[[github_releases]]
+tag = "moenarch-math-signal-core-v0.1.1"
+title = "Release moenarch-math-signal-core 0.1.1"
+notes = "Verified foundation wave 1 release of the signal-domain math contracts."
+
+[[github_releases]]
+tag = "moenarch-vector-analysis-index-v0.1.1"
+title = "Release moenarch-vector-analysis-index 0.1.1"
+notes = "Verified foundation wave 1 release of the exact vector index."
+
+[[github_releases]]
+tag = "moenarch-math-sparse-data-v0.1.1"
+title = "Release moenarch-math-sparse-data 0.1.1"
+notes = "Verified foundation wave 1 release of the sparse data contracts."

@@ -1203,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-data-inversion-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "moenarch-media-core",
  "moenarch-runtime-core",
@@ -1336,7 +1336,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-jobs-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "moenarch-runtime-core",
@@ -1380,7 +1380,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-geometry-2d"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",
@@ -1424,7 +1424,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-linear"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "faer",
@@ -1472,7 +1472,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-signal-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",
@@ -1517,7 +1517,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-sparse-data"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-math-linear",
@@ -1614,7 +1614,7 @@ version = "0.1.0"
 
 [[package]]
 name = "moenarch-model-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "hf-hub",
@@ -1660,7 +1660,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-numbers-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-runtime-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1712,7 +1712,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-runtime-onnx"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "ndarray",
  "ort",
@@ -1722,7 +1722,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-tensor-data"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "moenarch-media-core",
  "moenarch-runtime-core",
@@ -1765,7 +1765,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-vector-analysis-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",
@@ -1809,7 +1809,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-vector-analysis-index"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",

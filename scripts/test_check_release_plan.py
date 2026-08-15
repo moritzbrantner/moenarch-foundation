@@ -4,10 +4,21 @@
 from __future__ import annotations
 
 import copy
+import tomllib
 import unittest
+from pathlib import Path
 
-from check_release_plan import validate
+from check_release_plan import (
+    FOUNDATION_WAVE_1_CONSUMER_CHECKS,
+    FOUNDATION_WAVE_1_VERSIONS,
+    validate,
+    validate_control_binding,
+    validate_release_manifest,
+)
 from repository_split import OWNERSHIP_PATH, RELEASE_PLAN_PATH, cargo_metadata, load_json
+
+
+FIXTURES = Path(__file__).with_name("fixtures") / "release_plans"
 
 
 class ReleasePlanTests(unittest.TestCase):
@@ -56,7 +67,7 @@ class ReleasePlanTests(unittest.TestCase):
         plan["packages"][0]["old_version"] = "9.9.9"
         plan["packages"][0]["new_version"] = "9.9.9"
         errors = self.errors(plan)
-        self.assertTrue(any("workspace version" in error for error in errors), errors)
+        self.assertTrue(any("ownership source_version" in error for error in errors), errors)
 
     def test_required_checks_cannot_be_deleted(self) -> None:
         plan = copy.deepcopy(self.plan)
@@ -99,6 +110,31 @@ class ReleasePlanTests(unittest.TestCase):
         errors = validate(plan, self.ownership, metadata)
         self.assertTrue(any("ownership source_version" in error for error in errors), errors)
 
+    def test_workspace_versions_allow_only_the_exact_foundation_wave(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        source_versions = {
+            package["current_package_name"]: package["source_version"]
+            for package in self.ownership["packages"]
+        }
+        for package in metadata["packages"]:
+            package["version"] = FOUNDATION_WAVE_1_VERSIONS.get(
+                package["name"], source_versions[package["name"]]
+            )
+
+        self.assertEqual(validate(self.plan, self.ownership, metadata), [])
+
+        out_of_wave = next(
+            package
+            for package in metadata["packages"]
+            if package["name"] not in FOUNDATION_WAVE_1_VERSIONS
+        )
+        out_of_wave["version"] = "9.9.9"
+        errors = validate(self.plan, self.ownership, metadata)
+        self.assertTrue(
+            any("authorized source or wave version" in error for error in errors),
+            errors,
+        )
+
     def test_wrong_owner_and_missing_package_are_rejected(self) -> None:
         plan = copy.deepcopy(self.plan)
         plan["packages"][0]["intended_next_release_owner"] = (
@@ -117,6 +153,148 @@ class ReleasePlanTests(unittest.TestCase):
         order.remove(dependency)
         order.append(dependency)
         self.assertTrue(any("wrong dependency order" in e for e in self.errors(plan)))
+
+
+class CheckedReleaseManifestTests(unittest.TestCase):
+    WAVE = [
+        ("moenarch-runtime-core", "0.2.1"),
+        ("moenarch-runtime-onnx", "0.1.1"),
+        ("moenarch-jobs-core", "0.1.2"),
+        ("moenarch-math-geometry-2d", "0.1.1"),
+        ("moenarch-numbers-core", "0.1.1"),
+        ("moenarch-tensor-data", "0.1.1"),
+        ("moenarch-vector-analysis-core", "0.1.1"),
+        ("moenarch-data-inversion-core", "0.1.1"),
+        ("moenarch-model-runtime", "0.1.1"),
+        ("moenarch-math-linear", "0.1.1"),
+        ("moenarch-math-signal-core", "0.1.1"),
+        ("moenarch-vector-analysis-index", "0.1.1"),
+        ("moenarch-math-sparse-data", "0.1.1"),
+    ]
+
+    def setUp(self) -> None:
+        self.ownership = load_json(OWNERSHIP_PATH)
+        self.metadata = cargo_metadata()
+        self.manifest = self.wave_manifest()
+
+    def wave_manifest(self) -> dict:
+        order = [name for name, _ in self.WAVE]
+        versions = dict(self.WAVE)
+        ownership = {
+            package["current_package_name"]: package
+            for package in self.ownership["packages"]
+        }
+        metadata = {package["name"]: package for package in self.metadata["packages"]}
+        packages = []
+        for name in order:
+            dependencies = {
+                dependency["name"]
+                for dependency in metadata[name]["dependencies"]
+                if dependency["kind"] != "dev" and dependency["name"] in metadata
+            }
+            packages.append(
+                {
+                    "name": name,
+                    "version": versions[name],
+                    "owner": "moritzbrantner/moenarch-foundation",
+                    "manifest_path": ownership[name]["manifest_path"],
+                    "dependencies": sorted(dependencies),
+                    "tag": f"{name}-v{versions[name]}",
+                }
+            )
+        checks = tomllib.loads(
+            (OWNERSHIP_PATH.parents[2] / ".agent-loop.toml").read_text(
+                encoding="utf-8"
+            )
+        )["verification"]["commands"]
+        return {
+            "schema_version": 1,
+            "repository": "moritzbrantner/moenarch-foundation",
+            "issue": 8,
+            "source_sha": "a" * 40,
+            "registry": "crates.io",
+            "dependency_order": order,
+            "expected_tags": [package["tag"] for package in packages],
+            "required_checks": checks,
+            "required_consumer_checks": list(FOUNDATION_WAVE_1_CONSUMER_CHECKS),
+            "packages": packages,
+            "github_releases": [],
+        }
+
+    def errors(self, manifest: dict) -> list[str]:
+        return validate_release_manifest(
+            manifest,
+            self.ownership,
+            self.metadata,
+            Path("releases/foundation-wave-1.toml"),
+        )
+
+    def test_exact_foundation_wave_is_valid(self) -> None:
+        self.assertEqual(self.errors(self.manifest), [])
+
+    def test_wrong_owner_is_rejected(self) -> None:
+        self.manifest["packages"][0]["owner"] = "moritzbrantner/rust-packages"
+        self.assertTrue(any("owner" in error for error in self.errors(self.manifest)))
+
+    def test_wrong_order_is_rejected(self) -> None:
+        self.manifest["packages"][0], self.manifest["packages"][1] = (
+            self.manifest["packages"][1],
+            self.manifest["packages"][0],
+        )
+        self.manifest["dependency_order"] = [
+            package["name"] for package in self.manifest["packages"]
+        ]
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("package order" in error for error in errors), errors)
+
+    def test_wrong_version_is_rejected(self) -> None:
+        self.manifest["packages"][0]["version"] = "0.2.2"
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("versions" in error for error in errors), errors)
+
+    def test_wrong_destination_issue_is_rejected(self) -> None:
+        self.manifest["issue"] = 9
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("destination issue 8" in error for error in errors), errors)
+
+    def test_wrong_source_and_control_binding_are_rejected(self) -> None:
+        errors = validate_control_binding(
+            self.manifest,
+            Path("releases/foundation-wave-1.toml"),
+            "b" * 40,
+            False,
+            ["Cargo.toml", "releases/foundation-wave-1.toml"],
+        )
+        self.assertTrue(any("ancestor" in error for error in errors), errors)
+        self.assertTrue(any("only by its manifest" in error for error in errors), errors)
+
+    def test_wrong_dependency_metadata_is_rejected(self) -> None:
+        jobs = next(
+            package
+            for package in self.manifest["packages"]
+            if package["name"] == "moenarch-jobs-core"
+        )
+        jobs["dependencies"] = []
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("dependencies" in error for error in errors), errors)
+
+    def test_missing_consumer_or_package_list_gate_is_rejected(self) -> None:
+        self.manifest["required_consumer_checks"].pop()
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("consumer checks" in error for error in errors), errors)
+
+    def test_generic_toml_fixture_uses_the_destination_publisher_schema(self) -> None:
+        fixture = tomllib.loads((FIXTURES / "valid.toml").read_text(encoding="utf-8"))
+        ownership = load_json(FIXTURES / "ownership.json")
+        workspace = FIXTURES / "workspace"
+        errors = validate_release_manifest(
+            fixture,
+            ownership,
+            cargo_metadata(workspace),
+            Path("releases/fixture.toml"),
+            workspace,
+        )
+        self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":
