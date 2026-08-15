@@ -24,6 +24,7 @@ SPEC.loader.exec_module(publish_release)
 REPOSITORY = "moritzbrantner/moenarch-foundation"
 HEAD = "a" * 40
 SOURCE = "b" * 40
+REPAIR_SOURCE = "d" * 40
 CHECKSUM = "c" * 64
 CONFIG_COMMANDS = tomllib.loads(
     (SCRIPT.parents[1] / ".agent-loop.toml").read_text(encoding="utf-8")
@@ -287,6 +288,7 @@ def write_manifest(
     repository: str = REPOSITORY,
     issue: int = 7,
     source: str = SOURCE,
+    repair_source: str | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -300,6 +302,8 @@ def write_manifest(
         "required_checks = " + json.dumps(CONFIG_COMMANDS),
         'required_consumer_checks = ["true"]',
     ]
+    if repair_source is not None:
+        lines.insert(4, f"repair_source_sha = {json.dumps(repair_source)}")
     for package in packages:
         package_lines = [
                 "",
@@ -437,6 +441,63 @@ class PublishReleaseTests(unittest.TestCase):
                 "releases/release.toml",
             ]
             with self.assertRaisesRegex(publish_release.ReleaseError, "more than"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_partial_wave_control_repair_preserves_immutable_release_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            packages, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            packages[0]["published_checksum"] = CHECKSUM
+            write_manifest(
+                root / "releases/release.toml",
+                packages,
+                repair_source=REPAIR_SOURCE,
+            )
+            authorize_manifest(root, effects)
+            effects.source_is_ancestor = lambda source, head: (source, head) in {
+                (SOURCE, REPAIR_SOURCE),
+                (REPAIR_SOURCE, HEAD),
+            }
+            effects.changed_paths = lambda source, head: (
+                [
+                    "releases/release.toml",
+                    "scripts/check_release_plan.py",
+                    "scripts/publish_release.py",
+                    "scripts/test_check_release_plan.py",
+                    "scripts/test_publish_release.py",
+                ]
+                if (source, head) == (SOURCE, REPAIR_SOURCE)
+                else ["releases/release.toml"]
+            )
+            effects.registry["foundation-a"] = registry_record(
+                "foundation-a", "1.0.0"
+            )
+            result = publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertEqual(result["tags"][0]["status"], "created-and-pushed")
+            self.assertEqual(effects.remote_tags["foundation-a-v1.0.0"], SOURCE)
+
+    def test_partial_wave_control_repair_refuses_crate_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            packages, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            write_manifest(
+                root / "releases/release.toml",
+                packages,
+                repair_source=REPAIR_SOURCE,
+            )
+            authorize_manifest(root, effects)
+            effects.source_is_ancestor = lambda source, head: (source, head) in {
+                (SOURCE, REPAIR_SOURCE),
+                (REPAIR_SOURCE, HEAD),
+            }
+            effects.changed_paths = lambda source, head: (
+                ["crates/foundation-a/src/lib.rs", "scripts/publish_release.py"]
+                if (source, head) == (SOURCE, REPAIR_SOURCE)
+                else ["releases/release.toml"]
+            )
+
+            with self.assertRaisesRegex(publish_release.ReleaseError, "control repair"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_candidate_consumer_check_is_required(self) -> None:
@@ -657,6 +718,42 @@ class PublishReleaseTests(unittest.TestCase):
             self.assertIn("publish:foundation-b", effects.calls)
             self.assertEqual(result["packages"][0]["status"], "registry-verified")
 
+    def test_complete_resume_bounds_registry_reads_per_phase(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            packages, effects = write_fixture(
+                root,
+                [
+                    ("foundation-a", "1.0.0", ()),
+                    ("foundation-b", "1.0.0", ("foundation-a",)),
+                ],
+            )
+            for package in packages:
+                package["published_checksum"] = CHECKSUM
+                effects.registry[package["name"]] = registry_record(
+                    package["name"], package["version"]
+                )
+                effects.local_tags[package["tag"]] = SOURCE
+                effects.remote_tags[package["tag"]] = SOURCE
+                effects.releases[package["tag"]] = {
+                    "tagName": package["tag"],
+                    "name": f"Release {package['name']} {package['version']}",
+                    "body": "Verified immutable release.",
+                    "isDraft": False,
+                    "isPrerelease": False,
+                }
+            write_manifest(root / "releases/release.toml", packages)
+            authorize_manifest(root, effects)
+
+            publish_release.run_release(root, ENVIRONMENT, effects)
+
+            registry_reads = sum(
+                count
+                for call, count in effects.call_counts.items()
+                if call.startswith("registry:")
+            )
+            self.assertLessEqual(registry_reads, 12)
+
     def test_published_checksum_requires_valid_digest_and_visible_version(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -812,7 +909,7 @@ class PublishReleaseTests(unittest.TestCase):
             _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
             effects.transition(
                 "registry:foundation-a@1.0.0",
-                5,
+                4,
                 lambda: effects.registry.update(
                     {
                         "foundation-a": {

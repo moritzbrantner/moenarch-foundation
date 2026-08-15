@@ -268,6 +268,38 @@ class CheckedReleaseManifestTests(unittest.TestCase):
         self.assertTrue(any("ancestor" in error for error in errors), errors)
         self.assertTrue(any("only by its manifest" in error for error in errors), errors)
 
+    def test_partial_wave_control_repair_binding_is_validated(self) -> None:
+        self.manifest["repair_source_sha"] = "c" * 40
+        repair_paths = [
+            "releases/foundation-wave-1.toml",
+            "scripts/check_release_plan.py",
+            "scripts/publish_release.py",
+            "scripts/test_check_release_plan.py",
+            "scripts/test_publish_release.py",
+        ]
+        errors = validate_control_binding(
+            self.manifest,
+            Path("releases/foundation-wave-1.toml"),
+            "b" * 40,
+            True,
+            repair_paths,
+            repair_is_ancestor=True,
+            repair_changed_paths=["releases/foundation-wave-1.toml"],
+        )
+        self.assertEqual(errors, [])
+
+        repair_paths.append("crates/runtime/runtime-core/src/lib.rs")
+        errors = validate_control_binding(
+            self.manifest,
+            Path("releases/foundation-wave-1.toml"),
+            "b" * 40,
+            True,
+            repair_paths,
+            repair_is_ancestor=True,
+            repair_changed_paths=["releases/foundation-wave-1.toml"],
+        )
+        self.assertTrue(any("control repair" in error for error in errors), errors)
+
     def test_wrong_dependency_metadata_is_rejected(self) -> None:
         jobs = next(
             package

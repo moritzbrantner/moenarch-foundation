@@ -34,6 +34,7 @@ ROOT_FIELDS = {
     "repository",
     "issue",
     "source_sha",
+    "repair_source_sha",
     "registry",
     "dependency_order",
     "expected_tags",
@@ -41,6 +42,12 @@ ROOT_FIELDS = {
     "github_releases",
     "required_checks",
     "required_consumer_checks",
+}
+CONTROL_REPAIR_SCRIPT_PATHS = {
+    "scripts/check_release_plan.py",
+    "scripts/publish_release.py",
+    "scripts/test_check_release_plan.py",
+    "scripts/test_publish_release.py",
 }
 PACKAGE_FIELDS = {
     "name",
@@ -457,6 +464,15 @@ def validate_manifest(
     source_sha = manifest.get("source_sha")
     if not isinstance(source_sha, str) or re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
         raise ReleaseError("release manifest source_sha must be a full lowercase commit SHA")
+    repair_source_sha = manifest.get("repair_source_sha")
+    if repair_source_sha is not None and (
+        not isinstance(repair_source_sha, str)
+        or re.fullmatch(r"[0-9a-f]{40}", repair_source_sha) is None
+        or repair_source_sha == source_sha
+    ):
+        raise ReleaseError(
+            "release manifest repair_source_sha must be a distinct full lowercase commit SHA"
+        )
     config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
     configured_checks = config.get("verification", {}).get("commands")
     if manifest.get("required_checks") != configured_checks:
@@ -655,7 +671,7 @@ def _revalidate_exact_checkout(
     effects: Effects,
     repository: str,
     head: str,
-    source_sha: str,
+    control_source_sha: str,
     manifest_path: str,
     manifest_digest: str,
 ) -> None:
@@ -663,8 +679,10 @@ def _revalidate_exact_checkout(
         raise ReleaseError("publication checkout changed after validation")
     if manifest_path not in effects.tracked_manifests():
         raise ReleaseError("selected release manifest is no longer checked at the exact head")
-    if effects.changed_paths(source_sha, head) != [manifest_path]:
-        raise ReleaseError("exact head no longer differs from source_sha only by its manifest")
+    if effects.changed_paths(control_source_sha, head) != [manifest_path]:
+        raise ReleaseError(
+            "exact head no longer differs from its control source only by its manifest"
+        )
     if hashlib.sha256((root / manifest_path).read_bytes()).hexdigest() != manifest_digest:
         raise ReleaseError("selected release manifest changed after authorization")
 
@@ -675,7 +693,7 @@ def _revalidate_authority(
     repository: str,
     issue_number: int,
     head: str,
-    source_sha: str,
+    control_source_sha: str,
     manifest_path: str,
     manifest_digest: str,
 ) -> None:
@@ -686,7 +704,7 @@ def _revalidate_authority(
         effects,
         repository,
         head,
-        source_sha,
+        control_source_sha,
         manifest_path,
         manifest_digest,
     )
@@ -726,17 +744,39 @@ def _registry_prefix(
     return present
 
 
+def _registry_package(
+    effects: Effects,
+    package: dict[str, Any],
+    checksum: str,
+) -> None:
+    """Freshly verify the one immutable registry record guarding an effect."""
+
+    record = effects.registry_version(package["name"], package["version"])
+    if record is None:
+        raise ReleaseError(
+            f"registry version missing for {package['name']} {package['version']}"
+        )
+    _validate_registry_record(
+        record,
+        package["name"],
+        package["version"],
+        _expected_checksum(package, checksum),
+    )
+
+
 def _tag_state(
     effects: Effects,
     packages: list[dict[str, Any]],
     checksums: list[str],
     package_index: int,
     source_sha: str,
+    *,
+    verify_registry: bool = True,
 ) -> tuple[str | None, str | None]:
-    present = _registry_prefix(effects, packages, checksums)
-    if not all(present):
-        raise ReleaseError("all registry versions must be verified before tags")
-    tag = packages[package_index]["tag"]
+    package = packages[package_index]
+    if verify_registry:
+        _registry_package(effects, package, checksums[package_index])
+    tag = package["tag"]
     local = effects.local_tag_target(tag)
     remote = effects.remote_tag_target(tag)
     for target in (local, remote):
@@ -766,11 +806,13 @@ def _release_state(
     package_index: int,
     source_sha: str,
     release: dict[str, str] | None,
+    *,
+    verify_registry: bool = True,
 ) -> dict[str, Any] | None:
-    present = _registry_prefix(effects, packages, checksums)
-    if not all(present):
-        raise ReleaseError("all registry versions must be verified before GitHub Releases")
-    tag = packages[package_index]["tag"]
+    package = packages[package_index]
+    if verify_registry:
+        _registry_package(effects, package, checksums[package_index])
+    tag = package["tag"]
     if effects.remote_tag_target(tag) != source_sha:
         raise ReleaseError(f"remote tag conflict for GitHub Release {tag}")
     existing = effects.release(repository, tag)
@@ -812,10 +854,36 @@ def run_release(
     manifest_path, manifest = _select_manifest(candidates, repository, issue_number)
     _unknown_fields(manifest, ROOT_FIELDS, "release manifest")
     source_sha = _string(manifest.get("source_sha"), "release manifest source_sha")
-    if not effects.source_is_ancestor(source_sha, head):
-        raise ReleaseError("release manifest source_sha is not an ancestor of the exact head")
-    if effects.changed_paths(source_sha, head) != [manifest_path]:
-        raise ReleaseError("exact head differs from source_sha by more than its release manifest")
+    repair_source = manifest.get("repair_source_sha")
+    if repair_source is None:
+        control_source_sha = source_sha
+        if not effects.source_is_ancestor(source_sha, head):
+            raise ReleaseError(
+                "release manifest source_sha is not an ancestor of the exact head"
+            )
+    else:
+        control_source_sha = _string(
+            repair_source, "release manifest repair_source_sha"
+        )
+        if (
+            re.fullmatch(r"[0-9a-f]{40}", control_source_sha) is None
+            or control_source_sha == source_sha
+            or not effects.source_is_ancestor(source_sha, control_source_sha)
+            or not effects.source_is_ancestor(control_source_sha, head)
+        ):
+            raise ReleaseError(
+                "release manifest control repair is not bound between source_sha and exact head"
+            )
+        repair_paths = set(effects.changed_paths(source_sha, control_source_sha))
+        expected_repair_paths = CONTROL_REPAIR_SCRIPT_PATHS | {manifest_path}
+        if repair_paths != expected_repair_paths:
+            raise ReleaseError(
+                "release manifest control repair changed paths outside the fixed repair surface"
+            )
+    if effects.changed_paths(control_source_sha, head) != [manifest_path]:
+        raise ReleaseError(
+            "exact head differs from its control source by more than its release manifest"
+        )
     manifest_digest = hashlib.sha256((root / manifest_path).read_bytes()).hexdigest()
     issue = effects.issue(repository, issue_number)
     _validate_issue(issue, repository, issue_number, head, manifest_digest)
@@ -912,7 +980,7 @@ def run_release(
         effects,
         repository,
         head,
-        source_sha,
+        control_source_sha,
         manifest_path,
         manifest_digest,
     )
@@ -926,17 +994,16 @@ def run_release(
             if isinstance(pinned, str)
             else effects.upload_checksum(package["name"], package["version"])
         )
-    _registry_prefix(effects, packages, checksums)
+    present = _registry_prefix(effects, packages, checksums)
 
     package_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
         status = "registry-verified"
-        present = _registry_prefix(effects, packages, checksums)
         if present[index] and not checksums[index]:
             checksums[index] = effects.upload_checksum(
                 package["name"], package["version"]
             )
-            _registry_prefix(effects, packages, checksums)
+            present = _registry_prefix(effects, packages, checksums)
         if not present[index]:
             _revalidate_authority(
                 root,
@@ -944,7 +1011,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -965,7 +1032,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -984,7 +1051,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -997,11 +1064,12 @@ def run_release(
                     repository,
                     issue_number,
                     head,
-                    source_sha,
+                    control_source_sha,
                     manifest_path,
                     manifest_digest,
                 )
                 if _registry_prefix(effects, packages, checksums)[index]:
+                    present[index] = True
                     package_results.append(
                         {"name": package["name"], "status": "registry-verified"}
                     )
@@ -1024,13 +1092,25 @@ def run_release(
                     f"published {package['name']} {package['version']} is not visible on crates.io"
                 )
             status = "published-and-verified"
+            present[index] = True
         package_results.append({"name": package["name"], "status": status})
 
+    if not all(present):
+        present = _registry_prefix(effects, packages, checksums)
+    if not all(present):
+        raise ReleaseError("all registry versions must be verified before tags")
     tag_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
         tag = package["tag"]
         status = "existing"
-        local, remote = _tag_state(effects, packages, checksums, index, source_sha)
+        local, remote = _tag_state(
+            effects,
+            packages,
+            checksums,
+            index,
+            source_sha,
+            verify_registry=False,
+        )
         if remote is not None:
             tag_results.append({"tag": tag, "status": status})
             continue
@@ -1041,7 +1121,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -1056,7 +1136,7 @@ def run_release(
                     repository,
                     issue_number,
                     head,
-                    source_sha,
+                    control_source_sha,
                     manifest_path,
                     manifest_digest,
                 )
@@ -1073,7 +1153,7 @@ def run_release(
                         repository,
                         issue_number,
                         head,
-                        source_sha,
+                        control_source_sha,
                         manifest_path,
                         manifest_digest,
                     )
@@ -1094,7 +1174,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -1106,7 +1186,7 @@ def run_release(
                     repository,
                     issue_number,
                     head,
-                    source_sha,
+                    control_source_sha,
                     manifest_path,
                     manifest_digest,
                 )
@@ -1119,7 +1199,7 @@ def run_release(
                         repository,
                         issue_number,
                         head,
-                        source_sha,
+                        control_source_sha,
                         manifest_path,
                         manifest_digest,
                     )
@@ -1133,6 +1213,8 @@ def run_release(
             raise ReleaseError(f"remote tag verification failed for {tag}")
         tag_results.append({"tag": tag, "status": status})
 
+    if not all(_registry_prefix(effects, packages, checksums)):
+        raise ReleaseError("all registry versions must be verified before GitHub Releases")
     release_results: list[dict[str, str]] = []
     for index, package in enumerate(packages):
         release = releases_by_tag.get(package["tag"])
@@ -1144,6 +1226,7 @@ def run_release(
             index,
             source_sha,
             release,
+            verify_registry=False,
         )
         if release is None:
             continue
@@ -1155,7 +1238,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -1177,7 +1260,7 @@ def run_release(
                 repository,
                 issue_number,
                 head,
-                source_sha,
+                control_source_sha,
                 manifest_path,
                 manifest_digest,
             )
@@ -1192,7 +1275,7 @@ def run_release(
                     repository,
                     issue_number,
                     head,
-                    source_sha,
+                    control_source_sha,
                     manifest_path,
                     manifest_digest,
                 )
