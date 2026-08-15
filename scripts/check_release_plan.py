@@ -122,6 +122,49 @@ def package_all(plan: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     return failures
 
 
+def package_release(manifest: dict, metadata: dict, root: Path = ROOT) -> list[str]:
+    """Package only one manifest's selected crates with its candidate closure patched."""
+
+    packages = manifest.get("packages", [])
+    metadata_packages = {
+        package["name"]: package for package in metadata.get("packages", [])
+    }
+    patch_names = {package["name"] for package in packages}
+    patch_names.update(
+        dependency
+        for package in packages
+        for dependency in package.get("dependencies", [])
+    )
+    patch_lines = ["[patch.crates-io]"]
+    for name in sorted(patch_names):
+        crate = Path(metadata_packages[name]["manifest_path"]).parent.resolve()
+        patch_lines.append(f'"{name}" = {{ path = "{crate}" }}')
+    failures: list[str] = []
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+        config.write("\n".join(patch_lines) + "\n")
+        config.flush()
+        for package in packages:
+            name = package["name"]
+            completed = subprocess.run(
+                [
+                    "cargo",
+                    "package",
+                    "-p",
+                    name,
+                    "--locked",
+                    "--config",
+                    config.name,
+                ],
+                cwd=root,
+                check=False,
+            )
+            if completed.returncode:
+                failures.append(name)
+            else:
+                print(f"PACKAGED {name}")
+    return failures
+
+
 def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> list[str]:
     errors: list[str] = []
     if plan.get("schema_version") != 1:
@@ -407,6 +450,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--package-all", action="store_true")
+    parser.add_argument("--package-release", action="store_true")
     parser.add_argument("plan", nargs="?", type=Path, default=RELEASE_PLAN_PATH)
     args = parser.parse_args()
     ownership = load_json(OWNERSHIP_PATH)
@@ -430,6 +474,9 @@ def main() -> int:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
+    if args.package_all and args.package_release:
+        print("error: choose only one packaging mode", file=sys.stderr)
+        return 1
     if args.package_all:
         if args.plan.suffix != ".json":
             print("error: --package-all requires the bootstrap JSON inventory", file=sys.stderr)
@@ -439,6 +486,18 @@ def main() -> int:
             print("error: packaging failed: " + ", ".join(failures), file=sys.stderr)
             return 1
         print("package verification passes: 60 packages; tracked manifest hashes unchanged")
+    elif args.package_release:
+        if args.plan.suffix != ".toml":
+            print("error: --package-release requires a TOML manifest", file=sys.stderr)
+            return 1
+        failures = package_release(plan, metadata)
+        if failures:
+            print(
+                "error: release packaging failed: " + ", ".join(failures),
+                file=sys.stderr,
+            )
+            return 1
+        print(f"release package verification passes: {len(plan['packages'])} packages")
     elif args.plan.suffix == ".toml":
         print(
             f"checked release manifest passes: {len(plan['packages'])} packages; "

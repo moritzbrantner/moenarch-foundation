@@ -9,9 +9,7 @@ max_workers = 2
 commands = [
   "cargo metadata --format-version 1 --no-deps",
   "python3 scripts/check_release_plan.py --check releases/foundation-wave-2.toml",
-  "cargo package -p moenarch-graph-analysis-core --locked --no-verify",
-  "cargo package -p moenarch-math-statistics --locked --no-verify",
-  "cargo package -p moenarch-dense-data --locked --no-verify",
+  "python3 scripts/check_release_plan.py --package-release releases/foundation-wave-2.toml",
 ]
 
 [publication]

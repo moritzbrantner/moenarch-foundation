@@ -20,10 +20,9 @@ For a future authorized release:
 4. Require a clean exact commit and run the ordered `.agent-loop.toml`
    verification. For restructuring-first wave 2, this is Cargo metadata, exact
    manifest/dependency/order validation, and `cargo package --locked` for only
-   its three selected crates; `--no-verify` avoids turning archive preparation
-   into a behavioral gate. The publisher independently packages the exact
-   candidate closure with reviewed local patches before its first effect and
-   never passes those patches to `cargo publish`.
+   its three selected crates. The structural package gate and publisher use
+   reviewed local patches for the exact candidate closure before publication;
+   the publisher never passes those patches to `cargo publish`.
 5. Run every manifest-declared candidate consumer check before publication.
    An explicitly empty list means no consumer result is required or claimed.
 6. Let only the receipt-gated Agent Loop master invoke

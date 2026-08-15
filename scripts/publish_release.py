@@ -72,6 +72,7 @@ HISTORICAL_REQUIRED_CHECKS = [
     "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
 ]
 HISTORICAL_RELEASE_ISSUES = {4, 8}
+NO_CONSUMER_CHECK_RELEASE_ISSUES = {13}
 
 
 class ReleaseError(RuntimeError):
@@ -496,10 +497,18 @@ def validate_manifest(
     if manifest.get("required_checks") != expected_checks:
         raise ReleaseError("required_checks do not match the release's exact gate")
     consumer_checks = manifest.get("required_consumer_checks")
-    if not isinstance(consumer_checks, list) or any(
-        not isinstance(command, str) or not command.strip() for command in consumer_checks
+    if (
+        not isinstance(consumer_checks, list)
+        or any(
+            not isinstance(command, str) or not command.strip()
+            for command in consumer_checks
+        )
+        or (not consumer_checks and issue not in NO_CONSUMER_CHECK_RELEASE_ISSUES)
     ):
-        raise ReleaseError("required_consumer_checks must be a string array")
+        raise ReleaseError(
+            "required_consumer_checks must be a non-empty string array unless "
+            "the release contract explicitly permits an empty list"
+        )
 
     raw_packages = manifest.get("packages")
     if not isinstance(raw_packages, list) or not raw_packages:
