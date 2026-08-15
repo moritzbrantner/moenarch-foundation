@@ -23,6 +23,9 @@ For a future authorized release:
    its three selected crates. The structural package gate and publisher use
    reviewed local patches for the exact candidate closure before publication;
    the publisher never passes those patches to `cargo publish`.
+   For issue #17, the same reduced structural policy selects only
+   `moenarch-audio-contracts`; no behavioral, consumer, Clippy, documentation,
+   build, workspace, or all-package evidence is run or claimed.
 5. Run every manifest-declared candidate consumer check before publication.
    An explicitly empty list means no consumer result is required or claimed.
 6. Let only the receipt-gated Agent Loop master invoke
@@ -39,3 +42,9 @@ For a future authorized release:
 9. Run isolated registry-only consumer checks and retain `rust-packages` source
    until every separately authorized destination, compatibility, rollback, and
    consumer gate passes. Wave 2 publication does not itself claim those checks.
+
+The issue #17 preparation PR is strictly ordered after foundation wave 2 issue
+#13. It may open for review, but must not merge or publish until wave 2 has
+published and shared crates.io capacity is available. Rebase and rebuild the
+source/control pair if that ordering changes either exact commit; never reuse
+stale issue authorization.

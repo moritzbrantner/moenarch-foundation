@@ -2,14 +2,14 @@ schema_version = 1
 max_workers = 2
 
 [verification]
-# Restructuring release slices deliberately retain only exact metadata,
-# manifest, dependency-order, and selected-package archive safeguards. Clean
+# This restructuring release deliberately retains only exact metadata,
+# manifest, dependency, and one selected-package archive safeguards. Clean
 # exact-head, registry, issue-authorization, checksum, and immutable tag checks
 # remain enforced by the publisher immediately around irreversible effects.
 commands = [
   "cargo metadata --format-version 1 --no-deps",
-  "python3 scripts/check_release_plan.py --check releases/foundation-wave-2.toml",
-  "python3 scripts/check_release_plan.py --package-release releases/foundation-wave-2.toml",
+  "python3 scripts/check_release_plan.py --check releases/foundation-audio-contracts.toml",
+  "python3 scripts/check_release_plan.py --package-release releases/foundation-audio-contracts.toml",
 ]
 
 [publication]

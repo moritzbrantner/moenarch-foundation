@@ -59,7 +59,7 @@ PACKAGE_FIELDS = {
     "published_checksum",
 }
 RELEASE_FIELDS = {"tag", "title", "notes"}
-HISTORICAL_REQUIRED_CHECKS = [
+FOUNDATION_WAVE_1_REQUIRED_CHECKS = [
     "cargo metadata --format-version 1 --no-deps",
     "python3 scripts/check_repository_boundaries.py --check",
     "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
@@ -71,8 +71,17 @@ HISTORICAL_REQUIRED_CHECKS = [
     "cargo doc --workspace --no-deps",
     "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
 ]
-HISTORICAL_RELEASE_ISSUES = {4, 8}
-NO_CONSUMER_CHECK_RELEASE_ISSUES = {13}
+FOUNDATION_WAVE_2_REQUIRED_CHECKS = [
+    "cargo metadata --format-version 1 --no-deps",
+    "python3 scripts/check_release_plan.py --check releases/foundation-wave-2.toml",
+    "python3 scripts/check_release_plan.py --package-release releases/foundation-wave-2.toml",
+]
+HISTORICAL_REQUIRED_CHECKS_BY_ISSUE = {
+    4: FOUNDATION_WAVE_1_REQUIRED_CHECKS,
+    8: FOUNDATION_WAVE_1_REQUIRED_CHECKS,
+    13: FOUNDATION_WAVE_2_REQUIRED_CHECKS,
+}
+NO_CONSUMER_CHECK_RELEASE_ISSUES = {13, 17}
 
 
 class ReleaseError(RuntimeError):
@@ -489,11 +498,7 @@ def validate_manifest(
         )
     config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
     configured_checks = config.get("verification", {}).get("commands")
-    expected_checks = (
-        HISTORICAL_REQUIRED_CHECKS
-        if issue in HISTORICAL_RELEASE_ISSUES
-        else configured_checks
-    )
+    expected_checks = HISTORICAL_REQUIRED_CHECKS_BY_ISSUE.get(issue, configured_checks)
     if manifest.get("required_checks") != expected_checks:
         raise ReleaseError("required_checks do not match the release's exact gate")
     consumer_checks = manifest.get("required_consumer_checks")
