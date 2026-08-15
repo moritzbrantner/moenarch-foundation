@@ -56,6 +56,13 @@ FOUNDATION_WAVE_1 = [
 ]
 FOUNDATION_WAVE_1_PATH = "releases/foundation-wave-1.toml"
 FOUNDATION_WAVE_1_VERSIONS = dict(FOUNDATION_WAVE_1)
+FOUNDATION_WAVE_1_CONSUMER_CHECKS = [
+    "bash scripts/check_foundation_wave_1_candidate_consumer.sh",
+    *[
+        f"cargo package -p {name} --locked --list"
+        for name, _version in FOUNDATION_WAVE_1
+    ],
+]
 
 
 def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
@@ -146,7 +153,6 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
             errors.append(f"{name}: publication is not authorized")
         if package.get("new_version") != package.get("old_version"):
             errors.append(f"{name}: nonpublishing plan must retain version")
-        actual_version = metadata_packages.get(name, {}).get("version")
         source_version = record.get("source_version")
         if (
             package.get("old_version") != source_version
@@ -154,15 +160,6 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         ):
             errors.append(
                 f"{name}: ownership source_version does not match the bootstrap plan"
-            )
-        allowed_workspace_versions = {source_version}
-        wave_version = FOUNDATION_WAVE_1_VERSIONS.get(name)
-        if wave_version is not None:
-            allowed_workspace_versions.add(wave_version)
-        if actual_version not in allowed_workspace_versions:
-            errors.append(
-                f"{name}: workspace version is not an authorized source or wave version "
-                f"{actual_version!r}"
             )
         if package.get("expected_tag") is not None:
             errors.append(f"{name}: nonpublishing plan must not declare a tag")
@@ -239,6 +236,10 @@ def validate_release_manifest(
         }
         if actual_versions != expected_versions:
             errors.append("foundation wave 1 package versions do not match its release contract")
+        if manifest.get("required_consumer_checks") != FOUNDATION_WAVE_1_CONSUMER_CHECKS:
+            errors.append(
+                "foundation wave 1 consumer checks do not match its release contract"
+            )
     try:
         validate_manifest(root, manifest, metadata, ownership)
     except ReleaseError as error:

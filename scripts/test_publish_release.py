@@ -80,6 +80,7 @@ class FakeEffects:
         self.fail_create_tag: str | None = None
         self.fail_push_tag: str | None = None
         self.fail_create_release: str | None = None
+        self.last_package_patches: dict[str, str] = {}
 
     def _record(self, call: str) -> None:
         self.calls.append(call)
@@ -139,6 +140,7 @@ class FakeEffects:
 
     def package(self, name: str, version: str, patches: dict[str, str]) -> str:
         self._record(f"package:{name}@{version}")
+        self.last_package_patches = dict(patches)
         return CHECKSUM
 
     def publish(self, name: str) -> None:
@@ -546,6 +548,26 @@ class PublishReleaseTests(unittest.TestCase):
 
             with self.assertRaisesRegex(publish_release.ReleaseError, "explicit version"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_registry_verified_workspace_prerequisite_is_patched_for_packaging(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            packages, effects = write_fixture(
+                root,
+                [
+                    ("foundation-a", "1.0.0", ()),
+                    ("foundation-b", "1.0.0", ("foundation-a",)),
+                ],
+            )
+            write_manifest(root / "releases/release.toml", [packages[1]])
+            authorize_manifest(root, effects)
+            effects.registry["foundation-a"] = registry_record(
+                "foundation-a", "1.0.0"
+            )
+
+            publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertIn("foundation-a", effects.last_package_patches)
 
     def test_registry_conflict_and_non_prefix_partial_state_are_refused(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

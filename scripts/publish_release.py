@@ -419,7 +419,7 @@ def validate_manifest(
     manifest: dict[str, Any],
     metadata: dict[str, Any],
     ownership_document: dict[str, Any] | None = None,
-) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, str]], list[dict[str, str]]]:
     _unknown_fields(manifest, ROOT_FIELDS, "release manifest")
     if manifest.get("schema_version") != 1:
         raise ReleaseError("release manifest schema_version must be 1")
@@ -493,6 +493,7 @@ def validate_manifest(
     }
     positions = {name: index for index, name in enumerate(names)}
     selected = set(names)
+    prerequisite_names: set[str] = set()
     for package in packages:
         name = package["name"]
         ownership = owned.get(name)
@@ -571,18 +572,20 @@ def validate_manifest(
                     f"={dependency_version}"
                 )
 
-        selected_dependencies = [
+        workspace_dependencies = [
             dependency
             for dependency in normal_dependencies
-            if dependency.get("name") in selected
+            if dependency.get("name") in cargo_packages
         ]
         actual_dependencies = {
-            dependency.get("name") for dependency in selected_dependencies
+            dependency.get("name") for dependency in workspace_dependencies
         }
         if set(package["dependencies"]) != actual_dependencies:
             raise ReleaseError(f"{name}: dependencies do not match Cargo metadata")
         for dependency in package["dependencies"]:
-            if positions[dependency] >= positions[name]:
+            if dependency not in selected:
+                prerequisite_names.add(dependency)
+            elif positions[dependency] >= positions[name]:
                 raise ReleaseError(f"wrong dependency order: {dependency} must precede {name}")
 
     raw_releases = manifest.get("github_releases", [])
@@ -602,7 +605,17 @@ def validate_manifest(
             raise ReleaseError("GitHub Releases must reference unique manifest-declared tags")
         release_tags.add(release["tag"])
         releases.append(release)
-    return packages, releases
+    prerequisites = [
+        {
+            "name": name,
+            "version": _string(cargo_packages[name].get("version"), f"{name} version"),
+            "manifest_path": _string(
+                cargo_packages[name].get("manifest_path"), f"{name} Cargo manifest"
+            ),
+        }
+        for name in sorted(prerequisite_names)
+    ]
+    return packages, releases, prerequisites
 
 
 def _revalidate_exact_checkout(
@@ -774,7 +787,22 @@ def run_release(
     manifest_digest = hashlib.sha256((root / manifest_path).read_bytes()).hexdigest()
     issue = effects.issue(repository, issue_number)
     _validate_issue(issue, repository, issue_number, head, manifest_digest)
-    packages, releases = validate_manifest(root, manifest, effects.cargo_metadata())
+    packages, releases, prerequisites = validate_manifest(
+        root, manifest, effects.cargo_metadata()
+    )
+
+    for prerequisite in prerequisites:
+        record = effects.registry_version(prerequisite["name"], prerequisite["version"])
+        if record is None:
+            raise ReleaseError(
+                f"release prerequisite is not registry-visible: "
+                f"{prerequisite['name']} {prerequisite['version']}"
+            )
+        _validate_registry_record(
+            record,
+            prerequisite["name"],
+            prerequisite["version"],
+        )
 
     registry_records: list[dict[str, Any] | None] = []
     local_tags: dict[str, str | None] = {}
@@ -829,6 +857,12 @@ def run_release(
         )
         for package in packages
     }
+    patches.update(
+        {
+            prerequisite["name"]: str(Path(prerequisite["manifest_path"]).parent)
+            for prerequisite in prerequisites
+        }
+    )
     checksums: list[str] = []
     for package in packages:
         checksums.append(

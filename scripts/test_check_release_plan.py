@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from check_release_plan import (
+    FOUNDATION_WAVE_1_CONSUMER_CHECKS,
     validate,
     validate_control_binding,
     validate_release_manifest,
@@ -163,7 +164,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             dependencies = {
                 dependency["name"]
                 for dependency in metadata[name]["dependencies"]
-                if dependency["kind"] != "dev" and dependency["name"] in versions
+                if dependency["kind"] != "dev" and dependency["name"] in metadata
             }
             packages.append(
                 {
@@ -171,7 +172,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
                     "version": versions[name],
                     "owner": "moritzbrantner/moenarch-foundation",
                     "manifest_path": ownership[name]["manifest_path"],
-                    "dependencies": [item for item in order if item in dependencies],
+                    "dependencies": sorted(dependencies),
                     "tag": f"{name}-v{versions[name]}",
                 }
             )
@@ -189,9 +190,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             "dependency_order": order,
             "expected_tags": [package["tag"] for package in packages],
             "required_checks": checks,
-            "required_consumer_checks": [
-                "bash scripts/check_foundation_wave_1_candidate_consumer.sh"
-            ],
+            "required_consumer_checks": list(FOUNDATION_WAVE_1_CONSUMER_CHECKS),
             "packages": packages,
             "github_releases": [],
         }
@@ -252,6 +251,11 @@ class CheckedReleaseManifestTests(unittest.TestCase):
         jobs["dependencies"] = []
         errors = self.errors(self.manifest)
         self.assertTrue(any("dependencies" in error for error in errors), errors)
+
+    def test_missing_consumer_or_package_list_gate_is_rejected(self) -> None:
+        self.manifest["required_consumer_checks"].pop()
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("consumer checks" in error for error in errors), errors)
 
     def test_generic_toml_fixture_uses_the_destination_publisher_schema(self) -> None:
         fixture = tomllib.loads((FIXTURES / "valid.toml").read_text(encoding="utf-8"))
