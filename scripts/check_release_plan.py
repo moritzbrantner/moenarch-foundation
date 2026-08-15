@@ -63,6 +63,13 @@ FOUNDATION_WAVE_1_CONSUMER_CHECKS = [
         for name, _version in FOUNDATION_WAVE_1
     ],
 ]
+FOUNDATION_WAVE_2 = [
+    ("moenarch-graph-analysis-core", "0.1.0"),
+    ("moenarch-math-statistics", "0.1.0"),
+    ("moenarch-dense-data", "0.1.0"),
+]
+FOUNDATION_WAVE_2_PATH = "releases/foundation-wave-2.toml"
+FOUNDATION_WAVE_2_VERSIONS = dict(FOUNDATION_WAVE_2)
 
 
 def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
@@ -163,7 +170,9 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
                 f"{name}: ownership source_version does not match the bootstrap plan"
             )
         authorized_workspace_versions = {source_version}
-        wave_version = FOUNDATION_WAVE_1_VERSIONS.get(name)
+        wave_version = (
+            FOUNDATION_WAVE_1_VERSIONS | FOUNDATION_WAVE_2_VERSIONS
+        ).get(name)
         if wave_version is not None:
             authorized_workspace_versions.add(wave_version)
         if actual_version not in authorized_workspace_versions:
@@ -250,6 +259,21 @@ def validate_release_manifest(
             errors.append(
                 "foundation wave 1 consumer checks do not match its release contract"
             )
+    elif relative_path == FOUNDATION_WAVE_2_PATH:
+        expected_order = [name for name, _ in FOUNDATION_WAVE_2]
+        if manifest.get("issue") != 13:
+            errors.append("foundation wave 2 must bind destination issue 13")
+        if manifest.get("dependency_order") != expected_order:
+            errors.append("foundation wave 2 package order does not match its release contract")
+        actual_versions = {
+            package.get("name"): package.get("version")
+            for package in manifest.get("packages", [])
+            if isinstance(package, dict)
+        }
+        if actual_versions != FOUNDATION_WAVE_2_VERSIONS:
+            errors.append("foundation wave 2 package versions do not match its release contract")
+        if manifest.get("required_consumer_checks") != []:
+            errors.append("foundation wave 2 must not require consumer checks")
     try:
         validate_manifest(root, manifest, metadata, ownership)
     except ReleaseError as error:

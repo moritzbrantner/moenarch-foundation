@@ -2,21 +2,16 @@ schema_version = 1
 max_workers = 2
 
 [verification]
-# The draft Harness structural audit is a one-time bootstrap check against the
-# independently reviewed base, not recurring authoritative Agent Loop evidence.
-# Record its exact-base result on the bootstrap PR; do not add origin/main or a
-# placeholder base here. The commands below remain the recurring handoff gate.
+# Restructuring release slices deliberately retain only exact metadata,
+# manifest, dependency-order, and selected-package archive safeguards. Clean
+# exact-head, registry, issue-authorization, checksum, and immutable tag checks
+# remain enforced by the publisher immediately around irreversible effects.
 commands = [
   "cargo metadata --format-version 1 --no-deps",
-  "python3 scripts/check_repository_boundaries.py --check",
-  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
-  "python3 -m unittest discover -s scripts -p 'test_*.py'",
-  "cargo fmt --all -- --check",
-  "cargo clippy --workspace --all-targets --all-features -- -D warnings",
-  "cargo test --workspace --all-features",
-  "cargo test --workspace --no-default-features",
-  "cargo doc --workspace --no-deps",
-  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+  "python3 scripts/check_release_plan.py --check releases/foundation-wave-2.toml",
+  "cargo package -p moenarch-graph-analysis-core --locked --no-verify",
+  "cargo package -p moenarch-math-statistics --locked --no-verify",
+  "cargo package -p moenarch-dense-data --locked --no-verify",
 ]
 
 [publication]

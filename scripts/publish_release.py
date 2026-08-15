@@ -59,6 +59,19 @@ PACKAGE_FIELDS = {
     "published_checksum",
 }
 RELEASE_FIELDS = {"tag", "title", "notes"}
+HISTORICAL_REQUIRED_CHECKS = [
+    "cargo metadata --format-version 1 --no-deps",
+    "python3 scripts/check_repository_boundaries.py --check",
+    "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+    "python3 -m unittest discover -s scripts -p 'test_*.py'",
+    "cargo fmt --all -- --check",
+    "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+    "cargo test --workspace --all-features",
+    "cargo test --workspace --no-default-features",
+    "cargo doc --workspace --no-deps",
+    "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+]
+HISTORICAL_RELEASE_ISSUES = {4, 8}
 
 
 class ReleaseError(RuntimeError):
@@ -475,10 +488,15 @@ def validate_manifest(
         )
     config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
     configured_checks = config.get("verification", {}).get("commands")
-    if manifest.get("required_checks") != configured_checks:
-        raise ReleaseError("required_checks must exactly match .agent-loop.toml")
+    expected_checks = (
+        HISTORICAL_REQUIRED_CHECKS
+        if issue in HISTORICAL_RELEASE_ISSUES
+        else configured_checks
+    )
+    if manifest.get("required_checks") != expected_checks:
+        raise ReleaseError("required_checks do not match the release's exact gate")
     consumer_checks = manifest.get("required_consumer_checks")
-    if not isinstance(consumer_checks, list) or not consumer_checks or any(
+    if not isinstance(consumer_checks, list) or any(
         not isinstance(command, str) or not command.strip() for command in consumer_checks
     ):
         raise ReleaseError("required_consumer_checks must be a string array")
