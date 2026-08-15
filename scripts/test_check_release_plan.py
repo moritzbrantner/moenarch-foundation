@@ -10,6 +10,7 @@ from pathlib import Path
 
 from check_release_plan import (
     FOUNDATION_WAVE_1_CONSUMER_CHECKS,
+    FOUNDATION_WAVE_1_VERSIONS,
     validate,
     validate_control_binding,
     validate_release_manifest,
@@ -108,6 +109,31 @@ class ReleasePlanTests(unittest.TestCase):
         ] = "9.9.9"
         errors = validate(plan, self.ownership, metadata)
         self.assertTrue(any("ownership source_version" in error for error in errors), errors)
+
+    def test_workspace_versions_allow_only_the_exact_foundation_wave(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        source_versions = {
+            package["current_package_name"]: package["source_version"]
+            for package in self.ownership["packages"]
+        }
+        for package in metadata["packages"]:
+            package["version"] = FOUNDATION_WAVE_1_VERSIONS.get(
+                package["name"], source_versions[package["name"]]
+            )
+
+        self.assertEqual(validate(self.plan, self.ownership, metadata), [])
+
+        out_of_wave = next(
+            package
+            for package in metadata["packages"]
+            if package["name"] not in FOUNDATION_WAVE_1_VERSIONS
+        )
+        out_of_wave["version"] = "9.9.9"
+        errors = validate(self.plan, self.ownership, metadata)
+        self.assertTrue(
+            any("authorized source or wave version" in error for error in errors),
+            errors,
+        )
 
     def test_wrong_owner_and_missing_package_are_rejected(self) -> None:
         plan = copy.deepcopy(self.plan)

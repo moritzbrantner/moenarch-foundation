@@ -153,6 +153,7 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
             errors.append(f"{name}: publication is not authorized")
         if package.get("new_version") != package.get("old_version"):
             errors.append(f"{name}: nonpublishing plan must retain version")
+        actual_version = metadata_packages.get(name, {}).get("version")
         source_version = record.get("source_version")
         if (
             package.get("old_version") != source_version
@@ -160,6 +161,15 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         ):
             errors.append(
                 f"{name}: ownership source_version does not match the bootstrap plan"
+            )
+        authorized_workspace_versions = {source_version}
+        wave_version = FOUNDATION_WAVE_1_VERSIONS.get(name)
+        if wave_version is not None:
+            authorized_workspace_versions.add(wave_version)
+        if actual_version not in authorized_workspace_versions:
+            errors.append(
+                f"{name}: workspace version is not an authorized source or wave version "
+                f"{actual_version!r}"
             )
         if package.get("expected_tag") is not None:
             errors.append(f"{name}: nonpublishing plan must not declare a tag")
