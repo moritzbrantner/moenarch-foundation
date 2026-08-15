@@ -70,9 +70,27 @@ notes = "Reviewed release notes."
 `dependency_order`, the `packages` array, and package dependencies must agree
 with Cargo metadata. `expected_tags` must exactly match package tags, and tags
 use `<package>-v<version>`. `github_releases` is optional; every declared
-release must refer to a unique declared tag. `required_checks` must exactly
-match `.agent-loop.toml`; consumer commands run again before publication.
-Unknown fields fail closed.
+release must refer to a unique declared tag. Active manifests bind the exact
+`.agent-loop.toml` gate. Completed historical manifests retain the gate that
+authorized them. `required_consumer_checks` may be empty when the destination
+release issue explicitly removes consumer verification. Declared consumer
+commands run again before publication. Unknown fields fail closed.
+
+## Restructuring-first wave 2
+
+Destination issue #13 authorizes preparation of only
+`moenarch-graph-analysis-core`, `moenarch-math-statistics`, and
+`moenarch-dense-data` at 0.1.0. Its deliberate verification gate is Cargo
+metadata, exact manifest/dependency/order validation, and locked package
+archives for those three crates. It does not run or claim workspace, unit,
+integration, consumer, Clippy, documentation, or all-package suites.
+
+The publisher still enforces a clean exact head, destination-local issue and
+manifest binding, registry-safe exact dependency requirements, registry
+absence or immutable checksum/non-yanked agreement, idempotent dependency-order
+resume, and tags fixed to `source_sha`. Preparation alone does not authorize an
+effect: while another release owns crates.io capacity, issue #13 must remain
+without `release:approved` and without exact control-head authorization.
 
 The source and manifest use two commits to avoid a self-referential commit
 hash: first commit the exact release source, then add only the release manifest

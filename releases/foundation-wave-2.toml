@@ -1,0 +1,71 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+issue = 13
+source_sha = "3b5a3947c15331cff986ae076fd75242beeab028"
+registry = "crates.io"
+dependency_order = [
+  "moenarch-graph-analysis-core",
+  "moenarch-math-statistics",
+  "moenarch-dense-data",
+]
+expected_tags = [
+  "moenarch-graph-analysis-core-v0.1.0",
+  "moenarch-math-statistics-v0.1.0",
+  "moenarch-dense-data-v0.1.0",
+]
+required_checks = [
+  "cargo metadata --format-version 1 --no-deps",
+  "python3 scripts/check_release_plan.py --check releases/foundation-wave-2.toml",
+  "python3 scripts/check_release_plan.py --package-release releases/foundation-wave-2.toml",
+]
+required_consumer_checks = []
+
+[[packages]]
+name = "moenarch-graph-analysis-core"
+version = "0.1.0"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/data/graph-analysis-core/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core"]
+tag = "moenarch-graph-analysis-core-v0.1.0"
+
+[[packages]]
+name = "moenarch-math-statistics"
+version = "0.1.0"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/math/math-statistics/Cargo.toml"
+dependencies = [
+  "moenarch-math-linear",
+  "moenarch-media-core",
+  "moenarch-numbers-core",
+  "moenarch-runtime-core",
+]
+tag = "moenarch-math-statistics-v0.1.0"
+
+[[packages]]
+name = "moenarch-dense-data"
+version = "0.1.0"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/data/dense-data/Cargo.toml"
+dependencies = [
+  "moenarch-math-linear",
+  "moenarch-math-statistics",
+  "moenarch-media-core",
+  "moenarch-numbers-core",
+  "moenarch-runtime-core",
+]
+tag = "moenarch-dense-data-v0.1.0"
+
+[[github_releases]]
+tag = "moenarch-graph-analysis-core-v0.1.0"
+title = "Release moenarch-graph-analysis-core 0.1.0"
+notes = "Initial release of the reusable graph and tree analysis primitives."
+
+[[github_releases]]
+tag = "moenarch-math-statistics-v0.1.0"
+title = "Release moenarch-math-statistics 0.1.0"
+notes = "Initial release of the reusable multivariate statistics primitives."
+
+[[github_releases]]
+tag = "moenarch-dense-data-v0.1.0"
+title = "Release moenarch-dense-data 0.1.0"
+notes = "Initial release of the reusable dense data, bucketing, and clustering primitives."

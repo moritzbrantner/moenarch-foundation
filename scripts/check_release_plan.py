@@ -63,6 +63,13 @@ FOUNDATION_WAVE_1_CONSUMER_CHECKS = [
         for name, _version in FOUNDATION_WAVE_1
     ],
 ]
+FOUNDATION_WAVE_2 = [
+    ("moenarch-graph-analysis-core", "0.1.0"),
+    ("moenarch-math-statistics", "0.1.0"),
+    ("moenarch-dense-data", "0.1.0"),
+]
+FOUNDATION_WAVE_2_PATH = "releases/foundation-wave-2.toml"
+FOUNDATION_WAVE_2_VERSIONS = dict(FOUNDATION_WAVE_2)
 
 
 def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
@@ -115,6 +122,51 @@ def package_all(plan: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     return failures
 
 
+def package_release(manifest: dict, metadata: dict, root: Path = ROOT) -> list[str]:
+    """Package only one manifest's selected crates with its candidate closure patched."""
+
+    packages = manifest.get("packages", [])
+    metadata_packages = {
+        package["name"]: package for package in metadata.get("packages", [])
+    }
+    patch_names = {package["name"] for package in packages}
+    patch_names.update(
+        dependency
+        for package in packages
+        for dependency in package.get("dependencies", [])
+    )
+    patch_lines = ["[patch.crates-io]"]
+    for name in sorted(patch_names):
+        crate = Path(metadata_packages[name]["manifest_path"]).parent.resolve()
+        patch_lines.append(f'"{name}" = {{ path = "{crate}" }}')
+    failures: list[str] = []
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+        config.write("\n".join(patch_lines) + "\n")
+        config.flush()
+        for package in packages:
+            name = package["name"]
+            completed = subprocess.run(
+                [
+                    "cargo",
+                    "package",
+                    "-p",
+                    name,
+                    "--locked",
+                    "--registry",
+                    "crates-io",
+                    "--config",
+                    config.name,
+                ],
+                cwd=root,
+                check=False,
+            )
+            if completed.returncode:
+                failures.append(name)
+            else:
+                print(f"PACKAGED {name}")
+    return failures
+
+
 def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> list[str]:
     errors: list[str] = []
     if plan.get("schema_version") != 1:
@@ -163,7 +215,9 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
                 f"{name}: ownership source_version does not match the bootstrap plan"
             )
         authorized_workspace_versions = {source_version}
-        wave_version = FOUNDATION_WAVE_1_VERSIONS.get(name)
+        wave_version = (
+            FOUNDATION_WAVE_1_VERSIONS | FOUNDATION_WAVE_2_VERSIONS
+        ).get(name)
         if wave_version is not None:
             authorized_workspace_versions.add(wave_version)
         if actual_version not in authorized_workspace_versions:
@@ -250,6 +304,21 @@ def validate_release_manifest(
             errors.append(
                 "foundation wave 1 consumer checks do not match its release contract"
             )
+    elif relative_path == FOUNDATION_WAVE_2_PATH:
+        expected_order = [name for name, _ in FOUNDATION_WAVE_2]
+        if manifest.get("issue") != 13:
+            errors.append("foundation wave 2 must bind destination issue 13")
+        if manifest.get("dependency_order") != expected_order:
+            errors.append("foundation wave 2 package order does not match its release contract")
+        actual_versions = {
+            package.get("name"): package.get("version")
+            for package in manifest.get("packages", [])
+            if isinstance(package, dict)
+        }
+        if actual_versions != FOUNDATION_WAVE_2_VERSIONS:
+            errors.append("foundation wave 2 package versions do not match its release contract")
+        if manifest.get("required_consumer_checks") != []:
+            errors.append("foundation wave 2 must not require consumer checks")
     try:
         validate_manifest(root, manifest, metadata, ownership)
     except ReleaseError as error:
@@ -383,6 +452,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--package-all", action="store_true")
+    parser.add_argument("--package-release", action="store_true")
     parser.add_argument("plan", nargs="?", type=Path, default=RELEASE_PLAN_PATH)
     args = parser.parse_args()
     ownership = load_json(OWNERSHIP_PATH)
@@ -406,6 +476,9 @@ def main() -> int:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
+    if args.package_all and args.package_release:
+        print("error: choose only one packaging mode", file=sys.stderr)
+        return 1
     if args.package_all:
         if args.plan.suffix != ".json":
             print("error: --package-all requires the bootstrap JSON inventory", file=sys.stderr)
@@ -415,6 +488,18 @@ def main() -> int:
             print("error: packaging failed: " + ", ".join(failures), file=sys.stderr)
             return 1
         print("package verification passes: 60 packages; tracked manifest hashes unchanged")
+    elif args.package_release:
+        if args.plan.suffix != ".toml":
+            print("error: --package-release requires a TOML manifest", file=sys.stderr)
+            return 1
+        failures = package_release(plan, metadata)
+        if failures:
+            print(
+                "error: release packaging failed: " + ", ".join(failures),
+                file=sys.stderr,
+            )
+            return 1
+        print(f"release package verification passes: {len(plan['packages'])} packages")
     elif args.plan.suffix == ".toml":
         print(
             f"checked release manifest passes: {len(plan['packages'])} packages; "

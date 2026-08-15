@@ -18,9 +18,13 @@ For a future authorized release:
    publication, preserve both commits and authorize the exact post-merge head;
    do not squash or rebase away the `source_sha` ancestry and manifest-only diff.
 4. Require a clean exact commit and run the ordered `.agent-loop.toml`
-   verification. Package every public crate and prove no path escape, local
-   patch, or moving-branch Git dependency survives packaging.
+   verification. For restructuring-first wave 2, this is Cargo metadata, exact
+   manifest/dependency/order validation, and `cargo package --locked` for only
+   its three selected crates. The structural package gate and publisher use
+   reviewed local patches for the exact candidate closure before publication;
+   the publisher never passes those patches to `cargo publish`.
 5. Run every manifest-declared candidate consumer check before publication.
+   An explicitly empty list means no consumer result is required or claimed.
 6. Let only the receipt-gated Agent Loop master invoke
    `python3 scripts/agent_loop_local_verification.py publish`; do not call Cargo
    publication or the repository hook by hand.
@@ -33,4 +37,5 @@ For a future authorized release:
 8. On failure, preserve published versions and resume from the first absent
    registry version. Never overwrite, delete, republish, or automatically yank.
 9. Run isolated registry-only consumer checks and retain `rust-packages` source
-   until every destination, compatibility, rollback, and consumer gate passes.
+   until every separately authorized destination, compatibility, rollback, and
+   consumer gate passes. Wave 2 publication does not itself claim those checks.
