@@ -3,14 +3,20 @@
     {
       "current_package_name": "foundation-a",
       "ecosystem": "cargo",
+      "automatic_publish_eligible": true,
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "manifest_path": "foundation-a/Cargo.toml",
+      "publication_class": "crates.io",
       "source_version": "0.1.0",
       "target_repository": "moenarch-foundation"
     },
     {
       "current_package_name": "foundation-b",
       "ecosystem": "cargo",
+      "automatic_publish_eligible": true,
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "manifest_path": "foundation-b/Cargo.toml",
+      "publication_class": "crates.io",
       "source_version": "0.1.0",
       "target_repository": "moenarch-foundation"
     }

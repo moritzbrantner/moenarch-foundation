@@ -199,7 +199,9 @@ def package_record(
     manifest_path = f"crates/{name}/Cargo.toml"
     path = root / manifest_path
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("[package]\nname = \"fixture\"\nversion = \"0.0.0\"\n")
+    path.write_text(
+        f"[package]\nname = {json.dumps(name)}\nversion = {json.dumps(version)}\n"
+    )
     manifest_package = {
         "name": name,
         "version": version,
@@ -214,7 +216,14 @@ def package_record(
         "manifest_path": str(path.resolve()),
         "publish": None,
         "dependencies": [
-            {"name": dependency, "kind": None} for dependency in dependencies
+            {
+                "name": dependency,
+                "kind": None,
+                "req": f"={version}",
+                "path": str((root / f"crates/{dependency}").resolve()),
+                "source": None,
+            }
+            for dependency in dependencies
         ],
     }
     ownership = {
@@ -460,6 +469,83 @@ class PublishReleaseTests(unittest.TestCase):
                 with self.assertRaisesRegex(publish_release.ReleaseError, expected):
                     publish_release.run_release(root, ENVIRONMENT, effects)
                 self.assertFalse(any(call.startswith("publish:") for call in effects.calls))
+
+    def test_in_wave_dependencies_require_exact_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(
+                root,
+                [
+                    ("foundation-a", "1.0.0", ()),
+                    ("foundation-b", "1.0.0", ("foundation-a",)),
+                ],
+            )
+            foundation_b = next(
+                package
+                for package in effects.metadata["packages"]
+                if package["name"] == "foundation-b"
+            )
+            foundation_b["dependencies"][0]["req"] = "^1.0.0"
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "exact version requirement"
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+            self.assertFalse(any(call.startswith("publish:") for call in effects.calls))
+
+    def test_git_dependency_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(
+                root,
+                [
+                    ("foundation-a", "1.0.0", ()),
+                    ("foundation-b", "1.0.0", ("foundation-a",)),
+                ],
+            )
+            foundation_b = next(
+                package
+                for package in effects.metadata["packages"]
+                if package["name"] == "foundation-b"
+            )
+            dependency = foundation_b["dependencies"][0]
+            dependency["path"] = None
+            dependency["source"] = "git+https://example.invalid/repository?branch=main"
+
+            with self.assertRaisesRegex(publish_release.ReleaseError, "Git dependency"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_escaping_path_dependency_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(
+                root,
+                [
+                    ("foundation-a", "1.0.0", ()),
+                    ("foundation-b", "1.0.0", ("foundation-a",)),
+                ],
+            )
+            foundation_b = next(
+                package
+                for package in effects.metadata["packages"]
+                if package["name"] == "foundation-b"
+            )
+            foundation_b["dependencies"][0]["path"] = str(root.parent / "foundation-a")
+
+            with self.assertRaisesRegex(publish_release.ReleaseError, "escapes"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+    def test_package_version_must_be_explicit_in_its_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            (root / "crates/foundation-a/Cargo.toml").write_text(
+                "[package]\nname = \"foundation-a\"\nversion.workspace = true\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(publish_release.ReleaseError, "explicit version"):
+                publish_release.run_release(root, ENVIRONMENT, effects)
 
     def test_registry_conflict_and_non_prefix_partial_state_are_refused(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
