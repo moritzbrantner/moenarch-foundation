@@ -152,6 +152,8 @@ def package_release(manifest: dict, metadata: dict, root: Path = ROOT) -> list[s
                     "-p",
                     name,
                     "--locked",
+                    "--registry",
+                    "crates-io",
                     "--config",
                     config.name,
                 ],
