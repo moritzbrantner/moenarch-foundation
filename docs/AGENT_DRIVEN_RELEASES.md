@@ -92,6 +92,24 @@ resume, and tags fixed to `source_sha`. Preparation alone does not authorize an
 effect: while another release owns crates.io capacity, issue #13 must remain
 without `release:approved` and without exact control-head authorization.
 
+## Audio contracts release preparation
+
+Destination issue #17 prepares only `moenarch-audio-contracts` 0.1.0. Its
+deliberately reduced gate is Cargo metadata, exact manifest/dependency
+validation, and one locked `crates-io` package archive for that crate. It does
+not run or claim workspace, unit, integration, consumer, Clippy,
+documentation, build, or all-package evidence. The publisher retains the
+clean-head, destination-local authority, exact dependency, immutable registry,
+idempotent resume, checksum, and source-tag safeguards described below.
+
+This preparation is ordered after foundation wave 2 issue #13. The audio
+contracts PR may be reviewed while wave 2 is pending, but it must not merge or
+publish until issue #13 has published. Because main's active Agent Loop and
+draft Harness configuration currently serves wave 2, rebase the audio
+contracts source/control pair after wave 2 if its merge changes either commit.
+Keep issue #17 unapproved and without control-head authorization until that
+ordering requirement and the shared crates.io-capacity constraint are clear.
+
 The source and manifest use two commits to avoid a self-referential commit
 hash: first commit the exact release source, then add only the release manifest
 in a second commit. `source_sha` names the first commit. Publication runs from

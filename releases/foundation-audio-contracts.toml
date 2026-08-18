@@ -1,0 +1,26 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+issue = 17
+source_sha = "685ccac79f67064a0d79e7d67317a02e51bdb260"
+registry = "crates.io"
+dependency_order = ["moenarch-audio-contracts"]
+expected_tags = ["moenarch-audio-contracts-v0.1.0"]
+required_checks = [
+  "cargo metadata --format-version 1 --no-deps",
+  "python3 scripts/check_release_plan.py --check releases/foundation-audio-contracts.toml",
+  "python3 scripts/check_release_plan.py --package-release releases/foundation-audio-contracts.toml",
+]
+required_consumer_checks = []
+
+[[packages]]
+name = "moenarch-audio-contracts"
+version = "0.1.0"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/audio/audio-contracts/Cargo.toml"
+dependencies = ["moenarch-media-core"]
+tag = "moenarch-audio-contracts-v0.1.0"
+
+[[github_releases]]
+tag = "moenarch-audio-contracts-v0.1.0"
+title = "Release moenarch-audio-contracts 0.1.0"
+notes = "Initial release of cycle-free audio frame, analyzer, and pipeline contracts."

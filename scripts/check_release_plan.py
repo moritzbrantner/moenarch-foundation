@@ -70,6 +70,9 @@ FOUNDATION_WAVE_2 = [
 ]
 FOUNDATION_WAVE_2_PATH = "releases/foundation-wave-2.toml"
 FOUNDATION_WAVE_2_VERSIONS = dict(FOUNDATION_WAVE_2)
+FOUNDATION_AUDIO_CONTRACTS = [("moenarch-audio-contracts", "0.1.0")]
+FOUNDATION_AUDIO_CONTRACTS_PATH = "releases/foundation-audio-contracts.toml"
+FOUNDATION_AUDIO_CONTRACTS_VERSIONS = dict(FOUNDATION_AUDIO_CONTRACTS)
 
 
 def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
@@ -319,6 +322,25 @@ def validate_release_manifest(
             errors.append("foundation wave 2 package versions do not match its release contract")
         if manifest.get("required_consumer_checks") != []:
             errors.append("foundation wave 2 must not require consumer checks")
+    elif relative_path == FOUNDATION_AUDIO_CONTRACTS_PATH:
+        expected_order = [name for name, _ in FOUNDATION_AUDIO_CONTRACTS]
+        if manifest.get("issue") != 17:
+            errors.append("foundation audio-contracts must bind destination issue 17")
+        if manifest.get("dependency_order") != expected_order:
+            errors.append(
+                "foundation audio-contracts package order does not match its release contract"
+            )
+        actual_versions = {
+            package.get("name"): package.get("version")
+            for package in manifest.get("packages", [])
+            if isinstance(package, dict)
+        }
+        if actual_versions != FOUNDATION_AUDIO_CONTRACTS_VERSIONS:
+            errors.append(
+                "foundation audio-contracts package version does not match its release contract"
+            )
+        if manifest.get("required_consumer_checks") != []:
+            errors.append("foundation audio-contracts must not require consumer checks")
     try:
         validate_manifest(root, manifest, metadata, ownership)
     except ReleaseError as error:
