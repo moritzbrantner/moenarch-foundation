@@ -9,6 +9,12 @@ GitHub Issues are the durable agent queue; see
 [planning workflow](docs/agents/planning-workflow.md). Repository-local Agent
 Loop policy lives in `.agent-loop.toml`.
 
+## Source development
+
+Normal implementation work may be validated by downstream repositories against an exact foundation source revision before a crates.io release exists. Consumers keep registry coordinates in their manifests and use the managed source-development configuration provided by `coding-tooling`; publishing remains a separate release task.
+
+See [docs/SOURCE_DEVELOPMENT.md](docs/SOURCE_DEVELOPMENT.md).
+
 ## Local verification
 
 ```bash
