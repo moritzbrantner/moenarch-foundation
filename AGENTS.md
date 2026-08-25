@@ -10,9 +10,13 @@ canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
 ## Boundaries
 
 - Keep foundation independent of every capability repository.
-- Do not add path dependencies that escape this checkout or Git dependencies on moving branches.
+- Ordinary feature work is source-first. Do not publish crates, bump package versions, create tags, or start a release train merely to unblock a downstream consumer.
+- Downstream consumers may validate exact foundation source revisions through their committed source-development declarations before registry releases exist.
+- Do not add path dependencies that escape this checkout or Git dependencies on moving branches into committed package manifests.
 - Keep CLI/server/WASM adapters with their wrapped libraries until a separate usage and semver decision authorizes removal.
 - Do not add Bun/npm surfaces here.
+- Keep package versions stable during source-development work when compatibility permits; a dedicated release change owns version bumps and registry publication.
+- Registry-only consumer verification is release evidence; it is not required before exact source-mode implementation evidence is useful.
 - Do not publish, tag, release, or remove source from `rust-packages` without an exact release issue and validated publishing manifest.
 - Release authorization must be an open issue in this repository carrying
   `release:approved` and bound by one checked manifest to the exact source head

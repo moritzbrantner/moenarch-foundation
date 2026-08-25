@@ -1,5 +1,9 @@
 # Agent-driven releases
 
+This guide applies only to explicitly assigned release or distribution work. Ordinary implementation is source-first: a missing registry version is not an implementation blocker when a consumer can validate an exact foundation source revision. Do not invoke this procedure merely to unblock feature work or turn a consumer change into a publication wave.
+
+Version bumps, registry publication, tags, and registry-only consumer proof begin in a dedicated release task after the source graph has been validated. Source-mode evidence does not weaken any release authorization, packaging, provenance, or registry-only gate below.
+
 Issue #110 and the release-control setup issue authorize no publication.
 `docs/repository-split/release-plan.json` remains an exact non-publishing
 bootstrap inventory: every package retains its source version, `publish` is
