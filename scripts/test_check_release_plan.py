@@ -203,10 +203,11 @@ class CheckedReleaseManifestTests(unittest.TestCase):
                 }
             )
         checks = tomllib.loads(
-            (OWNERSHIP_PATH.parents[2] / ".agent-loop.toml").read_text(
-                encoding="utf-8"
-            )
-        )["verification"]["commands"]
+            (
+                OWNERSHIP_PATH.parents[2]
+                / "releases/foundation-wave-1.toml"
+            ).read_text(encoding="utf-8")
+        )["required_checks"]
         return {
             "schema_version": 1,
             "repository": "moritzbrantner/moenarch-foundation",
