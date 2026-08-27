@@ -207,12 +207,11 @@ pub struct TimedTextContract {
     pub language: Option<String>,
     #[serde(default)]
     pub segments: Vec<TimedTextSegmentContract>,
-    /// Backward-compatible simple source identifier or URI.
+    /// Simple source identifier or URI. Rich source metadata is represented by
+    /// `MediaSourceRef` separately so this DTO stays compatible with existing
+    /// transcript producers.
     #[serde(default)]
     pub source: Option<String>,
-    /// Optional structured source metadata for consumers that need more than a URI.
-    #[serde(default)]
-    pub source_ref: Option<MediaSourceRef>,
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
 }
@@ -223,6 +222,30 @@ impl TimedTextContract {
             segments,
             ..Self::default()
         }
+    }
+
+    pub fn from_segments(
+        source: Option<String>,
+        language: Option<String>,
+        segments: Vec<TimedTextSegmentContract>,
+    ) -> Result<Self> {
+        let segments = segments
+            .into_iter()
+            .map(|mut segment| {
+                if segment.language.is_none() {
+                    segment.language = language.clone();
+                }
+                segment
+            })
+            .collect();
+        Self {
+            text: None,
+            language,
+            segments,
+            source,
+            attributes: BTreeMap::new(),
+        }
+        .normalized()
     }
 
     pub fn validate(&self) -> Result<()> {
