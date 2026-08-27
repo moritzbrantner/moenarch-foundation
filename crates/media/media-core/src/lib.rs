@@ -1,5 +1,11 @@
 #![doc = include_str!("../README.md")]
 
+pub mod timed_text;
+pub use timed_text::{
+    MediaSourceRef, MediaTimeRange, TimedTextCharContract, TimedTextContract,
+    TimedTextSegmentContract, TimedTextWordContract,
+};
+
 /// A compact identifier for the pixel layout of a video frame.
 ///
 /// This is neutral stream-format metadata. Pixel buffers and video frames
@@ -53,7 +59,7 @@ pub enum DetectError {
     InvalidAudioFormat {
         /// Sample rate in hertz.
         sample_rate: u32,
-        /// Number of channels.
+        /// Number of audio channels.
         channels: u16,
     },
     /// A media source failed.
