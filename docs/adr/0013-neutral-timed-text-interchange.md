@@ -1,0 +1,60 @@
+# ADR 0013: Neutral Timed-Text Interchange
+
+## Status
+
+Accepted.
+
+This ADR refines the narrow NLP-contract exception in ADR 0012. It does not move NLP parsing, subtitle formats, transcript enrichment, or model behavior into foundation.
+
+## Context
+
+Audio transcription and visual/media consumers currently exchange transcript-shaped data through `nlp-stack`. That makes domain implementations depend sideways on NLP even when they only need text, timing, speaker labels, confidence, and source identity.
+
+The result is unnecessary coordinated source development: audio and visual capability repositories must track NLP revisions to exchange media-timeline data.
+
+## Decision
+
+`moenarch-media-core` owns a small domain-neutral interchange surface:
+
+- `MediaSourceRef` for source identity and URI metadata;
+- `MediaTimeRange` for finite start/end seconds;
+- `TimedTextContract` and segment/word/character DTOs for text located on a media timeline.
+
+These types may carry language tags, speaker labels, confidence values, finality, and opaque string attributes because those are producer/consumer interchange facts. They do not define linguistic interpretation.
+
+`nlp-stack` continues to own:
+
+- transcript document semantics beyond the neutral interchange DTO;
+- text-document conversion and annotation;
+- SRT/WebVTT/Whisper/WhisperX parsing and formatting;
+- transcript heuristics and linguistic analysis;
+- text model runtimes and NLP-specific validation/enrichment.
+
+`audio-analysis` and other media producers should emit the neutral foundation contract at their public domain boundary. NLP consumers may convert that contract into their richer transcript document when NLP behavior is selected.
+
+The intended graph becomes:
+
+```text
+                  moenarch-foundation
+                 /        |          \
+                /         |           \
+       audio-analysis  nlp-stack  visual-analysis
+                \         |           /
+                 \        |          /
+                  application/adapters
+```
+
+A dedicated cross-domain adapter may depend on both domain repositories when it adds real behavior. Foundation must never depend upward on those adapters or capability repositories.
+
+## Compatibility
+
+This is additive source development in the existing `moenarch-media-core` crate. It does not authorize a version bump or publication. Existing NLP transcript contracts remain available while consumers migrate.
+
+Source-mode consumers may validate the new surface against an exact foundation revision. Registry-only release proof remains a separate release task.
+
+## Consequences
+
+- Audio and visual repositories no longer need NLP solely for transcript-shaped interchange.
+- NLP retains ownership of actual text/transcript processing behavior.
+- Applications can compose audio, visual, and NLP independently.
+- The neutral contract must remain intentionally small; provider-specific fields belong in opaque attributes or in the owning domain, not as new foundation behavior.
