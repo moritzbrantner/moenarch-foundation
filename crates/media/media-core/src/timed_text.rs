@@ -207,8 +207,12 @@ pub struct TimedTextContract {
     pub language: Option<String>,
     #[serde(default)]
     pub segments: Vec<TimedTextSegmentContract>,
+    /// Backward-compatible simple source identifier or URI.
     #[serde(default)]
-    pub source: Option<MediaSourceRef>,
+    pub source: Option<String>,
+    /// Optional structured source metadata for consumers that need more than a URI.
+    #[serde(default)]
+    pub source_ref: Option<MediaSourceRef>,
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
 }
@@ -268,6 +272,7 @@ impl TimedTextContract {
     pub fn normalized(mut self) -> Result<Self> {
         self.text = normalize_optional_string(self.text);
         self.language = normalize_optional_string(self.language);
+        self.source = normalize_optional_string(self.source);
         self.segments = self
             .segments
             .into_iter()
@@ -351,23 +356,28 @@ mod tests {
 
     #[test]
     fn timed_text_normalizes_without_adding_domain_semantics() {
-        let contract = TimedTextContract::new(vec![TimedTextSegmentContract {
-            index: 0,
-            start_seconds: Some(0.0),
-            end_seconds: Some(1.0),
-            text: " hello ".to_string(),
-            language: Some(" en ".to_string()),
-            speaker: Some(" speaker-a ".to_string()),
-            confidence: Some(1.2),
-            is_final: true,
-            words: Vec::new(),
-            chars: Vec::new(),
-            attributes: BTreeMap::new(),
-        }])
+        let contract = TimedTextContract {
+            source: Some(" clip.wav ".to_string()),
+            segments: vec![TimedTextSegmentContract {
+                index: 0,
+                start_seconds: Some(0.0),
+                end_seconds: Some(1.0),
+                text: " hello ".to_string(),
+                language: Some(" en ".to_string()),
+                speaker: Some(" speaker-a ".to_string()),
+                confidence: Some(1.2),
+                is_final: true,
+                words: Vec::new(),
+                chars: Vec::new(),
+                attributes: BTreeMap::new(),
+            }],
+            ..TimedTextContract::default()
+        }
         .normalized()
         .unwrap();
 
         assert_eq!(contract.text.as_deref(), Some("hello"));
+        assert_eq!(contract.source.as_deref(), Some("clip.wav"));
         assert_eq!(contract.segments[0].language.as_deref(), Some("en"));
         assert_eq!(contract.segments[0].speaker.as_deref(), Some("speaker-a"));
         assert_eq!(contract.segments[0].confidence, Some(1.0));
