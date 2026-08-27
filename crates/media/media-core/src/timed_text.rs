@@ -312,6 +312,26 @@ impl TimedTextContract {
     }
 }
 
+// Compatibility names let capability repositories cut the package dependency
+// over to foundation without a simultaneous large source rename. These aliases
+// do not add parsing, formatting, or NLP behavior to foundation.
+pub type TranscriptCharContract = TimedTextCharContract;
+pub type TranscriptWordContract = TimedTextWordContract;
+pub type TranscriptSegmentContract = TimedTextSegmentContract;
+pub type TranscriptionContract = TimedTextContract;
+
+pub fn normalize_transcription_contract(contract: TranscriptionContract) -> Result<TranscriptionContract> {
+    contract.normalized()
+}
+
+pub fn normalize_imported_segments(
+    source: Option<String>,
+    language: Option<String>,
+    segments: Vec<TranscriptSegmentContract>,
+) -> Result<TranscriptionContract> {
+    TimedTextContract::from_segments(source, language, segments)
+}
+
 fn validate_seconds_range(start: Option<f64>, end: Option<f64>) -> Result<()> {
     if start.is_some_and(|value| !value.is_finite()) || end.is_some_and(|value| !value.is_finite())
     {
@@ -404,6 +424,19 @@ mod tests {
         assert_eq!(contract.segments[0].language.as_deref(), Some("en"));
         assert_eq!(contract.segments[0].speaker.as_deref(), Some("speaker-a"));
         assert_eq!(contract.segments[0].confidence, Some(1.0));
+    }
+
+    #[test]
+    fn compatibility_names_preserve_the_neutral_shape() {
+        let contract = normalize_imported_segments(
+            Some("clip.wav".to_string()),
+            Some("en".to_string()),
+            vec![TranscriptSegmentContract::new(0, " hello ")],
+        )
+        .unwrap();
+        assert_eq!(contract.text.as_deref(), Some("hello"));
+        assert_eq!(contract.source.as_deref(), Some("clip.wav"));
+        assert_eq!(contract.segments[0].language.as_deref(), Some("en"));
     }
 
     #[test]
