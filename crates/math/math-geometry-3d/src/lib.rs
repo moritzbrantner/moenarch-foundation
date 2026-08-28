@@ -363,6 +363,46 @@ impl UnitQuaterniond {
             EulerOrder::Zyx => qx.compose(qy)?.compose(qz),
         }
     }
+    /// Builds a rotation from a validated row-major rotation matrix.
+    pub fn from_matrix3(matrix: Matrix3d) -> Result<Self> {
+        matrix.validate_rotation()?;
+        let rows = matrix.rows;
+        let trace = rows[0][0] + rows[1][1] + rows[2][2];
+        let quaternion = if trace > 0.0 {
+            let scale = (trace + 1.0).sqrt() * 2.0;
+            Quaterniond::new(
+                (rows[2][1] - rows[1][2]) / scale,
+                (rows[0][2] - rows[2][0]) / scale,
+                (rows[1][0] - rows[0][1]) / scale,
+                0.25 * scale,
+            )?
+        } else if rows[0][0] > rows[1][1] && rows[0][0] > rows[2][2] {
+            let scale = (1.0 + rows[0][0] - rows[1][1] - rows[2][2]).sqrt() * 2.0;
+            Quaterniond::new(
+                0.25 * scale,
+                (rows[0][1] + rows[1][0]) / scale,
+                (rows[0][2] + rows[2][0]) / scale,
+                (rows[2][1] - rows[1][2]) / scale,
+            )?
+        } else if rows[1][1] > rows[2][2] {
+            let scale = (1.0 + rows[1][1] - rows[0][0] - rows[2][2]).sqrt() * 2.0;
+            Quaterniond::new(
+                (rows[0][1] + rows[1][0]) / scale,
+                0.25 * scale,
+                (rows[1][2] + rows[2][1]) / scale,
+                (rows[0][2] - rows[2][0]) / scale,
+            )?
+        } else {
+            let scale = (1.0 + rows[2][2] - rows[0][0] - rows[1][1]).sqrt() * 2.0;
+            Quaterniond::new(
+                (rows[0][2] + rows[2][0]) / scale,
+                (rows[1][2] + rows[2][1]) / scale,
+                0.25 * scale,
+                (rows[1][0] - rows[0][1]) / scale,
+            )?
+        };
+        quaternion.normalized()
+    }
     /// Rotation composition: the returned rotation applies `rhs` first, then `self`.
     pub fn compose(self, rhs: Self) -> Result<Self> {
         Quaterniond::new(
@@ -554,6 +594,10 @@ impl UnitQuaternion {
     pub fn from_euler(order: EulerOrder, x: f32, y: f32, z: f32) -> Result<Self> {
         UnitQuaterniond::from_euler(order, x as f64, y as f64, z as f64)?.to_f32_checked()
     }
+    /// Builds a rotation from a validated row-major rotation matrix.
+    pub fn from_matrix3(matrix: Matrix3) -> Result<Self> {
+        UnitQuaterniond::from_matrix3(matrix.to_f64())?.to_f32_checked()
+    }
     /// Rotation composition: the returned rotation applies `rhs` first, then `self`.
     pub fn compose(self, rhs: Self) -> Result<Self> {
         self.to_f64().compose(rhs.to_f64())?.to_f32_checked()
@@ -624,6 +668,26 @@ impl Matrix3d {
     /// Rows in row-major serialization order.
     pub const fn rows(self) -> [[f64; 3]; 3] {
         self.rows
+    }
+    /// Validates that this matrix is a proper orthonormal rotation matrix.
+    pub fn validate_rotation(self) -> Result<()> {
+        const TOLERANCE: f64 = 1.0e-10;
+        let x = Vector3d::new(self.rows[0][0], self.rows[1][0], self.rows[2][0])?;
+        let y = Vector3d::new(self.rows[0][1], self.rows[1][1], self.rows[2][1])?;
+        let z = Vector3d::new(self.rows[0][2], self.rows[1][2], self.rows[2][2])?;
+        for axis in [x, y, z] {
+            if (axis.magnitude()? - 1.0).abs() > TOLERANCE {
+                return Err(Geometry3dError::Degenerate("rotation matrix axis"));
+            }
+        }
+        if x.dot(y)?.abs() > TOLERANCE
+            || x.dot(z)?.abs() > TOLERANCE
+            || y.dot(z)?.abs() > TOLERANCE
+            || (self.determinant()? - 1.0).abs() > TOLERANCE
+        {
+            return Err(Geometry3dError::Degenerate("rotation matrix"));
+        }
+        Ok(())
     }
     /// Multiplies a column vector.
     pub fn apply_vector(self, vector: Vector3d) -> Result<Vector3d> {
@@ -727,6 +791,10 @@ impl Matrix3 {
     /// Rows in row-major serialization order.
     pub const fn rows(self) -> [[f32; 3]; 3] {
         self.rows
+    }
+    /// Validates that this matrix is a proper orthonormal rotation matrix.
+    pub fn validate_rotation(self) -> Result<()> {
+        self.to_f64().validate_rotation()
     }
     /// Converts to f64 without loss.
     pub fn to_f64(self) -> Matrix3d {

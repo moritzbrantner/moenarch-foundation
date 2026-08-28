@@ -38,6 +38,16 @@ The `nalgebra-adapters` feature exposes only edge conversion methods. The
 crate’s own types remain the public contract, so consumers can use nalgebra
 without making it a foundation-wide backend choice.
 
+## Verification tolerances
+
+The law suite uses deterministic generated cases. f64 rotation, matrix, and
+transform identities use an absolute-or-relative tolerance of `1e-10`; f32
+canaries use `2e-5` to account for the deliberate narrow representation.
+Matrix import accepts a proper f64 rotation matrix only when each axis norm,
+axis dot product, and determinant differ from the ideal by no more than
+`1e-10`. These are verification and input-validity contracts, not a hidden
+global tolerance for callers' application algorithms.
+
 ## Compatibility and release boundary
 
 The source remains in `rust-packages`; F4 creates this owner without deleting
