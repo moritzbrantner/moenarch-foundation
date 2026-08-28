@@ -1,8 +1,13 @@
 #![doc = include_str!("../README.md")]
 
+pub mod numerical;
 pub mod surface;
 use media_core::{DetectError, Result};
 use serde::{Deserialize, Serialize};
+
+pub use numerical::{
+    checked_f64_to_f32, is_finite_f32_slice, is_finite_f64_slice, ApproxTolerance,
+};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 /// Summary statistics for a stream or slice of scalar values.

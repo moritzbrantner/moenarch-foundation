@@ -25,6 +25,7 @@ nalgebra-backend = ["dep:nalgebra"]
 faer = { workspace = true, optional = true }
 media-core.workspace = true
 nalgebra = { workspace = true, optional = true }
+numbers-core.workspace = true
 runtime-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true

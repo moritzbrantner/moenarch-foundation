@@ -8,8 +8,8 @@ it does not define a production tolerance policy or alter public APIs.
 `crates/test-support/numerical.rs` is the shared source module for numerical
 integration tests. It provides finite and non-finite scalar generators, small
 vector and rectangular-matrix generators, singular and ill-conditioned matrix
-generators, deterministic Proptest configuration, and explicit
-absolute/relative comparison diagnostics.
+generators, deterministic Proptest configuration, and diagnostics over the
+production `numbers_core::ApproxTolerance` contract.
 
 It is intentionally not a Cargo package. The repository's ownership audit and
 boundary check require the exact 60-package extraction inventory, so callers
@@ -24,9 +24,9 @@ the seed only deliberately when extending coverage; do not hide a regression by
 rotating it.
 
 Approximate comparisons always name both an absolute and a relative tolerance.
-They pass when either criterion is satisfied and print both errors, both limits,
-and the offending matrix coordinate when applicable. These helpers do not
-choose a tolerance for production operations.
+They pass when either criterion is satisfied and print both limits and the
+offending matrix coordinate when applicable. These helpers do not choose a
+tolerance for production operations.
 
 ## Tiers
 

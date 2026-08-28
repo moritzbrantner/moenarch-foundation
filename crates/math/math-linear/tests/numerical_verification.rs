@@ -8,10 +8,9 @@ use numerical::{
 };
 use proptest::prelude::*;
 
-const STRICT: ApproxTolerance = ApproxTolerance {
-    absolute: 1.0e-12,
-    relative: 1.0e-12,
-};
+fn strict_tolerance() -> ApproxTolerance {
+    ApproxTolerance::new(1.0e-12, 1.0e-12).unwrap()
+}
 
 proptest! {
     #![proptest_config(deterministic_config())]
@@ -50,7 +49,7 @@ proptest! {
             &expected,
             left.rows,
             right.cols,
-            STRICT,
+            strict_tolerance(),
         );
     }
 
@@ -98,14 +97,14 @@ proptest! {
             &expected,
             left.rows,
             right.cols,
-            STRICT,
+            strict_tolerance(),
         );
     }
 }
 
 #[test]
 fn reference_comparison_reports_absolute_and_relative_error() {
-    assert_approx_eq_f64(1.0, 1.0 + 1.0e-13, STRICT);
+    assert_approx_eq_f64(1.0, 1.0 + 1.0e-13, strict_tolerance());
 }
 
 fn reference_matmul(

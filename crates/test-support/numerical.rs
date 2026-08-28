@@ -7,6 +7,7 @@
 
 #![allow(dead_code)]
 
+pub use numbers_core::ApproxTolerance;
 use proptest::prelude::*;
 use proptest::test_runner::{Config as ProptestConfig, RngSeed};
 
@@ -23,37 +24,12 @@ pub fn deterministic_config() -> ProptestConfig {
     config
 }
 
-/// Explicit absolute and relative error limits for a single assertion.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ApproxTolerance {
-    /// Maximum permitted absolute error.
-    pub absolute: f64,
-    /// Maximum permitted relative error, scaled by the larger magnitude.
-    pub relative: f64,
-}
-
-impl ApproxTolerance {
-    /// Creates a tolerance after rejecting invalid limits in test code.
-    pub fn new(absolute: f64, relative: f64) -> Self {
-        assert!(absolute.is_finite() && absolute >= 0.0);
-        assert!(relative.is_finite() && relative >= 0.0);
-        Self { absolute, relative }
-    }
-}
-
 /// Panics with a numerical diagnostic unless two `f64` values are sufficiently close.
 pub fn assert_approx_eq_f64(left: f64, right: f64, tolerance: ApproxTolerance) {
-    let absolute_error = (left - right).abs();
-    let scale = left.abs().max(right.abs());
-    let relative_error = if scale == 0.0 {
-        0.0
-    } else {
-        absolute_error / scale
-    };
     assert!(
-        absolute_error <= tolerance.absolute || relative_error <= tolerance.relative,
-        "values differ: left={left:?}, right={right:?}, absolute_error={absolute_error:e}, \
-         relative_error={relative_error:e}, absolute_tolerance={:e}, relative_tolerance={:e}",
+        tolerance.allows_f64(left, right),
+        "values differ: left={left:?}, right={right:?}, absolute_tolerance={:e}, \
+         relative_tolerance={:e}",
         tolerance.absolute,
         tolerance.relative,
     );
@@ -77,17 +53,9 @@ pub fn assert_matrix_approx_eq_f64(
     for (index, (left, right)) in left.iter().zip(right).enumerate() {
         let row = index / cols;
         let col = index % cols;
-        let absolute_error = (*left - *right).abs();
-        let scale = left.abs().max(right.abs());
-        let relative_error = if scale == 0.0 {
-            0.0
-        } else {
-            absolute_error / scale
-        };
         assert!(
-            absolute_error <= tolerance.absolute || relative_error <= tolerance.relative,
+            tolerance.allows_f64(*left, *right),
             "matrix values differ at ({row}, {col}): left={left:?}, right={right:?}, \
-             absolute_error={absolute_error:e}, relative_error={relative_error:e}, \
              absolute_tolerance={:e}, relative_tolerance={:e}",
             tolerance.absolute,
             tolerance.relative,

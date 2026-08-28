@@ -1450,6 +1450,7 @@ dependencies = [
  "criterion",
  "faer",
  "moenarch-media-core",
+ "moenarch-numbers-core",
  "moenarch-runtime-core",
  "moenarch-tensor-data",
  "moenarch-vector-analysis-core",
@@ -1687,6 +1688,7 @@ dependencies = [
  "criterion",
  "moenarch-media-core",
  "moenarch-runtime-core",
+ "proptest",
  "serde",
  "serde_json",
 ]
@@ -1791,6 +1793,7 @@ version = "0.1.1"
 dependencies = [
  "criterion",
  "moenarch-media-core",
+ "moenarch-numbers-core",
  "moenarch-runtime-core",
  "serde",
  "serde_json",

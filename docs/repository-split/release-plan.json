@@ -195,6 +195,7 @@
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
+        "moenarch-numbers-core",
         "moenarch-runtime-core"
       ]
     },
@@ -364,6 +365,7 @@
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
+        "moenarch-numbers-core",
         "moenarch-runtime-core",
         "moenarch-tensor-data",
         "moenarch-vector-analysis-core"
