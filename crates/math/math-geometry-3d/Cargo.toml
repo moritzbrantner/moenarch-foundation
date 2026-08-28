@@ -1,0 +1,29 @@
+[package]
+name = "moenarch-math-geometry-3d"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Finite 3D points, vectors, rotations, and affine transforms."
+readme = "README.md"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "math_geometry_3d"
+
+[features]
+default = []
+nalgebra-adapters = ["dep:nalgebra"]
+
+[dependencies]
+nalgebra = { workspace = true, optional = true }
+numbers-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true

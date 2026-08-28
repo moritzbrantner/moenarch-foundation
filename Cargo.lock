@@ -1444,6 +1444,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "moenarch-math-geometry-3d"
+version = "0.1.0"
+dependencies = [
+ "moenarch-numbers-core",
+ "nalgebra",
+ "proptest",
+ "serde",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "moenarch-math-linear"
 version = "0.1.1"
 dependencies = [
