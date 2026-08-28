@@ -1,10 +1,12 @@
 #![doc = include_str!("../README.md")]
 
+pub mod decimal;
 pub mod numerical;
 pub mod surface;
 use media_core::{DetectError, Result};
 use serde::{Deserialize, Serialize};
 
+pub use decimal::{DecimalError, ExactDecimal, RoundingMode};
 pub use numerical::{
     checked_f64_to_f32, is_finite_f32_slice, is_finite_f64_slice, ApproxTolerance,
 };

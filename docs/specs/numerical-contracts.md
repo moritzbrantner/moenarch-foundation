@@ -20,8 +20,9 @@ thresholds remain local to their owners.
 
 - No `Number`, `Scalar`, algebraic typeclass, or common arithmetic trait.
 - No implicit default tolerance or one global epsilon.
-- No conversion between floats and exact/decimal representations; F6 owns that
-  contract because rounding and scale must be explicit.
+- No implicit conversion between floats and exact/decimal representations;
+  `ExactDecimal` owns named conversion methods because rounding and scale must
+  be explicit.
 - No third-party backend type in a foundation public signature.
 - No shared error type: existing owners preserve their documented errors and
   serialization behavior.
