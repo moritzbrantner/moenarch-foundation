@@ -17,15 +17,13 @@ For a future authorized release:
    `Release manifest SHA-256: <digest>` in the issue body. If merging before
    publication, preserve both commits and authorize the exact post-merge head;
    do not squash or rebase away the `source_sha` ancestry and manifest-only diff.
-4. Require a clean exact commit and run the ordered `.agent-loop.toml`
-   verification. For restructuring-first wave 2, this is Cargo metadata, exact
-   manifest/dependency/order validation, and `cargo package --locked` for only
-   its three selected crates. The structural package gate and publisher use
-   reviewed local patches for the exact candidate closure before publication;
-   the publisher never passes those patches to `cargo publish`.
-   For issue #17, the same reduced structural policy selects only
-   `moenarch-audio-contracts`; no behavioral, consumer, Clippy, documentation,
-   build, workspace, or all-package evidence is run or claimed.
+4. Require a clean exact commit and run the ordered repository-wide
+   `.agent-loop.toml` verification. Release issues #13 and #17 retain the exact
+   reduced preparation gates recorded in their manifests, but those historical
+   issue contracts do not replace the recurring exact-head gate for ordinary
+   work or a later publication receipt. The structural package gate and
+   publisher use reviewed local patches for the exact candidate closure before
+   publication; the publisher never passes those patches to `cargo publish`.
 5. Run every manifest-declared candidate consumer check before publication.
    An explicitly empty list means no consumer result is required or claimed.
 6. Let only the receipt-gated Agent Loop master invoke

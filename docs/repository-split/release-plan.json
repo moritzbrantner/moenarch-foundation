@@ -10,6 +10,7 @@
     "moenarch-jobs-core",
     "moenarch-math-geometry-2d",
     "moenarch-numbers-core",
+    "moenarch-math-geometry-3d",
     "moenarch-tensor-data",
     "moenarch-vector-analysis-core",
     "moenarch-data-inversion-core-cli",
@@ -174,6 +175,18 @@
     },
     {
       "expected_tag": null,
+      "manifest_path": "crates/math/math-geometry-3d/Cargo.toml",
+      "name": "moenarch-math-geometry-3d",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": [
+        "moenarch-numbers-core"
+      ]
+    },
+    {
+      "expected_tag": null,
       "manifest_path": "crates/data/tensor-data/Cargo.toml",
       "name": "moenarch-tensor-data",
       "new_version": "0.1.0",
@@ -195,6 +208,7 @@
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
+        "moenarch-numbers-core",
         "moenarch-runtime-core"
       ]
     },
@@ -364,6 +378,7 @@
       "publish": false,
       "release_dependencies": [
         "moenarch-media-core",
+        "moenarch-numbers-core",
         "moenarch-runtime-core",
         "moenarch-tensor-data",
         "moenarch-vector-analysis-core"

@@ -142,7 +142,7 @@ class ReleasePlanTests(unittest.TestCase):
         )
         plan["packages"].pop()
         errors = self.errors(plan)
-        self.assertTrue(any("60 owned packages" in e for e in errors))
+        self.assertTrue(any("61 owned packages" in e for e in errors))
         self.assertTrue(any("wrong intended next release owner" in e for e in errors))
 
     def test_wrong_dependency_order_is_rejected(self) -> None:

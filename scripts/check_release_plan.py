@@ -191,8 +191,8 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
     duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
     if duplicates:
         errors.append("duplicate package names: " + ", ".join(duplicates))
-    if len(packages) != 60 or set(names) != set(owned):
-        errors.append("release plan must name all and only the 60 owned packages")
+    if len(packages) != 61 or set(names) != set(owned):
+        errors.append("release plan must name all and only the 61 owned packages")
     metadata_packages = {
         package["name"]: package for package in metadata.get("packages", [])
     }
@@ -509,7 +509,7 @@ def main() -> int:
         if failures:
             print("error: packaging failed: " + ", ".join(failures), file=sys.stderr)
             return 1
-        print("package verification passes: 60 packages; tracked manifest hashes unchanged")
+        print("package verification passes: 61 packages; tracked manifest hashes unchanged")
     elif args.package_release:
         if args.plan.suffix != ".toml":
             print("error: --package-release requires a TOML manifest", file=sys.stderr)
@@ -528,7 +528,7 @@ def main() -> int:
             "source/control binding verified"
         )
     else:
-        print("release plan passes: 60 packages retained at source versions; publication is not authorized")
+        print("release plan passes: 61 packages retained at source versions; publication is not authorized")
     return 0
 
 

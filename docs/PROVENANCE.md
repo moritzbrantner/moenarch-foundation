@@ -10,7 +10,7 @@ This repository was created by clean-copy extraction. Git history was not rewrit
 - Destination: `moritzbrantner/moenarch-foundation`
 - History note: original per-file history remains in the source repository; this destination begins with one attributed bootstrap commit.
 
-The byte-identical copied source is exactly the 60 crate directories named by
+The byte-identical copied source is exactly the 60 extraction crate directories named by
 the `manifest_path` fields in
 `docs/repository-split/package-ownership.json` (each manifest's containing
 directory, recursively). Directory-by-directory comparison against extraction
@@ -24,7 +24,7 @@ The following basic repository inputs were also copied byte-identically:
 Destination-authored or materially adapted support is not represented as a
 byte-identical copy:
 
-- Root `Cargo.toml` was authored with exactly 60 workspace members,
+- Root `Cargo.toml` was authored with 60 workspace members,
   destination repository metadata, selected destination workspace dependencies, and
   an exact `ort = "=2.0.0-rc.12"` constraint. The exact constraint preserves
   the source lockfile-compatible API after unconstrained fresh resolution
@@ -43,7 +43,9 @@ byte-identical copy:
   Phase-A foundation Cargo records plus the two append-only contract records.
   The validator binds the canonical, name-sorted JSON digest of those 60 source
   ownership records at the extraction commit, so drift in reviewed ownership
-  fields fails closed.
+  fields fails closed. F4 added the separately authorized, foundation-authored
+  `moenarch-math-geometry-3d` package; its one-record canonical digest is also
+  validated independently, so that addition cannot rewrite the source inventory.
   `docs/repository-split/release-plan.json` was authored as an exact
   non-publishing inventory.
 - `scripts/repository_split.py`, both validators and tests, and the scoped

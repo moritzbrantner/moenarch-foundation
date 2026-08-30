@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 
 use crate::{invalid_argument, F32Matrix, MatrixLayout, MatrixShape};
 use media_core::{DetectError, Result};
+use numbers_core::{checked_f64_to_f32, is_finite_f64_slice};
 
 #[derive(Debug, Clone, PartialEq)]
 /// Owned finite `f64` matrix stored in row-major order.
@@ -137,7 +138,7 @@ impl F64Matrix {
                 self.values.len()
             )));
         }
-        if self.values.iter().any(|value| !value.is_finite()) {
+        if !is_finite_f64_slice(&self.values) {
             return Err(invalid_argument("matrix values must be finite"));
         }
         Ok(())
@@ -344,7 +345,7 @@ impl<'a> F64MatrixView<'a> {
                 self.values.len()
             )));
         }
-        if self.values.iter().any(|value| !value.is_finite()) {
+        if !is_finite_f64_slice(self.values) {
             return Err(invalid_argument("matrix values must be finite"));
         }
         Ok(())
@@ -421,12 +422,9 @@ impl TryFrom<&F64Matrix> for F32Matrix {
     fn try_from(value: &F64Matrix) -> Result<Self> {
         let mut values = Vec::with_capacity(value.values().len());
         for value in value.values() {
-            if !value.is_finite() || *value < f32::MIN as f64 || *value > f32::MAX as f64 {
-                return Err(invalid_argument(
-                    "f64-to-f32 matrix conversion requires finite in-range values",
-                ));
-            }
-            values.push(*value as f32);
+            values.push(checked_f64_to_f32(*value).ok_or_else(|| {
+                invalid_argument("f64-to-f32 matrix conversion requires finite in-range values")
+            })?);
         }
         F32Matrix::new(value.shape(), values)
     }
