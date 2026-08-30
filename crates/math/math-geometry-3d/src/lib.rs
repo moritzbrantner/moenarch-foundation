@@ -67,14 +67,31 @@ pub enum EulerOrder {
     Zyx,
 }
 
+#[derive(Deserialize)]
+struct CoordinatesWire<T> {
+    x: T,
+    y: T,
+    z: T,
+}
+
 macro_rules! define_vector_point {
     ($vector:ident, $point:ident, $scalar:ty, $finite:ident, $zero:expr, $one:expr) => {
         /// A finite displacement in three-dimensional space.
-        #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
         pub struct $vector {
             x: $scalar,
             y: $scalar,
             z: $scalar,
+        }
+
+        impl<'de> Deserialize<'de> for $vector {
+            fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let wire = CoordinatesWire::<$scalar>::deserialize(deserializer)?;
+                Self::new(wire.x, wire.y, wire.z).map_err(D::Error::custom)
+            }
         }
 
         impl $vector {
@@ -172,11 +189,21 @@ macro_rules! define_vector_point {
 
         /// A finite position in three-dimensional space. Points and vectors are
         /// deliberately distinct so translations cannot be applied by accident.
-        #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
         pub struct $point {
             x: $scalar,
             y: $scalar,
             z: $scalar,
+        }
+
+        impl<'de> Deserialize<'de> for $point {
+            fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let wire = CoordinatesWire::<$scalar>::deserialize(deserializer)?;
+                Self::new(wire.x, wire.y, wire.z).map_err(D::Error::custom)
+            }
         }
 
         impl $point {
@@ -217,6 +244,50 @@ macro_rules! define_vector_point {
             /// Returns the displacement from `rhs` to this point.
             pub fn subtract(self, rhs: Self) -> Result<$vector> {
                 $vector::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+            }
+        }
+    };
+}
+
+macro_rules! impl_matrix_deserialize {
+    ($matrix:ident, $wire:ident, $scalar:ty, $size:literal) => {
+        #[derive(Deserialize)]
+        struct $wire {
+            rows: [[$scalar; $size]; $size],
+        }
+
+        impl<'de> Deserialize<'de> for $matrix {
+            fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let wire = $wire::deserialize(deserializer)?;
+                Self::new(wire.rows).map_err(D::Error::custom)
+            }
+        }
+    };
+}
+
+macro_rules! impl_transform_deserialize {
+    (
+        $transform:ident,
+        $wire:ident,
+        $first:ident: $first_type:ty,
+        $second:ident: $second_type:ty
+    ) => {
+        #[derive(Deserialize)]
+        struct $wire {
+            $first: $first_type,
+            $second: $second_type,
+        }
+
+        impl<'de> Deserialize<'de> for $transform {
+            fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let wire = $wire::deserialize(deserializer)?;
+                Self::new(wire.$first, wire.$second).map_err(D::Error::custom)
             }
         }
     };
@@ -723,7 +794,7 @@ impl UnitQuaternion {
 }
 
 /// A finite 3×3 matrix, serialized row-major and applied to column vectors.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Matrix3d {
     rows: [[f64; 3]; 3],
 }
@@ -844,9 +915,10 @@ impl Matrix3d {
         Matrix3::new(rows)
     }
 }
+impl_matrix_deserialize!(Matrix3d, Matrix3dWire, f64, 3);
 
 /// A finite f32 3×3 matrix, serialized row-major and applied to column vectors.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Matrix3 {
     rows: [[f32; 3]; 3],
 }
@@ -891,9 +963,10 @@ impl Matrix3 {
         self.to_f64().inverse()?.to_f32_checked()
     }
 }
+impl_matrix_deserialize!(Matrix3, Matrix3Wire, f32, 3);
 
 /// A finite 4×4 matrix, serialized row-major and applied to column vectors.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Matrix4d {
     rows: [[f64; 4]; 4],
 }
@@ -947,9 +1020,10 @@ impl Matrix4d {
         Matrix4::new(rows)
     }
 }
+impl_matrix_deserialize!(Matrix4d, Matrix4dWire, f64, 4);
 
 /// A finite f32 4×4 matrix, serialized row-major and applied to column vectors.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Matrix4 {
     rows: [[f32; 4]; 4],
 }
@@ -987,10 +1061,11 @@ impl Matrix4 {
         self.to_f64().compose(rhs.to_f64())?.to_f32_checked()
     }
 }
+impl_matrix_deserialize!(Matrix4, Matrix4Wire, f32, 4);
 
 /// A rotation and translation transform. Points are rotated then translated;
 /// vectors are only rotated.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct RigidTransform3d {
     rotation: UnitQuaterniond,
     translation: Vector3d,
@@ -1058,9 +1133,15 @@ impl RigidTransform3d {
         )
     }
 }
+impl_transform_deserialize!(
+    RigidTransform3d,
+    RigidTransform3dWire,
+    rotation: UnitQuaterniond,
+    translation: Vector3d
+);
 
 /// A rotation and translation f32 transform.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct RigidTransform3 {
     rotation: UnitQuaternion,
     translation: Vector3,
@@ -1110,10 +1191,16 @@ impl RigidTransform3 {
         }
     }
 }
+impl_transform_deserialize!(
+    RigidTransform3,
+    RigidTransform3Wire,
+    rotation: UnitQuaternion,
+    translation: Vector3
+);
 
 /// An affine linear transform and translation. The linear term may include
 /// scale or shear; perspective matrices are deliberately excluded.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct AffineTransform3d {
     linear: Matrix3d,
     translation: Vector3d,
@@ -1204,13 +1291,25 @@ impl AffineTransform3d {
         )
     }
 }
+impl_transform_deserialize!(
+    AffineTransform3d,
+    AffineTransform3dWire,
+    linear: Matrix3d,
+    translation: Vector3d
+);
 
 /// An f32 affine linear transform and translation.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct AffineTransform3 {
     linear: Matrix3,
     translation: Vector3,
 }
+impl_transform_deserialize!(
+    AffineTransform3,
+    AffineTransform3Wire,
+    linear: Matrix3,
+    translation: Vector3
+);
 impl AffineTransform3 {
     /// Identity transform.
     pub const IDENTITY: Self = Self {
@@ -1375,6 +1474,60 @@ fn euler_from_matrix(order: EulerOrder, rows: [[f64; 3]; 3]) -> Result<(f64, f64
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use serde::de::{
+        value::{Error as ValueError, MapDeserializer, SeqDeserializer},
+        DeserializeOwned, IntoDeserializer,
+    };
+
+    struct ScalarRow<T, const N: usize>([T; N]);
+
+    impl<'de, T, E, const N: usize> IntoDeserializer<'de, E> for ScalarRow<T, N>
+    where
+        T: IntoDeserializer<'de, E>,
+        E: serde::de::Error,
+    {
+        type Deserializer = SeqDeserializer<std::array::IntoIter<T, N>, E>;
+
+        fn into_deserializer(self) -> Self::Deserializer {
+            SeqDeserializer::new(self.0.into_iter())
+        }
+    }
+
+    struct ScalarRows<T, const N: usize>([[T; N]; N]);
+
+    impl<'de, T, E, const N: usize> IntoDeserializer<'de, E> for ScalarRows<T, N>
+    where
+        T: IntoDeserializer<'de, E>,
+        E: serde::de::Error,
+    {
+        type Deserializer = SeqDeserializer<std::array::IntoIter<ScalarRow<T, N>, N>, E>;
+
+        fn into_deserializer(self) -> Self::Deserializer {
+            SeqDeserializer::new(self.0.map(ScalarRow).into_iter())
+        }
+    }
+
+    fn deserialize_coordinates<T, S>([x, y, z]: [S; 3]) -> std::result::Result<T, ValueError>
+    where
+        T: DeserializeOwned,
+        S: for<'de> IntoDeserializer<'de, ValueError>,
+    {
+        T::deserialize(MapDeserializer::new(
+            [("x", x), ("y", y), ("z", z)].into_iter(),
+        ))
+    }
+
+    fn deserialize_matrix<T, S, const N: usize>(
+        rows: [[S; N]; N],
+    ) -> std::result::Result<T, ValueError>
+    where
+        T: DeserializeOwned,
+        S: for<'de> IntoDeserializer<'de, ValueError>,
+    {
+        T::deserialize(MapDeserializer::new(
+            [("rows", ScalarRows(rows))].into_iter(),
+        ))
+    }
 
     fn close(left: f64, right: f64) {
         assert!((left - right).abs() < 1.0e-10, "{left} != {right}");
@@ -1390,6 +1543,35 @@ mod tests {
         );
         assert!(Vector3d::new(f64::NAN, 0.0, 0.0).is_err());
         assert!(Point3::new(f32::INFINITY, 0.0, 0.0).is_err());
+    }
+
+    #[test]
+    fn deserialization_rejects_non_finite_coordinates_and_matrices() {
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(deserialize_coordinates::<Vector3d, _>([invalid, 0.0, 0.0]).is_err());
+            assert!(deserialize_coordinates::<Point3d, _>([0.0, invalid, 0.0]).is_err());
+
+            let mut rows3 = Matrix3d::IDENTITY.rows();
+            rows3[1][2] = invalid;
+            assert!(deserialize_matrix::<Matrix3d, _, 3>(rows3).is_err());
+
+            let mut rows4 = Matrix4d::IDENTITY.rows();
+            rows4[2][3] = invalid;
+            assert!(deserialize_matrix::<Matrix4d, _, 4>(rows4).is_err());
+        }
+
+        for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert!(deserialize_coordinates::<Vector3, _>([invalid, 0.0, 0.0]).is_err());
+            assert!(deserialize_coordinates::<Point3, _>([0.0, invalid, 0.0]).is_err());
+
+            let mut rows3 = Matrix3::IDENTITY.rows();
+            rows3[1][2] = invalid;
+            assert!(deserialize_matrix::<Matrix3, _, 3>(rows3).is_err());
+
+            let mut rows4 = Matrix4::IDENTITY.rows();
+            rows4[2][3] = invalid;
+            assert!(deserialize_matrix::<Matrix4, _, 4>(rows4).is_err());
+        }
     }
 
     #[test]
