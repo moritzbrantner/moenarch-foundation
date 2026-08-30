@@ -14,8 +14,8 @@ reconstruction, SFM/MVS, Gaussian splatting, or application pose pipelines.
   `UnitQuaterniond` additionally normalize raw quaternion input and reject a
   zero magnitude.
 - Unsuffixed types use f32 and `*d` types use f64. Widening is lossless;
-  narrowing uses explicit `to_f32_checked` methods and rejects overflow,
-  infinity, and NaN.
+  narrowing, including raw quaternions, uses explicit `to_f32_checked` methods
+  and rejects overflow, infinity, and NaN.
 - Raw quaternions are finite interchange values. Unit quaternions are the
   primary rotation representation. Axis-angle and `EulerOrder` conversions are
   import/export or UI seams, and all Euler angles are radians.
@@ -43,10 +43,18 @@ without making it a foundation-wide backend choice.
 The law suite uses deterministic generated cases. f64 rotation, matrix, and
 transform identities use an absolute-or-relative tolerance of `1e-10`; f32
 canaries use `2e-5` to account for the deliberate narrow representation.
+SLERP evidence covers endpoints, midpoint and shortest-path behavior,
+unit-length preservation, and invalid interpolation factors in both precision
+families.
 Matrix import accepts a proper f64 rotation matrix only when each axis norm,
 axis dot product, and determinant differ from the ideal by no more than
 `1e-10`. These are verification and input-validity contracts, not a hidden
 global tolerance for callers' application algorithms.
+
+Raw-quaternion deserialization validates finite components. Unit-quaternion
+deserialization additionally normalizes the wire components and rejects a zero
+magnitude, so Serde cannot bypass the rotation invariant used by nested rigid
+transforms.
 
 ## Compatibility and release boundary
 

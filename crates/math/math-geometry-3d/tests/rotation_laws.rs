@@ -2,7 +2,7 @@
 mod numerical;
 
 use math_geometry_3d::{
-    AffineTransform3d, EulerOrder, Matrix3d, Point3d, Quaterniond, RigidTransform3d,
+    AffineTransform3d, EulerOrder, Matrix3d, Point3d, Quaternion, Quaterniond, RigidTransform3d,
     UnitQuaternion, UnitQuaterniond, Vector3, Vector3d,
 };
 use numerical::{assert_approx_eq_f64, deterministic_config, ApproxTolerance};
@@ -17,6 +17,13 @@ fn assert_vector_close(left: Vector3d, right: Vector3d) {
     assert_approx_eq_f64(left.x(), right.x(), tolerance);
     assert_approx_eq_f64(left.y(), right.y(), tolerance);
     assert_approx_eq_f64(left.z(), right.z(), tolerance);
+}
+
+fn assert_vector3_close(left: Vector3, right: Vector3) {
+    let tolerance = ApproxTolerance::new(2.0e-5, 2.0e-5).unwrap();
+    numerical::assert_approx_eq_f32(left.x(), right.x(), tolerance);
+    numerical::assert_approx_eq_f32(left.y(), right.y(), tolerance);
+    numerical::assert_approx_eq_f32(left.z(), right.z(), tolerance);
 }
 
 fn assert_point_close(left: Point3d, right: Point3d) {
@@ -213,7 +220,134 @@ fn edge_cases_and_invalid_states_are_rejected() {
 }
 
 #[test]
+fn quaternion_deserialization_preserves_rotation_invariants() {
+    let normalized: UnitQuaterniond =
+        serde_json::from_str(r#"{"x":0.0,"y":0.0,"z":0.0,"w":2.0}"#).unwrap();
+    assert_eq!(normalized, UnitQuaterniond::IDENTITY);
+    assert!(
+        serde_json::from_str::<UnitQuaterniond>(r#"{"x":0.0,"y":0.0,"z":0.0,"w":0.0}"#).is_err()
+    );
+    assert!(
+        serde_json::from_str::<UnitQuaternion>(r#"{"x":0.0,"y":0.0,"z":0.0,"w":0.0}"#).is_err()
+    );
+    assert!(serde_json::from_str::<RigidTransform3d>(
+        r#"{"rotation":{"x":0.0,"y":0.0,"z":0.0,"w":0.0},"translation":{"x":0.0,"y":0.0,"z":0.0}}"#
+    )
+    .is_err());
+}
+
+#[test]
+fn slerp_covers_endpoints_midpoint_shortest_path_and_validation() {
+    let start = UnitQuaterniond::IDENTITY;
+    let end = UnitQuaterniond::from_axis_angle(Vector3d::Z, std::f64::consts::PI).unwrap();
+    let midpoint = start.slerp(end, 0.5).unwrap();
+    assert_vector_close(
+        start
+            .slerp(end, 0.0)
+            .unwrap()
+            .rotate_vector(Vector3d::X)
+            .unwrap(),
+        Vector3d::X,
+    );
+    assert_vector_close(
+        start
+            .slerp(end, 1.0)
+            .unwrap()
+            .rotate_vector(Vector3d::X)
+            .unwrap(),
+        end.rotate_vector(Vector3d::X).unwrap(),
+    );
+    assert_vector_close(midpoint.rotate_vector(Vector3d::X).unwrap(), Vector3d::Y);
+
+    let [x, y, z, w] = end.components();
+    let equivalent_negative = Quaterniond::new(-x, -y, -z, -w)
+        .unwrap()
+        .normalized()
+        .unwrap();
+    assert_vector_close(
+        start
+            .slerp(equivalent_negative, 0.5)
+            .unwrap()
+            .rotate_vector(Vector3d::X)
+            .unwrap(),
+        midpoint.rotate_vector(Vector3d::X).unwrap(),
+    );
+    let norm = midpoint
+        .components()
+        .into_iter()
+        .map(|component| component * component)
+        .sum::<f64>()
+        .sqrt();
+    assert_approx_eq_f64(norm, 1.0, tolerance());
+    assert!(start.slerp(end, f64::NAN).is_err());
+
+    let start_f32 = UnitQuaternion::IDENTITY;
+    let end_f32 = UnitQuaternion::from_axis_angle(Vector3::Z, 1.0).unwrap();
+    let midpoint_f32 = start_f32.slerp(end_f32, 0.5).unwrap();
+    assert_vector3_close(
+        start_f32
+            .slerp(end_f32, 0.0)
+            .unwrap()
+            .rotate_vector(Vector3::X)
+            .unwrap(),
+        Vector3::X,
+    );
+    assert_vector3_close(
+        start_f32
+            .slerp(end_f32, 1.0)
+            .unwrap()
+            .rotate_vector(Vector3::X)
+            .unwrap(),
+        end_f32.rotate_vector(Vector3::X).unwrap(),
+    );
+    assert_vector3_close(
+        midpoint_f32.rotate_vector(Vector3::X).unwrap(),
+        UnitQuaternion::from_axis_angle(Vector3::Z, 0.5)
+            .unwrap()
+            .rotate_vector(Vector3::X)
+            .unwrap(),
+    );
+    let [x, y, z, w] = end_f32.components();
+    let equivalent_negative_f32 = Quaternion::new(-x, -y, -z, -w)
+        .unwrap()
+        .normalized()
+        .unwrap();
+    assert_vector3_close(
+        start_f32
+            .slerp(equivalent_negative_f32, 0.5)
+            .unwrap()
+            .rotate_vector(Vector3::X)
+            .unwrap(),
+        midpoint_f32.rotate_vector(Vector3::X).unwrap(),
+    );
+    let norm_f32 = midpoint_f32
+        .components()
+        .into_iter()
+        .map(|component| component * component)
+        .sum::<f32>()
+        .sqrt();
+    numerical::assert_approx_eq_f32(norm_f32, 1.0, ApproxTolerance::new(2.0e-5, 2.0e-5).unwrap());
+    assert!(start_f32.slerp(end_f32, f32::INFINITY).is_err());
+}
+
+#[test]
 fn f32_rotation_and_transform_contracts_are_deliberate() {
+    let raw_f64 = Quaterniond::new(1.0, -2.0, 3.0, -4.0).unwrap();
+    let raw_f32 = raw_f64.to_f32_checked().unwrap();
+    assert_eq!(raw_f32.components(), [1.0, -2.0, 3.0, -4.0]);
+    assert_eq!(raw_f32.to_f64().components(), raw_f64.components());
+    assert!(Quaterniond::new(f64::MAX, 0.0, 0.0, 1.0)
+        .unwrap()
+        .to_f32_checked()
+        .is_err());
+    assert_eq!(
+        Quaternion::new(1.0, 2.0, 3.0, 4.0)
+            .unwrap()
+            .to_f64()
+            .components(),
+        [1.0, 2.0, 3.0, 4.0]
+    );
+
     let quarter_turn =
         UnitQuaternion::from_axis_angle(Vector3::Z, std::f32::consts::FRAC_PI_2).unwrap();
     let rotated = quarter_turn.rotate_vector(Vector3::X).unwrap();

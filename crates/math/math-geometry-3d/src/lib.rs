@@ -5,7 +5,7 @@
 //! semantics belong to capability owners rather than this module.
 
 use numbers_core::checked_f64_to_f32;
-use serde::{Deserialize, Serialize};
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 
 /// Errors returned when an input cannot satisfy a finite 3D math invariant.
@@ -265,7 +265,7 @@ impl From<Point3> for Point3d {
 }
 
 /// A finite quaternion in `x, y, z, w` order. Use `UnitQuaterniond` for rotations.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Quaterniond {
     x: f64,
     y: f64,
@@ -291,15 +291,53 @@ impl Quaterniond {
     pub fn normalized(self) -> Result<UnitQuaterniond> {
         UnitQuaterniond::from_quaternion(self)
     }
+    /// Converts to f32 only when every component remains finite and representable.
+    pub fn to_f32_checked(self) -> Result<Quaternion> {
+        Quaternion::new(
+            as_f32(self.x, "quaternion x")?,
+            as_f32(self.y, "quaternion y")?,
+            as_f32(self.z, "quaternion z")?,
+            as_f32(self.w, "quaternion w")?,
+        )
+    }
+}
+
+#[derive(Deserialize)]
+struct QuaterniondWire {
+    x: f64,
+    y: f64,
+    z: f64,
+    w: f64,
+}
+
+impl<'de> Deserialize<'de> for Quaterniond {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = QuaterniondWire::deserialize(deserializer)?;
+        Self::new(wire.x, wire.y, wire.z, wire.w).map_err(D::Error::custom)
+    }
 }
 
 /// A normalized quaternion representing a right-handed rotation.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct UnitQuaterniond {
     x: f64,
     y: f64,
     z: f64,
     w: f64,
+}
+
+impl<'de> Deserialize<'de> for UnitQuaterniond {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Quaterniond::deserialize(deserializer)?
+            .normalized()
+            .map_err(D::Error::custom)
+    }
 }
 
 impl UnitQuaterniond {
@@ -525,7 +563,7 @@ impl UnitQuaterniond {
 }
 
 /// A finite f32 raw quaternion in `x, y, z, w` order.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Quaternion {
     x: f32,
     y: f32,
@@ -550,15 +588,53 @@ impl Quaternion {
     pub fn normalized(self) -> Result<UnitQuaternion> {
         UnitQuaternion::from_components(self.x, self.y, self.z, self.w)
     }
+    /// Widens to the paired f64 raw-quaternion contract without loss.
+    pub fn to_f64(self) -> Quaterniond {
+        Quaterniond {
+            x: f64::from(self.x),
+            y: f64::from(self.y),
+            z: f64::from(self.z),
+            w: f64::from(self.w),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct QuaternionWire {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+}
+
+impl<'de> Deserialize<'de> for Quaternion {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let wire = QuaternionWire::deserialize(deserializer)?;
+        Self::new(wire.x, wire.y, wire.z, wire.w).map_err(D::Error::custom)
+    }
 }
 
 /// A normalized f32 quaternion representing a right-handed rotation.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct UnitQuaternion {
     x: f32,
     y: f32,
     z: f32,
     w: f32,
+}
+
+impl<'de> Deserialize<'de> for UnitQuaternion {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Quaternion::deserialize(deserializer)?
+            .normalized()
+            .map_err(D::Error::custom)
+    }
 }
 impl UnitQuaternion {
     /// Identity rotation.
