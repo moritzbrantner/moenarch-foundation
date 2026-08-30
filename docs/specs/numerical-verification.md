@@ -12,11 +12,12 @@ generators, deterministic Proptest configuration, and diagnostics over the
 production `numbers_core::ApproxTolerance` contract.
 
 It is intentionally not a Cargo package. The repository's ownership audit and
-boundary check require the exact 60-package extraction inventory, so callers
-include the module with `#[path]`. This keeps test-only machinery outside every
-production crate's public interface and avoids creating a package boundary
-solely for one initial consumer. The module becomes more valuable as F3 and F5
-add their independent consumers.
+boundary check require every workspace package to be represented in the
+canonical ownership inventory, so callers include the module with `#[path]`.
+This keeps test-only machinery outside every production crate's public
+interface and avoids creating a package boundary solely for one initial
+consumer. The module becomes more valuable as F3 and F5 add their independent
+consumers.
 
 Property tests use 64 cases with the fixed seed `0x4d4f_454e_4152_4348`. A
 failure is therefore locally reproducible with the same test command. Change

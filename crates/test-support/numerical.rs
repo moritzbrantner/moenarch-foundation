@@ -1,9 +1,10 @@
 //! Shared property-test support for foundation numerical crates.
 //!
 //! This is intentionally a source module rather than a workspace crate. The
-//! repository boundary checker fixes the extracted workspace at 60 packages;
-//! integration tests include this module with `#[path]` so that test-only
-//! support remains reusable without changing production package ownership.
+//! repository ownership audit and boundary checker require every workspace
+//! package to be represented in the canonical ownership inventory. Integration
+//! tests include this module with `#[path]` so test-only support remains
+//! reusable without changing production package ownership.
 
 #![allow(dead_code)]
 
