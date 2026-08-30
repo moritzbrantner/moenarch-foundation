@@ -11,7 +11,8 @@ canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
 
 - Keep foundation independent of every capability repository.
 - Ordinary feature work is source-first. Do not publish crates, bump package versions, create tags, or start a release train merely to unblock a downstream consumer.
-- Downstream consumers may validate exact foundation source revisions through their committed source-development declarations before registry releases exist.
+- Downstream consumers may validate exact foundation source revisions through their committed source-development declarations before registry releases exist. For private cross-repository work, prefer local-only source mode with an exact sibling `moenarch-foundation` checkout/worktree owned by the outer coding workspace.
+- Do not add repository secrets, personal access tokens, or authenticated Git fallback merely so hosted CI can reproduce an ordinary private multi-repository source workspace.
 - Do not add path dependencies that escape this checkout or Git dependencies on moving branches into committed package manifests.
 - Keep CLI/server/WASM adapters with their wrapped libraries until a separate usage and semver decision authorizes removal.
 - Do not add Bun/npm surfaces here.
