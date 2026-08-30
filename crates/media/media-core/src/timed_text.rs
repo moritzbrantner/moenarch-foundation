@@ -81,11 +81,11 @@ pub struct TimedTextCharContract {
         alias = "start_seconds",
         alias = "startSeconds"
     )]
-    pub start_seconds: Option<f64>,
+    start_seconds: Option<f64>,
     #[serde(default, rename = "end", alias = "end_seconds", alias = "endSeconds")]
-    pub end_seconds: Option<f64>,
+    end_seconds: Option<f64>,
     #[serde(default, rename = "score", alias = "confidence")]
-    pub confidence: Option<f32>,
+    confidence: Option<f32>,
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
 }
@@ -96,11 +96,11 @@ pub struct TimedTextCharContract {
 pub struct TimedTextWordContract {
     pub text: String,
     #[serde(default)]
-    pub start_seconds: Option<f64>,
+    start_seconds: Option<f64>,
     #[serde(default)]
-    pub end_seconds: Option<f64>,
+    end_seconds: Option<f64>,
     #[serde(default)]
-    pub confidence: Option<f32>,
+    confidence: Option<f32>,
     #[serde(default)]
     pub speaker: Option<String>,
     #[serde(default)]
@@ -113,23 +113,106 @@ pub struct TimedTextWordContract {
 pub struct TimedTextSegmentContract {
     pub index: u64,
     #[serde(default)]
-    pub start_seconds: Option<f64>,
+    start_seconds: Option<f64>,
     #[serde(default)]
-    pub end_seconds: Option<f64>,
+    end_seconds: Option<f64>,
     pub text: String,
     #[serde(default)]
     pub language: Option<String>,
     #[serde(default)]
     pub speaker: Option<String>,
     #[serde(default)]
-    pub confidence: Option<f32>,
+    confidence: Option<f32>,
     pub is_final: bool,
     #[serde(default)]
-    pub words: Vec<TimedTextWordContract>,
+    words: Vec<TimedTextWordContract>,
     #[serde(default)]
-    pub chars: Vec<TimedTextCharContract>,
+    chars: Vec<TimedTextCharContract>,
     #[serde(default)]
     pub attributes: BTreeMap<String, String>,
+}
+
+impl TimedTextCharContract {
+    pub fn new(character: impl Into<String>) -> Self {
+        Self {
+            character: character.into(),
+            start_seconds: None,
+            end_seconds: None,
+            confidence: None,
+            attributes: BTreeMap::new(),
+        }
+    }
+
+    pub fn with_time_range(
+        mut self,
+        start_seconds: Option<f64>,
+        end_seconds: Option<f64>,
+    ) -> Result<Self> {
+        validate_seconds_range(start_seconds, end_seconds)?;
+        self.start_seconds = start_seconds;
+        self.end_seconds = end_seconds;
+        Ok(self)
+    }
+
+    pub fn with_confidence(mut self, confidence: Option<f32>) -> Result<Self> {
+        validate_confidence(confidence, "timed-text character")?;
+        self.confidence = confidence;
+        Ok(self)
+    }
+
+    pub fn start_seconds(&self) -> Option<f64> {
+        self.start_seconds
+    }
+
+    pub fn end_seconds(&self) -> Option<f64> {
+        self.end_seconds
+    }
+
+    pub fn confidence(&self) -> Option<f32> {
+        self.confidence
+    }
+}
+
+impl TimedTextWordContract {
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            start_seconds: None,
+            end_seconds: None,
+            confidence: None,
+            speaker: None,
+            attributes: BTreeMap::new(),
+        }
+    }
+
+    pub fn with_time_range(
+        mut self,
+        start_seconds: Option<f64>,
+        end_seconds: Option<f64>,
+    ) -> Result<Self> {
+        validate_seconds_range(start_seconds, end_seconds)?;
+        self.start_seconds = start_seconds;
+        self.end_seconds = end_seconds;
+        Ok(self)
+    }
+
+    pub fn with_confidence(mut self, confidence: Option<f32>) -> Result<Self> {
+        validate_confidence(confidence, "timed-text word")?;
+        self.confidence = confidence;
+        Ok(self)
+    }
+
+    pub fn start_seconds(&self) -> Option<f64> {
+        self.start_seconds
+    }
+
+    pub fn end_seconds(&self) -> Option<f64> {
+        self.end_seconds
+    }
+
+    pub fn confidence(&self) -> Option<f32> {
+        self.confidence
+    }
 }
 
 impl TimedTextSegmentContract {
@@ -154,6 +237,85 @@ impl TimedTextSegmentContract {
             (Some(start), Some(end)) => MediaTimeRange::new(start, end).map(Some),
             _ => Ok(None),
         }
+    }
+
+    pub fn with_time_range(
+        mut self,
+        start_seconds: Option<f64>,
+        end_seconds: Option<f64>,
+    ) -> Result<Self> {
+        validate_seconds_range(start_seconds, end_seconds)?;
+        for word in &self.words {
+            validate_nested_range(
+                start_seconds,
+                end_seconds,
+                word.start_seconds,
+                word.end_seconds,
+                "word",
+            )?;
+        }
+        for character in &self.chars {
+            validate_nested_range(
+                start_seconds,
+                end_seconds,
+                character.start_seconds,
+                character.end_seconds,
+                "character",
+            )?;
+        }
+        self.start_seconds = start_seconds;
+        self.end_seconds = end_seconds;
+        Ok(self)
+    }
+
+    pub fn with_confidence(mut self, confidence: Option<f32>) -> Result<Self> {
+        validate_confidence(confidence, "timed-text segment")?;
+        self.confidence = confidence;
+        Ok(self)
+    }
+
+    pub fn push_word(&mut self, word: TimedTextWordContract) -> Result<()> {
+        validate_nested_range(
+            self.start_seconds,
+            self.end_seconds,
+            word.start_seconds,
+            word.end_seconds,
+            "word",
+        )?;
+        self.words.push(word);
+        Ok(())
+    }
+
+    pub fn push_char(&mut self, character: TimedTextCharContract) -> Result<()> {
+        validate_nested_range(
+            self.start_seconds,
+            self.end_seconds,
+            character.start_seconds,
+            character.end_seconds,
+            "character",
+        )?;
+        self.chars.push(character);
+        Ok(())
+    }
+
+    pub fn start_seconds(&self) -> Option<f64> {
+        self.start_seconds
+    }
+
+    pub fn end_seconds(&self) -> Option<f64> {
+        self.end_seconds
+    }
+
+    pub fn confidence(&self) -> Option<f32> {
+        self.confidence
+    }
+
+    pub fn words(&self) -> &[TimedTextWordContract] {
+        &self.words
+    }
+
+    pub fn chars(&self) -> &[TimedTextCharContract] {
+        &self.chars
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -427,14 +589,13 @@ fn validate_nested_range(
     child_end: Option<f64>,
     child_name: &str,
 ) -> Result<()> {
-    if let (Some(parent_start), Some(child_start)) = (parent_start, child_start) {
-        if child_start < parent_start {
-            return invalid(format!("timed-text {child_name} starts before its segment"));
-        }
-    }
-    if let (Some(parent_end), Some(child_end)) = (parent_end, child_end) {
-        if child_end > parent_end {
-            return invalid(format!("timed-text {child_name} ends after its segment"));
+    for child_value in [child_start, child_end].into_iter().flatten() {
+        if parent_start.is_some_and(|start| child_value < start)
+            || parent_end.is_some_and(|end| child_value > end)
+        {
+            return invalid(format!(
+                "timed-text {child_name} timing must stay inside its segment"
+            ));
         }
     }
     Ok(())
@@ -470,36 +631,31 @@ mod tests {
 
     #[test]
     fn timed_text_round_trips_without_adding_domain_semantics() {
+        let mut word = TimedTextWordContract::new("hello")
+            .with_time_range(Some(0.0), Some(1.0))
+            .unwrap()
+            .with_confidence(Some(0.8))
+            .unwrap();
+        word.speaker = Some("speaker-a".to_string());
+        let character = TimedTextCharContract::new("h")
+            .with_time_range(Some(0.0), Some(0.2))
+            .unwrap()
+            .with_confidence(Some(0.7))
+            .unwrap();
+        let mut segment = TimedTextSegmentContract::new(0, "hello")
+            .with_time_range(Some(0.0), Some(1.0))
+            .unwrap()
+            .with_confidence(Some(0.9))
+            .unwrap();
+        segment.language = Some("en".to_string());
+        segment.speaker = Some("speaker-a".to_string());
+        segment.push_word(word).unwrap();
+        segment.push_char(character).unwrap();
         let contract = TimedTextContract {
             text: Some("hello".to_string()),
             language: Some("en".to_string()),
             source: Some(" clip.wav ".to_string()),
-            segments: vec![TimedTextSegmentContract {
-                index: 0,
-                start_seconds: Some(0.0),
-                end_seconds: Some(1.0),
-                text: "hello".to_string(),
-                language: Some("en".to_string()),
-                speaker: Some("speaker-a".to_string()),
-                confidence: Some(0.9),
-                is_final: true,
-                words: vec![TimedTextWordContract {
-                    text: "hello".to_string(),
-                    start_seconds: Some(0.0),
-                    end_seconds: Some(1.0),
-                    confidence: Some(0.8),
-                    speaker: Some("speaker-a".to_string()),
-                    attributes: BTreeMap::new(),
-                }],
-                chars: vec![TimedTextCharContract {
-                    character: "h".to_string(),
-                    start_seconds: Some(0.0),
-                    end_seconds: Some(0.2),
-                    confidence: Some(0.7),
-                    attributes: BTreeMap::new(),
-                }],
-                attributes: BTreeMap::new(),
-            }],
+            segments: vec![segment],
             attributes: BTreeMap::new(),
         };
         contract.validate().unwrap();
@@ -532,6 +688,22 @@ mod tests {
             r#"{"index":0,"startSeconds":1.0,"endSeconds":2.0,"text":"hello","isFinal":true,"words":[{"text":"hello","startSeconds":0.5,"endSeconds":1.5}]}"#
         )
         .is_err());
+        assert!(serde_json::from_str::<TimedTextSegmentContract>(
+            r#"{"index":0,"startSeconds":1.0,"endSeconds":2.0,"text":"hello","isFinal":true,"words":[{"text":"hello","startSeconds":3.0}]}"#
+        )
+        .is_err());
+        assert!(serde_json::from_str::<TimedTextSegmentContract>(
+            r#"{"index":0,"startSeconds":1.0,"endSeconds":2.0,"text":"hello","isFinal":true,"words":[{"text":"hello","endSeconds":0.0}]}"#
+        )
+        .is_err());
+        assert!(serde_json::from_str::<TimedTextSegmentContract>(
+            r#"{"index":0,"startSeconds":1.0,"endSeconds":2.0,"text":"hello","isFinal":true,"chars":[{"char":"h","start":3.0}]}"#
+        )
+        .is_err());
+        assert!(serde_json::from_str::<TimedTextSegmentContract>(
+            r#"{"index":0,"startSeconds":1.0,"endSeconds":2.0,"text":"hello","isFinal":true,"chars":[{"char":"h","end":0.0}]}"#
+        )
+        .is_err());
         assert!(serde_json::from_str::<TimedTextContract>(
             r#"{"segments":[{"index":0,"startSeconds":2.0,"endSeconds":1.0,"text":"hello","isFinal":true}]}"#
         )
@@ -544,45 +716,23 @@ mod tests {
 
     #[test]
     fn validation_rejects_non_finite_nested_values() {
-        let contract = TimedTextContract::new(vec![TimedTextSegmentContract {
-            index: 0,
-            start_seconds: Some(f64::NAN),
-            end_seconds: Some(1.0),
-            text: "hello".to_string(),
-            language: None,
-            speaker: None,
-            confidence: None,
-            is_final: true,
-            words: Vec::new(),
-            chars: Vec::new(),
-            attributes: BTreeMap::new(),
-        }]);
-
-        assert!(contract.validate().is_err());
+        assert!(TimedTextSegmentContract::new(0, "hello")
+            .with_time_range(Some(f64::NAN), Some(1.0))
+            .is_err());
+        assert!(TimedTextWordContract::new("hello")
+            .with_confidence(Some(f32::INFINITY))
+            .is_err());
     }
 
     #[test]
     fn strict_validation_keeps_nested_timing_inside_segment() {
-        let contract = TimedTextContract::new(vec![TimedTextSegmentContract {
-            index: 0,
-            start_seconds: Some(1.0),
-            end_seconds: Some(2.0),
-            text: "hello".to_string(),
-            language: None,
-            speaker: None,
-            confidence: None,
-            is_final: true,
-            words: vec![TimedTextWordContract {
-                text: "hello".to_string(),
-                start_seconds: Some(0.5),
-                end_seconds: Some(1.5),
-                confidence: None,
-                speaker: None,
-                attributes: BTreeMap::new(),
-            }],
-            chars: Vec::new(),
-            attributes: BTreeMap::new(),
-        }]);
+        let later = TimedTextSegmentContract::new(0, "later")
+            .with_time_range(Some(2.0), Some(3.0))
+            .unwrap();
+        let earlier = TimedTextSegmentContract::new(1, "earlier")
+            .with_time_range(Some(1.0), Some(2.0))
+            .unwrap();
+        let contract = TimedTextContract::new(vec![later, earlier]);
 
         assert!(contract.validate_strict().is_err());
     }

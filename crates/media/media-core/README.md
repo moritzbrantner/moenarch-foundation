@@ -37,6 +37,9 @@ Timed text is intentionally narrower than an NLP transcript document. It is an
 interchange DTO for producers and consumers that need text plus media timing,
 optional speaker/language/confidence facts, source identity, and opaque
 attributes without depending on a text-processing implementation.
+Optional confidence values are finite normalized scores in the inclusive range
+from zero to one. Timings and nested segment/word/character containment are
+validated by fallible constructors and during deserialization.
 
 The original issue #108 extraction did not invent a cross-family range or
 transcript contract. `MediaSourceRef`, `MediaTimeRange`, and the timed-text DTOs
