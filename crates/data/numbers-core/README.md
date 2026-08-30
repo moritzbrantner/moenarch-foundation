@@ -9,6 +9,7 @@ Deterministic scalar numeric summaries, quantiles, ranges, and histograms for `m
 - Deterministic quantiles and quartiles over finite values
 - Fixed-width histograms with optional explicit ranges
 - Normalization helpers for numeric ranges
+- Exact base-10 decimals with explicit rounding and checked conversions
 
 ## Example
 
@@ -46,6 +47,12 @@ Quantiles are computed over finite values using linear interpolation between
 sorted ranks. Histograms use fixed-width bins over either an explicit range or
 the derived finite-value range. Degenerate ranges are valid; all matching values
 land in the last bin.
+
+`ExactDecimal` stores base-10 values without a binary floating-point
+intermediate. It parses and serializes as decimal strings, bounds scale at 28,
+and requires an explicit `RoundingMode` and scale for rounding or division.
+It provides mechanics only: currencies, money, and financial policy belong to
+consumers above this crate.
 
 ## Runtime Surface
 

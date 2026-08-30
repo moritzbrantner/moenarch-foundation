@@ -17,6 +17,7 @@ name = "vector_analysis_core"
 
 [dependencies]
 media-core.workspace = true
+numbers-core.workspace = true
 runtime-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true

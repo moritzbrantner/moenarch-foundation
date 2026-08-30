@@ -18,10 +18,14 @@ from repository_split import (
     ROOT,
     SOURCE_REPOSITORY,
     SOURCE_OWNERSHIP_RECORDS_SHA256,
+    POST_EXTRACTION_PACKAGE_NAMES,
+    POST_EXTRACTION_RECORDS_SHA256,
     cargo_metadata,
     inside_root,
     load_json,
     ownership_records_sha256,
+    records_except_named,
+    records_named,
 )
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -74,10 +78,14 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
         errors.append("unclassified Cargo packages: " + ", ".join(missing))
     if extra:
         errors.append("ownership entries absent from cargo metadata: " + ", ".join(extra))
-    if len(records) != 60:
-        errors.append(f"ownership must contain exactly 60 packages, found {len(records)}")
-    if ownership_records_sha256(ownership) != SOURCE_OWNERSHIP_RECORDS_SHA256:
+    if len(records) != 61:
+        errors.append(f"ownership must contain exactly 61 packages, found {len(records)}")
+    source_document = {"packages": records_except_named(ownership, POST_EXTRACTION_PACKAGE_NAMES)}
+    if ownership_records_sha256(source_document) != SOURCE_OWNERSHIP_RECORDS_SHA256:
         errors.append("source ownership records differ from the extraction inventory")
+    additions_document = {"packages": records_named(ownership, POST_EXTRACTION_PACKAGE_NAMES)}
+    if ownership_records_sha256(additions_document) != POST_EXTRACTION_RECORDS_SHA256:
+        errors.append("post-extraction ownership additions differ from the approved inventory")
     for record in records:
         name = record.get("current_package_name")
         if record.get("target_repository") != "moenarch-foundation":
@@ -142,7 +150,7 @@ def main() -> int:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
-    print("repository boundaries pass: 60 uniquely owned foundation packages; no path escapes or moving Git dependencies")
+    print("repository boundaries pass: 61 uniquely owned foundation packages; no path escapes or moving Git dependencies")
     return 0
 
 

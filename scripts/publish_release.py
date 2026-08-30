@@ -76,10 +76,16 @@ FOUNDATION_WAVE_2_REQUIRED_CHECKS = [
     "python3 scripts/check_release_plan.py --check releases/foundation-wave-2.toml",
     "python3 scripts/check_release_plan.py --package-release releases/foundation-wave-2.toml",
 ]
+FOUNDATION_AUDIO_CONTRACTS_REQUIRED_CHECKS = [
+    "cargo metadata --format-version 1 --no-deps",
+    "python3 scripts/check_release_plan.py --check releases/foundation-audio-contracts.toml",
+    "python3 scripts/check_release_plan.py --package-release releases/foundation-audio-contracts.toml",
+]
 HISTORICAL_REQUIRED_CHECKS_BY_ISSUE = {
     4: FOUNDATION_WAVE_1_REQUIRED_CHECKS,
     8: FOUNDATION_WAVE_1_REQUIRED_CHECKS,
     13: FOUNDATION_WAVE_2_REQUIRED_CHECKS,
+    17: FOUNDATION_AUDIO_CONTRACTS_REQUIRED_CHECKS,
 }
 NO_CONSUMER_CHECK_RELEASE_ISSUES = {13, 17}
 

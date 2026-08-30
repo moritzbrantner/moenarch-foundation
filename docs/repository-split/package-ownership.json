@@ -406,6 +406,31 @@
     },
     {
       "automatic_publish_eligible": true,
+      "contract_owner": "moenarch-math-geometry-3d",
+      "current_domain": "math",
+      "current_package_name": "moenarch-math-geometry-3d",
+      "current_published_version": null,
+      "current_release_workflow": "manual docs/RELEASE_CHECKLIST.md",
+      "ecosystem": "cargo",
+      "extraction_phase": "foundation",
+      "id": "cargo:moenarch-math-geometry-3d",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
+      "intended_package_name": "moenarch-math-geometry-3d",
+      "manifest_path": "crates/math/math-geometry-3d/Cargo.toml",
+      "migration_status": "foundation-authored; compatibility source remains in rust-packages",
+      "package_kind": "library",
+      "provenance": {
+        "introduced_after_commit": "078a921600bbebc4d5ab646392a8ffe43822159d",
+        "issue": "https://github.com/moritzbrantner/moenarch-foundation/issues/31"
+      },
+      "publication_class": "crates.io",
+      "source_version": "0.1.0",
+      "target_repository": "moenarch-foundation",
+      "temporary_boundary_violations": [],
+      "wrapped_library": null
+    },
+    {
+      "automatic_publish_eligible": true,
       "contract_owner": "moenarch-math-geometry-2d",
       "current_domain": "math",
       "current_package_name": "moenarch-math-geometry-2d-cli",
