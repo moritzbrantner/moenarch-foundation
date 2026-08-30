@@ -21,6 +21,10 @@ EXTRACTION_SHA = "364627c233b314807ba4f21298ada4cf63333bed"
 SOURCE_OWNERSHIP_RECORDS_SHA256 = (
     "6d1ae73c470e4e6adaf83705c315e47faa9189db5ce6ab0541c8b711305b9540"
 )
+POST_EXTRACTION_PACKAGE_NAMES = frozenset({"moenarch-math-geometry-3d"})
+POST_EXTRACTION_RECORDS_SHA256 = (
+    "778ac8bb845769f044bfaa23f79da5cc74b3a522cd9a6b5256477bbc89b45247"
+)
 
 
 def load_json(path: Path) -> dict:
@@ -61,6 +65,22 @@ def ownership_records_sha256(document: dict) -> str:
     )
     encoded = json.dumps(records, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def records_named(document: dict, names: frozenset[str]) -> list[dict]:
+    return [
+        record
+        for record in ownership_records(document)
+        if record.get("current_package_name") in names
+    ]
+
+
+def records_except_named(document: dict, names: frozenset[str]) -> list[dict]:
+    return [
+        record
+        for record in ownership_records(document)
+        if record.get("current_package_name") not in names
+    ]
 
 
 def main() -> int:

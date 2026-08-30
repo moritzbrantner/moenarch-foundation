@@ -3,7 +3,7 @@
 pub mod surface;
 use math_linear::{F32Matrix, F32MatrixView, F64Matrix, MatrixShape, PseudoinverseOptions};
 use media_core::{DetectError, Result};
-use numbers_core::{quantile, quartiles, NumberRange, RunningStats};
+use numbers_core::{checked_f64_to_f32, quantile, quartiles, NumberRange, RunningStats};
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())
@@ -520,12 +520,9 @@ pub fn ordinary_least_squares(design: &F32MatrixView<'_>, target: &[f32]) -> Res
                 .matvec(&target_f64)?;
             let mut coefficients = Vec::with_capacity(coefficients_f64.len());
             for value in coefficients_f64 {
-                if !value.is_finite() || value < f32::MIN as f64 || value > f32::MAX as f64 {
-                    return Err(invalid_argument(
-                        "OLS pseudoinverse produced f32-out-of-range coefficients",
-                    ));
-                }
-                coefficients.push(value as f32);
+                coefficients.push(checked_f64_to_f32(value).ok_or_else(|| {
+                    invalid_argument("OLS pseudoinverse produced f32-out-of-range coefficients")
+                })?);
             }
             coefficients
         }

@@ -2,6 +2,7 @@
 
 pub mod surface;
 use media_core::{DetectError, Result};
+use numbers_core::is_finite_f32_slice;
 
 #[derive(Debug, Clone, PartialEq)]
 /// Owned finite `f32` vector used by vector metrics and matrix bridges.
@@ -39,7 +40,7 @@ impl DenseVector {
         if self.values.is_empty() {
             return Err(invalid_argument("vector must not be empty"));
         }
-        if self.values.iter().any(|value| !value.is_finite()) {
+        if !is_finite_f32_slice(&self.values) {
             return Err(invalid_argument("vector components must be finite"));
         }
         Ok(())
@@ -217,7 +218,7 @@ fn validate_slice(values: &[f32], name: &str) -> Result<()> {
     if values.is_empty() {
         return Err(invalid_argument(format!("{name} must not be empty")));
     }
-    if values.iter().any(|value| !value.is_finite()) {
+    if !is_finite_f32_slice(values) {
         return Err(invalid_argument(format!(
             "{name} components must be finite"
         )));

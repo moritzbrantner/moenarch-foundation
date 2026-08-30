@@ -9,6 +9,7 @@ pub use f64_matrix::{F64ColumnView, F64Matrix, F64MatrixView, F64RowView};
 pub use svd::{PseudoinverseOptions, ReconstructionDiagnostics, SvdDecomposition, SvdOptions};
 
 use media_core::{DetectError, Result};
+use numbers_core::is_finite_f32_slice;
 use tensor_data::{F32Tensor, F32TensorView, TensorShape};
 use vector_analysis_core::{cosine_similarity, dot, l2_norm, DenseVector};
 
@@ -319,7 +320,7 @@ impl F32Matrix {
                 self.values.len()
             )));
         }
-        if self.values.iter().any(|value| !value.is_finite()) {
+        if !is_finite_f32_slice(&self.values) {
             return Err(invalid_argument("matrix values must be finite"));
         }
         Ok(())
@@ -889,7 +890,7 @@ impl<'a> F32MatrixView<'a> {
                 self.values.len()
             )));
         }
-        if self.values.iter().any(|value| !value.is_finite()) {
+        if !is_finite_f32_slice(self.values) {
             return Err(invalid_argument("matrix values must be finite"));
         }
         Ok(())

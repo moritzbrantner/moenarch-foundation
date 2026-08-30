@@ -2,14 +2,21 @@ schema_version = 1
 max_workers = 2
 
 [verification]
-# This restructuring release deliberately retains only exact metadata,
-# manifest, dependency, and one selected-package archive safeguards. Clean
-# exact-head, registry, issue-authorization, checksum, and immutable tag checks
-# remain enforced by the publisher immediately around irreversible effects.
+# The draft Harness structural audit is a one-time bootstrap check against the
+# independently reviewed base, not recurring authoritative Agent Loop evidence.
+# Release-specific gates remain preserved by issue in the release publisher;
+# these commands are the stable recurring handoff gate for every exact head.
 commands = [
   "cargo metadata --format-version 1 --no-deps",
-  "python3 scripts/check_release_plan.py --check releases/foundation-audio-contracts.toml",
-  "python3 scripts/check_release_plan.py --package-release releases/foundation-audio-contracts.toml",
+  "python3 scripts/check_repository_boundaries.py --check",
+  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+  "python3 -m unittest discover -s scripts -p 'test_*.py'",
+  "cargo fmt --all -- --check",
+  "cargo clippy --workspace --all-targets --all-features -- -D warnings",
+  "cargo test --workspace --all-features",
+  "cargo test --workspace --no-default-features",
+  "cargo doc --workspace --no-deps",
+  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
 ]
 
 [publication]

@@ -36,6 +36,7 @@ members = [
     "crates/math/math-geometry-2d",
     "crates/math/math-geometry-2d-cli",
     "crates/math/math-geometry-2d-server",
+    "crates/math/math-geometry-3d",
     "crates/math/math-linear",
     "crates/math/math-linear-cli",
     "crates/math/math-linear-server",
@@ -83,6 +84,8 @@ hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
 nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }
 ndarray = "0.17.2"
 ort = { version = "=2.0.0-rc.12", default-features = false, features = ["std", "ndarray", "load-dynamic", "api-24"] }
+proptest = "1.11.0"
+rust_decimal = { version = "1.42.1", default-features = false, features = ["serde", "std"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
 sha2 = "0.10.9"
@@ -95,6 +98,7 @@ dense-data = { package = "moenarch-dense-data", version = "=0.1.0", path = "crat
 graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "=0.1.0", path = "crates/data/graph-analysis-core" }
 jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2", path = "crates/jobs/jobs-core" }
 math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "=0.1.1", path = "crates/math/math-geometry-2d" }
+math-geometry-3d = { package = "moenarch-math-geometry-3d", version = "=0.1.0", path = "crates/math/math-geometry-3d" }
 math-linear = { package = "moenarch-math-linear", version = "=0.1.1", path = "crates/math/math-linear" }
 math-signal-core = { package = "moenarch-math-signal-core", version = "=0.1.1", path = "crates/math/math-signal-core" }
 math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1", path = "crates/math/math-sparse-data" }
