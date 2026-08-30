@@ -1,0 +1,3 @@
+canonical.* text eol=lf
+canonical.srt text eol=lf whitespace=-blank-at-eof
+canonical.vtt text eol=lf whitespace=-blank-at-eof

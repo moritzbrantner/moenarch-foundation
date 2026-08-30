@@ -4,7 +4,10 @@
 
 Accepted.
 
-This ADR refines the narrow NLP-contract exception in ADR 0012. It does not move NLP parsing, subtitle formats, transcript enrichment, or model behavior into foundation.
+This ADR refines the narrow NLP-contract exception in ADR 0012. It moves only
+deterministic, format-only timed-text parsing and rendering into foundation; it
+does not move NLP parsing, transcript enrichment, product output policy, or
+model behavior.
 
 ## Context
 
@@ -19,14 +22,31 @@ The result is unnecessary coordinated source development: audio and visual capab
 - `MediaSourceRef` for source identity and URI metadata;
 - `MediaTimeRange` for finite start/end seconds;
 - `TimedTextContract` and segment/word/character DTOs for text located on a media timeline.
+- deterministic SRT, WebVTT, plain-text, TSV, and Audacity-label projections
+  over that contract.
 
 These types may carry language tags, speaker labels, confidence values, finality, and opaque string attributes because those are producer/consumer interchange facts. They do not define linguistic interpretation.
 
-`nlp-stack` continues to own:
+Foundation's projections preserve generic format syntax only. Timed output
+requires explicit complete ranges and never invents timing. Speaker styling,
+word highlighting, wrapping, language-specific joining, and provider defaults
+remain in product-owned mapping layers. Audacity label output is text-only;
+speaker markers such as `[[speaker]]` are product conventions rather than label
+format syntax.
+
+Subtitle parsing is intentionally a canonical projection rather than a
+lossless document representation. Numeric SRT cue identifiers become segment
+indices. WebVTT string identifiers, cue settings, and `NOTE`, `STYLE`, and
+`REGION` metadata are syntax-level inputs that are validated and discarded.
+`NOTE` comment bodies and `STYLE` CSS bodies remain opaque after container and
+forbidden-arrow validation; foundation does not interpret comments or CSS. The
+neutral contract retains cue text and timing.
+
+`nlp-stack` or the relevant capability continues to own:
 
 - transcript document semantics beyond the neutral interchange DTO;
 - text-document conversion and annotation;
-- SRT/WebVTT/Whisper/WhisperX parsing and formatting;
+- Whisper/WhisperX and other provider-specific formats;
 - transcript heuristics and linguistic analysis;
 - text model runtimes and NLP-specific validation/enrichment.
 
