@@ -725,6 +725,46 @@ mod tests {
     }
 
     #[test]
+    fn native_builders_preserve_nested_timing_invariants() {
+        let mut bounded = TimedTextSegmentContract::new(0, "hello")
+            .with_time_range(Some(1.0), Some(2.0))
+            .unwrap();
+        let early_word = TimedTextWordContract::new("hello")
+            .with_time_range(Some(0.5), Some(1.5))
+            .unwrap();
+        let late_character = TimedTextCharContract::new("h")
+            .with_time_range(Some(1.5), Some(2.5))
+            .unwrap();
+
+        assert!(bounded.push_word(early_word).is_err());
+        assert!(bounded.push_char(late_character).is_err());
+        assert!(bounded.words().is_empty());
+        assert!(bounded.chars().is_empty());
+
+        let mut populated = TimedTextSegmentContract::new(1, "hello");
+        populated
+            .push_word(
+                TimedTextWordContract::new("hello")
+                    .with_time_range(Some(1.0), Some(2.0))
+                    .unwrap(),
+            )
+            .unwrap();
+        populated
+            .push_char(
+                TimedTextCharContract::new("h")
+                    .with_time_range(Some(1.25), Some(1.5))
+                    .unwrap(),
+            )
+            .unwrap();
+
+        assert!(populated
+            .clone()
+            .with_time_range(Some(1.1), Some(2.0))
+            .is_err());
+        assert!(populated.with_time_range(Some(1.0), Some(1.9)).is_err());
+    }
+
+    #[test]
     fn strict_validation_keeps_nested_timing_inside_segment() {
         let later = TimedTextSegmentContract::new(0, "later")
             .with_time_range(Some(2.0), Some(3.0))
