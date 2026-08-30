@@ -2,6 +2,12 @@
 
 This repository was created by clean-copy extraction. Git history was not rewritten or filtered.
 
+These records describe where the copied material came from; they do not assign
+current ownership back to the source repository. For the packages in the
+foundation ownership inventory, `moritzbrantner/moenarch-foundation` is the
+canonical source, test, issue, version, and release authority. Remaining copies
+in `rust-packages` are compatibility/provenance material only.
+
 - Source repository: `moritzbrantner/rust-packages`
 - Reviewed Phase-A ownership baseline: `d032ad2890c1df3c6a5b9eff024562f00d017fce`
 - Exact extraction commit: `364627c233b314807ba4f21298ada4cf63333bed`
@@ -52,7 +58,13 @@ byte-identical copy:
   fixtures were materially adapted into destination-focused boundary and
   release checks.
 
-All copied Rust sources remain available in `rust-packages` at the extraction commit. Dual-licensed material retains the repository's MIT OR Apache-2.0 terms through `LICENSE-MIT` and `LICENSE-APACHE`. No additional notice file existed in the literal extraction scope. No Bun/npm packages, generated build output, vendored projects, external media, or source history were copied.
+All copied Rust sources remain available in `rust-packages` at the extraction
+commit as historical compatibility/provenance material, not as competing
+release-authoritative source. Dual-licensed material retains the repository's
+MIT OR Apache-2.0 terms through `LICENSE-MIT` and `LICENSE-APACHE`. No
+additional notice file existed in the literal extraction scope. No Bun/npm
+packages, generated build output, vendored projects, external media, or source
+history were copied.
 
 The draft Harness profile was detected from the empty destination before
 mutation and audited after authoring. Its exact-base structural audit is a

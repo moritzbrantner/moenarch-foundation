@@ -21,7 +21,6 @@ from repository_split import (
     OWNERSHIP_PATH,
     RELEASE_PLAN_PATH,
     ROOT,
-    SOURCE_REPOSITORY,
     cargo_metadata,
     inside_root,
     load_json,
@@ -176,8 +175,10 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
         errors.append("schema_version must be 1")
     if plan.get("repository") != DESTINATION_REPOSITORY:
         errors.append("wrong repository")
-    if plan.get("active_release_owner") != SOURCE_REPOSITORY:
+    if plan.get("active_release_owner") != DESTINATION_REPOSITORY:
         errors.append("wrong active release owner")
+    if plan.get("historical_source_role") != "compatibility-provenance-only":
+        errors.append("historical source role must be compatibility-provenance-only")
     if plan.get("source_sha") != EXTRACTION_SHA:
         errors.append("source_sha must match extraction SHA")
     if plan.get("publication_authorized") is not False:

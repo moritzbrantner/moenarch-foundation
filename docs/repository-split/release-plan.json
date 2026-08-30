@@ -65,7 +65,7 @@
   ],
   "destination_registry": "crates.io",
   "expected_tags": [],
-  "notes": "Bootstrap inventory only. This manifest authorizes no publication, tags, releases, or version changes.",
+  "notes": "Bootstrap inventory only. Canonical ownership is active in moenarch-foundation, but this manifest authorizes no publication, tags, releases, or version changes.",
   "packages": [
     {
       "expected_tag": null,
@@ -863,7 +863,8 @@
       ]
     }
   ],
-  "active_release_owner": "moritzbrantner/rust-packages",
+  "active_release_owner": "moritzbrantner/moenarch-foundation",
+  "historical_source_role": "compatibility-provenance-only",
   "phase_a_baseline": "d032ad2890c1df3c6a5b9eff024562f00d017fce",
   "publication_authorized": false,
   "release_issue": null,

@@ -60,6 +60,17 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     for key, expected in expected_header.items():
         if ownership.get(key) != expected:
             errors.append(f"{key} must be {expected!r}")
+    expected_authority = {
+        "repository": DESTINATION_REPOSITORY,
+        "responsibilities": ["source", "tests", "issues", "versions", "releases"],
+    }
+    if ownership.get("canonical_authority") != expected_authority:
+        errors.append(
+            "canonical authority must assign source/tests/issues/versions/releases "
+            "to the destination"
+        )
+    if ownership.get("historical_source_role") != "compatibility-provenance-only":
+        errors.append("historical source role must be compatibility-provenance-only")
     records = ownership.get("packages")
     if not isinstance(records, list):
         return errors + ["packages must be a list"]
