@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+mod cancellation;
+
+pub use cancellation::CancellationToken;
+
 pub mod landscape;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1609,6 +1613,33 @@ impl From<String> for ArtifactId {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn assert_send_sync<T: Send + Sync>() {}
+
+    #[test]
+    fn cancellation_token_starts_uncancelled_and_stays_cancelled() {
+        assert_send_sync::<CancellationToken>();
+
+        let token = CancellationToken::new();
+        assert!(!token.is_cancelled());
+
+        token.cancel();
+        token.cancel();
+
+        assert!(token.is_cancelled());
+    }
+
+    #[test]
+    fn cancellation_token_shares_state_across_threads() {
+        let token = CancellationToken::new();
+        let worker_token = token.clone();
+
+        std::thread::spawn(move || worker_token.cancel())
+            .join()
+            .expect("cancellation thread should finish");
+
+        assert!(token.is_cancelled());
+    }
 
     #[test]
     fn diagnostic_uses_camel_case_json() {

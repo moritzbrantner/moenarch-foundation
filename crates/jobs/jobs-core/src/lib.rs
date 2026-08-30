@@ -7,15 +7,12 @@ pub use artifacts::*;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc, Mutex,
-};
+use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
 use chrono::{DateTime, Utc};
 pub use runtime_core::ArtifactId;
-use runtime_core::{Diagnostic, OperationId};
+use runtime_core::{CancellationToken as RuntimeCancellationToken, Diagnostic, OperationId};
 use serde::{Deserialize, Serialize};
 
 /// Result type used by this crate.
@@ -572,10 +569,10 @@ pub struct JobSnapshot {
     pub metadata: BTreeMap<String, String>,
 }
 
-/// Cooperative cancellation token.
+/// Compatibility wrapper for the runtime's cooperative cancellation token.
 #[derive(Debug, Clone, Default)]
 pub struct CancellationToken {
-    cancelled: Arc<AtomicBool>,
+    inner: RuntimeCancellationToken,
 }
 
 impl CancellationToken {
@@ -586,12 +583,12 @@ impl CancellationToken {
 
     /// Requests cancellation.
     pub fn cancel(&self) {
-        self.cancelled.store(true, Ordering::SeqCst);
+        self.inner.cancel();
     }
 
     /// Returns whether cancellation has been requested.
     pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::SeqCst)
+        self.inner.is_cancelled()
     }
 
     /// Returns `JobError::Cancelled` when cancellation has been requested.
@@ -1150,6 +1147,28 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn cancellation_token_maps_cancelled_state_to_job_error() {
+        let token = CancellationToken::new();
+        assert_eq!(token.check_cancelled(), Ok(()));
+
+        token.cancel();
+
+        assert_eq!(token.check_cancelled(), Err(JobError::Cancelled));
+    }
+
+    #[test]
+    fn cancellation_token_clone_observes_runtime_state() {
+        let token = CancellationToken::new();
+        let cloned = token.clone();
+
+        std::thread::spawn(move || cloned.cancel())
+            .join()
+            .expect("cancellation thread should finish");
+
+        assert!(token.is_cancelled());
+    }
 
     #[test]
     fn tracker_captures_progress_logs_and_artifacts() {
