@@ -2,8 +2,8 @@
 mod numerical;
 
 use math_geometry_3d::{
-    AffineTransform3d, EulerOrder, Matrix3d, Point3d, Quaternion, Quaterniond, RigidTransform3d,
-    UnitQuaternion, UnitQuaterniond, Vector3, Vector3d,
+    AffineTransform3d, EulerOrder, Geometry3dError, Matrix3d, Matrix4d, Point3d, Quaternion,
+    Quaterniond, RigidTransform3d, UnitQuaternion, UnitQuaterniond, Vector3, Vector3d,
 };
 use numerical::{assert_approx_eq_f64, deterministic_config, ApproxTolerance};
 use proptest::prelude::*;
@@ -62,11 +62,15 @@ proptest! {
     #[test]
     fn quaternion_identity_inverse_composition_and_matrix_laws(
         (axis, angle) in arbitrary_rotation(),
+        (second_axis, second_angle) in arbitrary_rotation(),
+        (third_axis, third_angle) in arbitrary_rotation(),
         vx in -100.0_f64..=100.0_f64,
         vy in -100.0_f64..=100.0_f64,
         vz in -100.0_f64..=100.0_f64,
     ) {
         let quaternion = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
+        let second = UnitQuaterniond::from_axis_angle(second_axis, second_angle).unwrap();
+        let third = UnitQuaterniond::from_axis_angle(third_axis, third_angle).unwrap();
         let vector = Vector3d::new(vx, vy, vz).unwrap();
 
         let identity = quaternion.compose(quaternion.inverse()).unwrap();
@@ -86,6 +90,15 @@ proptest! {
         assert_approx_eq_f64(matrix.determinant().unwrap(), 1.0, tolerance());
         let recovered = UnitQuaterniond::from_matrix3(matrix).unwrap();
         prop_assert!(quaternion_dot(quaternion, recovered).abs() > 1.0 - 1.0e-10);
+
+        assert_vector_close(
+            quaternion.compose(second).unwrap().rotate_vector(vector).unwrap(),
+            quaternion.rotate_vector(second.rotate_vector(vector).unwrap()).unwrap(),
+        );
+        assert_vector_close(
+            quaternion.compose(second).unwrap().compose(third).unwrap().rotate_vector(vector).unwrap(),
+            quaternion.compose(second.compose(third).unwrap()).unwrap().rotate_vector(vector).unwrap(),
+        );
     }
 
     #[test]
@@ -117,6 +130,64 @@ proptest! {
         let vector = Vector3d::new(px, py, pz).unwrap();
         assert_vector_close(transform.apply_vector(vector).unwrap(), quaternion.rotate_vector(vector).unwrap());
         assert_point_close(transform.apply_point(Point3d::ORIGIN).unwrap(), Point3d::ORIGIN.translate(translation).unwrap());
+    }
+
+    #[test]
+    fn rigid_and_affine_transform_inverse_and_composition_laws(
+        (first_axis, first_angle) in arbitrary_rotation(),
+        (second_axis, second_angle) in arbitrary_rotation(),
+        tx1 in -20.0_f64..=20.0_f64,
+        ty1 in -20.0_f64..=20.0_f64,
+        tz1 in -20.0_f64..=20.0_f64,
+        tx2 in -20.0_f64..=20.0_f64,
+        ty2 in -20.0_f64..=20.0_f64,
+        tz2 in -20.0_f64..=20.0_f64,
+        x in -100.0_f64..=100.0_f64,
+        y in -100.0_f64..=100.0_f64,
+        z in -100.0_f64..=100.0_f64,
+    ) {
+        let first = RigidTransform3d::new(
+            UnitQuaterniond::from_axis_angle(first_axis, first_angle).unwrap(),
+            Vector3d::new(tx1, ty1, tz1).unwrap(),
+        ).unwrap();
+        let second = RigidTransform3d::new(
+            UnitQuaterniond::from_axis_angle(second_axis, second_angle).unwrap(),
+            Vector3d::new(tx2, ty2, tz2).unwrap(),
+        ).unwrap();
+        let point = Point3d::new(x, y, z).unwrap();
+        let vector = Vector3d::new(x, y, z).unwrap();
+
+        assert_point_close(first.inverse().unwrap().apply_point(first.apply_point(point).unwrap()).unwrap(), point);
+        assert_vector_close(first.inverse().unwrap().apply_vector(first.apply_vector(vector).unwrap()).unwrap(), vector);
+        let composed = first.compose(second).unwrap();
+        assert_point_close(
+            composed.apply_point(point).unwrap(),
+            first.apply_point(second.apply_point(point).unwrap()).unwrap(),
+        );
+        assert_vector_close(
+            composed.apply_vector(vector).unwrap(),
+            first.apply_vector(second.apply_vector(vector).unwrap()).unwrap(),
+        );
+
+        let first_affine = first.to_affine().unwrap();
+        let second_affine = second.to_affine().unwrap();
+        assert_point_close(
+            first_affine.inverse().unwrap().apply_point(first_affine.apply_point(point).unwrap()).unwrap(),
+            point,
+        );
+        assert_vector_close(
+            first_affine.inverse().unwrap().apply_vector(first_affine.apply_vector(vector).unwrap()).unwrap(),
+            vector,
+        );
+        let affine_composed = first_affine.compose(second_affine).unwrap();
+        assert_point_close(
+            affine_composed.apply_point(point).unwrap(),
+            first_affine.apply_point(second_affine.apply_point(point).unwrap()).unwrap(),
+        );
+        assert_vector_close(
+            affine_composed.apply_vector(vector).unwrap(),
+            first_affine.apply_vector(second_affine.apply_vector(vector).unwrap()).unwrap(),
+        );
     }
 }
 
@@ -166,12 +237,13 @@ fn convention_canaries_cover_handedness_layout_composition_and_serialization() {
             .unwrap(),
     );
 
-    let serialized = serde_json::to_string(&quarter_turn).unwrap();
-    assert!(serialized.starts_with(r#"{"x":"#), "{serialized}");
-    assert!(
-        serialized.contains(",\"y\":")
-            && serialized.contains(",\"z\":")
-            && serialized.contains(",\"w\":")
+    assert_eq!(
+        serde_json::to_string(&quarter_turn).unwrap(),
+        r#"{"x":0.0,"y":0.0,"z":0.7071067811865475,"w":0.7071067811865476}"#
+    );
+    assert_eq!(
+        serde_json::to_string(&Matrix3d::IDENTITY).unwrap(),
+        r#"{"rows":[[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0]]}"#
     );
 }
 
@@ -188,34 +260,91 @@ fn edge_cases_and_invalid_states_are_rejected() {
             .is_err()
     );
     assert!(Matrix3d::new([[f64::NAN, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).is_err());
-    assert!(Vector3d::new(f64::MAX, 0.0, 0.0)
+    assert!(matches!(
+        Vector3d::new(f64::MAX, 0.0, 0.0).unwrap().to_f32_checked(),
+        Err(Geometry3dError::NotRepresentableAsF32("vector x"))
+    ));
+    assert!(Point3d::new(0.0, f64::MAX, 0.0)
+        .unwrap()
+        .to_f32_checked()
+        .is_err());
+    let oversized_matrix3 =
+        Matrix3d::new([[f64::MAX, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).unwrap();
+    assert!(oversized_matrix3.to_f32_checked().is_err());
+    let oversized_matrix4 = Matrix4d::new([
+        [1.0, 0.0, 0.0, f64::MAX],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ])
+    .unwrap();
+    assert!(oversized_matrix4.to_f32_checked().is_err());
+    assert!(RigidTransform3d::new(
+        UnitQuaterniond::IDENTITY,
+        Vector3d::new(f64::MAX, 0.0, 0.0).unwrap(),
+    )
+    .unwrap()
+    .to_f32_checked()
+    .is_err());
+    assert!(AffineTransform3d::new(oversized_matrix3, Vector3d::ZERO)
         .unwrap()
         .to_f32_checked()
         .is_err());
 
-    for angle in [1.0e-14, std::f64::consts::PI - 1.0e-12] {
-        let source = UnitQuaterniond::from_axis_angle(Vector3d::Y, angle).unwrap();
-        let (axis, recovered_angle) = source.to_axis_angle().unwrap();
-        let recovered = UnitQuaterniond::from_axis_angle(axis, recovered_angle).unwrap();
-        assert!(quaternion_dot(source, recovered).abs() > 1.0 - 1.0e-10);
+    for axis in [Vector3d::X, Vector3d::Y, Vector3d::Z] {
+        for angle in [1.0e-14, std::f64::consts::PI - 1.0e-12] {
+            let source = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
+            let (recovered_axis, recovered_angle) = source.to_axis_angle().unwrap();
+            let recovered =
+                UnitQuaterniond::from_axis_angle(recovered_axis, recovered_angle).unwrap();
+            assert!(quaternion_dot(source, recovered).abs() > 1.0 - 1.0e-10);
+            let matrix_recovered =
+                UnitQuaterniond::from_matrix3(source.to_matrix3().unwrap()).unwrap();
+            assert!(quaternion_dot(source, matrix_recovered).abs() > 1.0 - 1.0e-10);
+            let matrix_roundtrip = matrix_recovered.to_matrix3().unwrap();
+            for (actual_row, expected_row) in matrix_roundtrip
+                .rows()
+                .into_iter()
+                .zip(source.to_matrix3().unwrap().rows())
+            {
+                for (actual, expected) in actual_row.into_iter().zip(expected_row) {
+                    assert_approx_eq_f64(actual, expected, tolerance());
+                }
+            }
+        }
     }
 
-    for order in [
-        EulerOrder::Xyz,
-        EulerOrder::Xzy,
-        EulerOrder::Yxz,
-        EulerOrder::Yzx,
-        EulerOrder::Zxy,
-        EulerOrder::Zyx,
-    ] {
-        let source =
-            UnitQuaterniond::from_euler(order, 0.2, std::f64::consts::FRAC_PI_2, -0.4).unwrap();
-        let (x, y, z) = source.to_euler(order).unwrap();
-        let recovered = UnitQuaterniond::from_euler(order, x, y, z).unwrap();
-        assert!(
-            quaternion_dot(source, recovered).abs() > 1.0 - 1.0e-10,
-            "{order:?}"
-        );
+    let singular_cases = [
+        (EulerOrder::Xyz, 1),
+        (EulerOrder::Xzy, 2),
+        (EulerOrder::Yxz, 0),
+        (EulerOrder::Yzx, 2),
+        (EulerOrder::Zxy, 0),
+        (EulerOrder::Zyx, 1),
+    ];
+    for (order, singular_axis) in singular_cases {
+        for singular_angle in [std::f64::consts::FRAC_PI_2, -std::f64::consts::FRAC_PI_2] {
+            let mut angles = [0.2, -0.3, 0.4];
+            angles[singular_axis] = singular_angle;
+            let source =
+                UnitQuaterniond::from_euler(order, angles[0], angles[1], angles[2]).unwrap();
+            let (x, y, z) = source.to_euler(order).unwrap();
+            let recovered = UnitQuaterniond::from_euler(order, x, y, z).unwrap();
+            assert!(
+                quaternion_dot(source, recovered).abs() > 1.0 - 1.0e-10,
+                "{order:?} at {singular_angle}: recovered {x}, {y}, {z}"
+            );
+            let returned = [x, y, z];
+            let zeroed_axis = match order {
+                EulerOrder::Xyz | EulerOrder::Yzx => 0,
+                EulerOrder::Xzy | EulerOrder::Zxy => 1,
+                EulerOrder::Yxz | EulerOrder::Zyx => 2,
+            };
+            assert!(
+                returned[zeroed_axis].abs() <= 1.0e-10,
+                "{order:?}: {returned:?}"
+            );
+        }
     }
 }
 
@@ -375,7 +504,7 @@ proptest! {
     #![proptest_config(deterministic_config())]
 
     #[test]
-    fn nalgebra_reference_agrees_on_generated_rotation(
+fn nalgebra_reference_agrees_on_generated_rotation(
         (axis, angle) in arbitrary_rotation(),
         x in -100.0_f64..=100.0_f64,
         y in -100.0_f64..=100.0_f64,
@@ -385,5 +514,41 @@ proptest! {
         let vector = Vector3d::new(x, y, z).unwrap();
         let expected = quaternion.to_nalgebra().transform_vector(&nalgebra::Vector3::new(x, y, z));
         assert_vector_close(quaternion.rotate_vector(vector).unwrap(), Vector3d::new(expected.x, expected.y, expected.z).unwrap());
+
+        let translation = Vector3d::new(axis.x() * 3.0, axis.y() * -2.0, axis.z()).unwrap();
+        let transform = RigidTransform3d::new(quaternion, translation).unwrap();
+        let reference = nalgebra::Isometry3::from_parts(
+            nalgebra::Translation3::new(translation.x(), translation.y(), translation.z()),
+            quaternion.to_nalgebra(),
+        );
+        let point = Point3d::new(x, y, z).unwrap();
+        let expected_point = reference.transform_point(&nalgebra::Point3::new(x, y, z));
+        assert_point_close(
+            transform.apply_point(point).unwrap(),
+            Point3d::new(expected_point.x, expected_point.y, expected_point.z).unwrap(),
+        );
+        let expected_vector = reference.transform_vector(&nalgebra::Vector3::new(x, y, z));
+        assert_vector_close(
+            transform.apply_vector(vector).unwrap(),
+            Vector3d::new(expected_vector.x, expected_vector.y, expected_vector.z).unwrap(),
+        );
+
+        let affine = AffineTransform3d::from_matrix4(Matrix4d::new([
+            [1.0, 0.2, 0.0, translation.x()],
+            [0.0, 1.5, -0.1, translation.y()],
+            [0.0, 0.0, 0.75, translation.z()],
+            [0.0, 0.0, 0.0, 1.0],
+        ]).unwrap()).unwrap();
+        let reference_linear = nalgebra::Matrix3::new(1.0, 0.2, 0.0, 0.0, 1.5, -0.1, 0.0, 0.0, 0.75);
+        let expected_affine_vector = reference_linear * nalgebra::Vector3::new(x, y, z);
+        assert_vector_close(
+            affine.apply_vector(vector).unwrap(),
+            Vector3d::new(expected_affine_vector.x, expected_affine_vector.y, expected_affine_vector.z).unwrap(),
+        );
+        let expected_affine_point = expected_affine_vector + nalgebra::Vector3::new(translation.x(), translation.y(), translation.z());
+        assert_point_close(
+            affine.apply_point(point).unwrap(),
+            Point3d::new(expected_affine_point.x, expected_affine_point.y, expected_affine_point.z).unwrap(),
+        );
     }
 }

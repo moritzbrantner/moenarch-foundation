@@ -21,6 +21,17 @@ Domain-neutral, finite 3D points, vectors, rotations, and affine transforms.
 The optional `nalgebra-adapters` feature adds conversions at the crate edge; no
 nalgebra type is part of this crate's canonical contract.
 
+## Numerical verification
+
+Rotation matrices are accepted only when column lengths, mutual orthogonality,
+and determinant are within `1e-10` of a proper rotation. Euler extraction uses
+an absolute `1e-12` cosine threshold for its documented singular branch and
+returns one equivalent rotation with the least-significant angle set to zero.
+Generated f64 rotation/transform laws use `1e-10` absolute and relative
+tolerances; paired f32 laws use `2e-5`. These tolerances cover composition,
+inverse, matrix and axis-angle edge branches, and nalgebra differential tests;
+they are not application-scale distance tolerances.
+
 ## Example
 
 ```rust
