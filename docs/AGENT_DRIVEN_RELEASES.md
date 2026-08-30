@@ -74,11 +74,12 @@ notes = "Reviewed release notes."
 `dependency_order`, the `packages` array, and package dependencies must agree
 with Cargo metadata. `expected_tags` must exactly match package tags, and tags
 use `<package>-v<version>`. `github_releases` is optional; every declared
-release must refer to a unique declared tag. Active manifests bind the exact
-`.agent-loop.toml` gate. Completed historical manifests retain the gate that
-authorized them. `required_consumer_checks` may be empty when the destination
-release issue explicitly removes consumer verification. Declared consumer
-commands run again before publication. Unknown fields fail closed.
+release must refer to a unique declared tag. New manifests bind the exact
+`.agent-loop.toml` gate. Issue-specific historical manifests retain the gate
+reviewed for that issue even after the recurring repository gate changes.
+`required_consumer_checks` may be empty when the destination release issue
+explicitly removes consumer verification. Declared consumer commands run again
+before publication. Unknown fields fail closed.
 
 ## Restructuring-first wave 2
 
@@ -105,6 +106,9 @@ not run or claim workspace, unit, integration, consumer, Clippy,
 documentation, build, or all-package evidence. The publisher retains the
 clean-head, destination-local authority, exact dependency, immutable registry,
 idempotent resume, checksum, and source-tag safeguards described below.
+That reviewed preparation gate remains pinned to issue #17; it is not the
+recurring Agent Loop gate for ordinary source work. Any later publication also
+requires a receipt for the current repository-wide recurring gate.
 
 This preparation is ordered after foundation wave 2 issue #13. The audio
 contracts PR may be reviewed while wave 2 is pending, but it must not merge or

@@ -335,6 +335,19 @@ def write_manifest(
 
 
 class PublishReleaseTests(unittest.TestCase):
+    def test_audio_release_retains_its_exact_historical_gate(self) -> None:
+        manifest = tomllib.loads(
+            (SCRIPT.parents[1] / "releases/foundation-audio-contracts.toml").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            publish_release.HISTORICAL_REQUIRED_CHECKS_BY_ISSUE[17],
+            manifest["required_checks"],
+        )
+        self.assertNotEqual(CONFIG_COMMANDS, manifest["required_checks"])
+
     def test_missing_agent_loop_binding_refuses_before_external_access(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             effects = ForbiddenEffects()
