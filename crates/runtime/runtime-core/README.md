@@ -3,6 +3,11 @@
 Domain-neutral runtime surface DTOs and shared CLI/server adapter helpers for
 the workspace package surfaces.
 
+`runtime-core` also owns the domain-neutral cooperative `CancellationToken`.
+The token is async-runtime independent, can be cloned across threads, and keeps
+cancellation sticky after any clone requests it. Domain crates can wrap this
+primitive when they need to translate cancellation into domain-specific errors.
+
 ## Runtime surface contracts
 
 `runtime-core` owns the shared package-surface DTOs, structured success

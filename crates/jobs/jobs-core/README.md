@@ -7,7 +7,8 @@ applications.
 
 - Stable job ids and metadata for cross-process APIs
 - Status transitions for queued, running, cancelling, succeeded, failed, and cancelled jobs
-- Cooperative cancellation token that can be shared with worker code
+- Source-compatible cooperative cancellation wrapper that maps the canonical
+  `runtime_core::CancellationToken` into `JobError::Cancelled`
 - Progress snapshots with optional totals and percent calculation
 - Structured logs and artifact records
 - Generic `OperationResult<T>`, `JobResult<T>`, and `JobManifest` envelopes
