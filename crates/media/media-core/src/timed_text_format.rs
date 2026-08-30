@@ -49,7 +49,9 @@ pub fn parse_plain_text(input: &str) -> TimedTextContract {
 /// Renders canonical SubRip bytes from timed segments.
 ///
 /// Every segment must contain a finite, non-negative start and end time. The
-/// output uses one-based cue numbers and `HH:MM:SS,mmm` timestamps.
+/// output uses one-based cue numbers and `HH:MM:SS,mmm` timestamps. Cue payloads
+/// that are empty after trimming or contain an internal blank or whitespace-only
+/// line are rejected.
 pub fn format_srt(contract: &TimedTextContract) -> Result<String> {
     format_subtitles(contract, SubtitleSyntax::Srt)
 }
@@ -59,7 +61,9 @@ pub fn format_srt(contract: &TimedTextContract) -> Result<String> {
 /// Every segment must contain a finite, non-negative start and end time. The
 /// output starts with `WEBVTT` and omits the hour field below one hour. After
 /// rounding to milliseconds, every cue must have positive duration and cue
-/// starts must be nondecreasing. Cue payloads containing `-->` are rejected.
+/// starts must be nondecreasing. Cue payloads containing `-->`, empty after
+/// trimming, or containing an internal blank or whitespace-only line are
+/// rejected.
 pub fn format_webvtt(contract: &TimedTextContract) -> Result<String> {
     format_subtitles(contract, SubtitleSyntax::WebVtt)
 }
@@ -274,12 +278,10 @@ fn is_webvtt_metadata_block(block: &[&str], saw_cue: bool) -> Result<bool> {
 fn validate_webvtt_region(lines: &[&str]) -> Result<()> {
     let mut names = BTreeSet::new();
     let mut has_identifier = false;
-    for line in lines {
-        let (name, value) = line
+    for setting in lines.iter().flat_map(|line| line.split_ascii_whitespace()) {
+        let (name, value) = setting
             .split_once(':')
             .ok_or_else(|| invalid_error("WebVTT REGION fields must use name:value syntax"))?;
-        let name = name.trim();
-        let value = value.trim();
         if !names.insert(name) {
             return invalid(format!("duplicate WebVTT REGION field: {name}"));
         }

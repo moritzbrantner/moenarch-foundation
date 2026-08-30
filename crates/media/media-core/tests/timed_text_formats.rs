@@ -111,6 +111,18 @@ fn webvtt_rejects_invalid_cue_settings_and_region_fields() {
         let input = format!("WEBVTT\n\nREGION\n{fields}\n");
         assert!(parse_webvtt(&input).is_err(), "accepted REGION: {fields}");
     }
+
+    for fields in [
+        "id:same-line width:40% lines:3",
+        "id:tabbed\twidth:40%\tregionanchor:0%,100%",
+    ] {
+        let input = format!(
+            "WEBVTT\n\nREGION\n{fields}\n\n00:00.000 --> 00:01.000 region:same-line\ncaption\n"
+        );
+        assert!(parse_webvtt(&input).is_ok(), "rejected REGION: {fields}");
+    }
+
+    assert!(parse_webvtt("WEBVTT\n\nREGION\nid:main width:40% malformed\n").is_err());
 }
 
 #[test]
