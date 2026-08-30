@@ -37,9 +37,11 @@ For a future authorized release:
    it is never the package tag or Release target.
 8. On failure, preserve published versions and resume from the first absent
    registry version. Never overwrite, delete, republish, or automatically yank.
-9. Run isolated registry-only consumer checks and retain `rust-packages` source
-   until every separately authorized destination, compatibility, rollback, and
-   consumer gate passes. Wave 2 publication does not itself claim those checks.
+9. Run isolated registry-only consumer checks and retain historical
+   `rust-packages` compatibility/provenance source until every separately
+   authorized destination, compatibility, rollback, and consumer gate passes.
+   Its continued presence does not retain release authority there. Wave 2
+   publication does not itself claim those checks.
 
 The issue #17 preparation PR is strictly ordered after foundation wave 2 issue
 #13. It may open for review, but must not merge or publish until wave 2 has

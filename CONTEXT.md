@@ -9,4 +9,13 @@ and source versions are retained from the extraction commit. Core libraries
 should stay composable and adapters should remain thin wrappers around their
 named library.
 
-Repository movement is additive at this stage. `moritzbrantner/rust-packages` continues to contain and own active source and releases until a later exact release issue authorizes publication and downstream clean-checkout gates pass.
+Canonical ownership has cut over for every package in the foundation ownership
+inventory. This repository is the sole authority for source changes, tests,
+issues, version selection, release manifests, and future publication of those
+packages. Historical copies may remain in `moritzbrantner/rust-packages` for
+compatibility and provenance, but physical presence there does not confer
+source or release authority.
+
+Ownership is not publication authorization. Every release still requires the
+destination-local issue, exact manifest, immutable-head binding, packaging,
+registry, and consumer gates documented in `docs/AGENT_DRIVEN_RELEASES.md`.

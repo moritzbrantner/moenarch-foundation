@@ -1,5 +1,16 @@
 {
+  "canonical_authority": {
+    "repository": "moritzbrantner/moenarch-foundation",
+    "responsibilities": [
+      "source",
+      "tests",
+      "issues",
+      "versions",
+      "releases"
+    ]
+  },
   "extraction_sha": "364627c233b314807ba4f21298ada4cf63333bed",
+  "historical_source_role": "compatibility-provenance-only",
   "packages": [
     {
       "automatic_publish_eligible": true,

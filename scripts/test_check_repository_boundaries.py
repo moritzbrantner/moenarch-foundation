@@ -35,6 +35,18 @@ class RepositoryBoundaryTests(unittest.TestCase):
         ownership["packages"][0]["target_repository"] = "rust-packages"
         self.assertTrue(any("wrong target repository" in e for e in validate(self.metadata, ownership)))
 
+    def test_historical_source_cannot_retain_active_authority(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        ownership["historical_source_role"] = "active-release-owner"
+        errors = validate(self.metadata, ownership)
+        self.assertTrue(any("historical source role" in error for error in errors), errors)
+
+    def test_canonical_authority_cannot_point_to_historical_source(self) -> None:
+        ownership = copy.deepcopy(self.ownership)
+        ownership["canonical_authority"]["repository"] = "moritzbrantner/rust-packages"
+        errors = validate(self.metadata, ownership)
+        self.assertTrue(any("canonical authority" in error for error in errors), errors)
+
     def test_phase_a_record_field_drift_fails(self) -> None:
         ownership = copy.deepcopy(self.ownership)
         record = next(

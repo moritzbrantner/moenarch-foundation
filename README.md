@@ -2,7 +2,7 @@
 
 `moenarch-foundation` is the domain-neutral Rust foundation for Moenarch projects. It contains reusable runtime, jobs, media/time, audio contract, data, math, tensor, graph, geometry, signal, and vector packages plus their focused Rust CLI, server, and WASM adapters.
 
-This repository was bootstrapped as a clean copy from `moritzbrantner/rust-packages`; see [docs/PROVENANCE.md](docs/PROVENANCE.md). The source repository remains the active release owner until separately authorized publication and consumer gates complete.
+This repository was bootstrapped as a clean copy from `moritzbrantner/rust-packages`; see [docs/PROVENANCE.md](docs/PROVENANCE.md). For the Rust packages assigned to `moenarch-foundation`, this repository is now the canonical source, test, issue, version, and release authority. Historical copies in `rust-packages` are compatibility/provenance material, not a competing implementation or release source.
 
 GitHub Issues are the durable agent queue; see
 [the issue-tracker contract](docs/agents/issue-tracker.md) and
@@ -30,7 +30,4 @@ cargo doc --workspace --no-deps
 python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
 ```
 
-No issue or manifest in this bootstrap authorizes publishing, tagging,
-releasing, or removing source from `rust-packages`. Future exact releases use
-the destination-local, manifest-gated flow in
-[docs/AGENT_DRIVEN_RELEASES.md](docs/AGENT_DRIVEN_RELEASES.md).
+Ownership does not itself authorize publication. Publishing, tagging, or removing historical source still requires the destination-local release manifest/gates and the exact task authority described in [docs/AGENT_DRIVEN_RELEASES.md](docs/AGENT_DRIVEN_RELEASES.md).
