@@ -37,8 +37,10 @@ format syntax.
 Subtitle parsing is intentionally a canonical projection rather than a
 lossless document representation. Numeric SRT cue identifiers become segment
 indices. WebVTT string identifiers, cue settings, and `NOTE`, `STYLE`, and
-`REGION` metadata are syntax-level inputs that are discarded; the neutral
-contract retains cue text and timing.
+`REGION` metadata are syntax-level inputs that are validated and discarded.
+`NOTE` comment bodies and `STYLE` CSS bodies remain opaque after container and
+forbidden-arrow validation; foundation does not interpret comments or CSS. The
+neutral contract retains cue text and timing.
 
 `nlp-stack` or the relevant capability continues to own:
 

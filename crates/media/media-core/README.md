@@ -53,9 +53,11 @@ the label-track format.
 
 Parsing is a canonical projection, not a lossless subtitle-document editor.
 Numeric SRT cue identifiers are preserved as segment indices. WebVTT string cue
-identifiers, cue settings, and `NOTE`, `STYLE`, and `REGION` metadata are
-accepted where valid but intentionally discarded. Cue text and timing remain
-the owned interchange data.
+identifiers, validated cue settings, and validated `REGION` metadata are
+intentionally discarded. `NOTE` comment bodies and `STYLE` CSS bodies are
+opaque format payloads: their containers and forbidden arrow sequence are
+validated, but foundation does not interpret their content. Cue text and timing
+remain the owned interchange data.
 
 The original issue #108 extraction did not invent a cross-family range or
 transcript contract. `MediaSourceRef`, `MediaTimeRange`, and the timed-text DTOs

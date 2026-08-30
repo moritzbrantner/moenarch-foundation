@@ -1,5 +1,7 @@
 //! Deterministic, domain-neutral timed-text parsing and rendering.
 
+use std::collections::BTreeSet;
+
 use crate::{DetectError, Result, TimedTextContract, TimedTextSegmentContract};
 
 /// Parses SubRip subtitle text into the neutral timed-text contract.
@@ -17,7 +19,8 @@ pub fn parse_srt(input: &str) -> Result<TimedTextContract> {
 ///
 /// A UTF-8 byte-order mark may precede the mandatory `WEBVTT` signature.
 /// Optional cue identifiers, cue settings, and `NOTE`, `STYLE`, and `REGION`
-/// metadata blocks are accepted and discarded by the canonical projection.
+/// metadata blocks are validated and discarded by the canonical projection.
+/// NOTE comment and STYLE CSS bodies remain opaque after container validation.
 /// Cue starts must be nondecreasing, and every cue must span at least one
 /// millisecond.
 pub fn parse_webvtt(input: &str) -> Result<TimedTextContract> {
@@ -54,7 +57,9 @@ pub fn format_srt(contract: &TimedTextContract) -> Result<String> {
 /// Renders canonical WebVTT bytes from timed segments.
 ///
 /// Every segment must contain a finite, non-negative start and end time. The
-/// output starts with `WEBVTT` and omits the hour field below one hour.
+/// output starts with `WEBVTT` and omits the hour field below one hour. After
+/// rounding to milliseconds, every cue must have positive duration and cue
+/// starts must be nondecreasing. Cue payloads containing `-->` are rejected.
 pub fn format_webvtt(contract: &TimedTextContract) -> Result<String> {
     format_subtitles(contract, SubtitleSyntax::WebVtt)
 }
@@ -191,10 +196,11 @@ fn parse_subtitles(input: &str, syntax: SubtitleSyntax) -> Result<TimedTextContr
         }
 
         let index = if matches!(syntax, SubtitleSyntax::Srt) && timing_index == 1 {
-            block[0]
-                .trim()
-                .parse::<u64>()
-                .unwrap_or((cue_number - 1) as u64)
+            block[0].trim().parse::<u64>().map_err(|_| {
+                invalid_error(format!(
+                    "SRT cue {cue_number} identifier must be an unsigned 64-bit integer"
+                ))
+            })?
         } else {
             (cue_number - 1) as u64
         };
@@ -215,7 +221,15 @@ fn subtitle_body(input: &str, syntax: SubtitleSyntax) -> Result<&str> {
             invalid("an SRT document must not contain a WEBVTT signature")
         }
         SubtitleSyntax::Srt => Ok(input),
-        SubtitleSyntax::WebVtt if is_webvtt_header(first_line) => Ok(body),
+        SubtitleSyntax::WebVtt if is_webvtt_header(first_line) => {
+            let (separator, body) = body.split_once('\n').ok_or_else(|| {
+                invalid_error("a WebVTT signature must be followed by a blank separator line")
+            })?;
+            if !separator.trim().is_empty() {
+                return invalid("a WebVTT signature must be followed by a blank separator line");
+            }
+            Ok(body)
+        }
         SubtitleSyntax::WebVtt => invalid("a WebVTT document must begin with a WEBVTT signature"),
     }
 }
@@ -251,7 +265,50 @@ fn is_webvtt_metadata_block(block: &[&str], saw_cue: bool) -> Result<bool> {
     if block.len() < 2 || block[1..].iter().any(|line| line.contains("-->")) {
         return invalid(format!("WebVTT {first} block is malformed"));
     }
+    if first == "REGION" {
+        validate_webvtt_region(&block[1..])?;
+    }
     Ok(true)
+}
+
+fn validate_webvtt_region(lines: &[&str]) -> Result<()> {
+    let mut names = BTreeSet::new();
+    let mut has_identifier = false;
+    for line in lines {
+        let (name, value) = line
+            .split_once(':')
+            .ok_or_else(|| invalid_error("WebVTT REGION fields must use name:value syntax"))?;
+        let name = name.trim();
+        let value = value.trim();
+        if !names.insert(name) {
+            return invalid(format!("duplicate WebVTT REGION field: {name}"));
+        }
+        match name {
+            "id" => {
+                validate_identifier(value, "WebVTT REGION id")?;
+                has_identifier = true;
+            }
+            "width" => validate_percentage(value, "WebVTT REGION width")?,
+            "lines" => {
+                let lines = value
+                    .parse::<u64>()
+                    .map_err(|_| invalid_error("WebVTT REGION lines must be a positive integer"))?;
+                if lines == 0 {
+                    return invalid("WebVTT REGION lines must be a positive integer");
+                }
+            }
+            "regionanchor" | "viewportanchor" => {
+                validate_percentage_pair(value, "WebVTT REGION anchor")?;
+            }
+            "scroll" if value == "up" => {}
+            "scroll" => return invalid("WebVTT REGION scroll must be up"),
+            _ => return invalid(format!("unknown WebVTT REGION field: {name}")),
+        }
+    }
+    if !has_identifier {
+        return invalid("WebVTT REGION block requires an id field");
+    }
+    Ok(())
 }
 
 fn subtitle_blocks(input: &str) -> Vec<Vec<&str>> {
@@ -293,10 +350,14 @@ fn parse_timing_line(line: &str, syntax: SubtitleSyntax, cue_number: usize) -> R
             "subtitle cue {cue_number} is missing an end timestamp"
         ))
     })?;
-    if matches!(syntax, SubtitleSyntax::Srt) && end_tokens.next().is_some() {
-        return invalid(format!(
-            "subtitle cue {cue_number} has unexpected SRT cue settings"
-        ));
+    match syntax {
+        SubtitleSyntax::Srt if end_tokens.next().is_some() => {
+            return invalid(format!(
+                "subtitle cue {cue_number} has unexpected SRT cue settings"
+            ));
+        }
+        SubtitleSyntax::WebVtt => validate_webvtt_cue_settings(end_tokens, cue_number)?,
+        SubtitleSyntax::Srt => {}
     }
 
     let start = parse_timestamp(start_text, syntax, cue_number)?;
@@ -363,7 +424,136 @@ fn parse_timestamp(timestamp: &str, syntax: SubtitleSyntax, cue_number: usize) -
         .ok_or_else(|| {
             invalid_error(format!("subtitle cue {cue_number} timestamp is too large"))
         })?;
-    Ok(total_milliseconds as f64 / 1_000.0)
+    let seconds = total_milliseconds as f64 / 1_000.0;
+    if rounded_milliseconds(seconds)? != total_milliseconds {
+        return invalid(format!(
+            "subtitle cue {cue_number} timestamp is not exactly representable"
+        ));
+    }
+    Ok(seconds)
+}
+
+fn validate_webvtt_cue_settings<'a>(
+    settings: impl Iterator<Item = &'a str>,
+    cue_number: usize,
+) -> Result<()> {
+    let mut names = BTreeSet::new();
+    for setting in settings {
+        let (name, value) = setting.split_once(':').ok_or_else(|| {
+            invalid_error(format!(
+                "WebVTT cue {cue_number} settings must use name:value syntax"
+            ))
+        })?;
+        if name.is_empty() || value.is_empty() || !names.insert(name) {
+            return invalid(format!(
+                "WebVTT cue {cue_number} has an empty or duplicate setting: {name}"
+            ));
+        }
+        let subject = format!("WebVTT cue {cue_number} {name} setting");
+        match name {
+            "vertical" if matches!(value, "rl" | "lr") => {}
+            "vertical" => return invalid(format!("{subject} must be rl or lr")),
+            "line" => validate_line_setting(value, &subject)?,
+            "position" => validate_position_setting(value, &subject)?,
+            "size" => validate_percentage(value, &subject)?,
+            "align" if matches!(value, "start" | "center" | "end" | "left" | "right") => {}
+            "align" => return invalid(format!("{subject} has an invalid alignment")),
+            "region" => validate_identifier(value, &subject)?,
+            _ => return invalid(format!("unknown WebVTT cue {cue_number} setting: {name}")),
+        }
+    }
+    Ok(())
+}
+
+fn validate_line_setting(value: &str, subject: &str) -> Result<()> {
+    let (position, alignment) = split_optional_alignment(value)?;
+    if let Some(alignment) = alignment {
+        if !matches!(alignment, "start" | "center" | "end") {
+            return invalid(format!("{subject} has an invalid line alignment"));
+        }
+    }
+    if position == "auto"
+        || parse_signed_integer(position).is_some()
+        || validate_percentage(position, subject).is_ok()
+    {
+        Ok(())
+    } else {
+        invalid(format!("{subject} has an invalid line position"))
+    }
+}
+
+fn validate_position_setting(value: &str, subject: &str) -> Result<()> {
+    let (position, alignment) = split_optional_alignment(value)?;
+    validate_percentage(position, subject)?;
+    if alignment.is_some_and(|alignment| {
+        !matches!(alignment, "line-left" | "center" | "line-right" | "auto")
+    }) {
+        return invalid(format!("{subject} has an invalid position alignment"));
+    }
+    Ok(())
+}
+
+fn split_optional_alignment(value: &str) -> Result<(&str, Option<&str>)> {
+    let mut parts = value.split(',');
+    let position = parts.next().unwrap_or_default();
+    let alignment = parts.next();
+    if position.is_empty() || parts.next().is_some() || alignment.is_some_and(str::is_empty) {
+        return invalid("WebVTT setting has a malformed optional alignment");
+    }
+    Ok((position, alignment))
+}
+
+fn validate_percentage_pair(value: &str, subject: &str) -> Result<()> {
+    let (first, second) = value
+        .split_once(',')
+        .ok_or_else(|| invalid_error(format!("{subject} must contain two percentages")))?;
+    if second.contains(',') {
+        return invalid(format!("{subject} must contain two percentages"));
+    }
+    validate_percentage(first, subject)?;
+    validate_percentage(second, subject)
+}
+
+fn validate_percentage(value: &str, subject: &str) -> Result<()> {
+    let Some(number) = value.strip_suffix('%') else {
+        return invalid(format!("{subject} must be a percentage"));
+    };
+    if !is_unsigned_decimal(number) {
+        return invalid(format!("{subject} must be a percentage"));
+    }
+    let percentage = number
+        .parse::<f64>()
+        .map_err(|_| invalid_error(format!("{subject} must be a percentage")))?;
+    if !(0.0..=100.0).contains(&percentage) {
+        return invalid(format!("{subject} must be between 0% and 100%"));
+    }
+    Ok(())
+}
+
+fn validate_identifier(value: &str, subject: &str) -> Result<()> {
+    if value.is_empty() || value.chars().any(char::is_whitespace) || value.contains("-->") {
+        return invalid(format!("{subject} is malformed"));
+    }
+    Ok(())
+}
+
+fn is_unsigned_decimal(value: &str) -> bool {
+    match value.split_once('.') {
+        Some((whole, fraction)) => {
+            !whole.is_empty()
+                && !fraction.is_empty()
+                && whole.bytes().all(|byte| byte.is_ascii_digit())
+                && fraction.bytes().all(|byte| byte.is_ascii_digit())
+        }
+        None => !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()),
+    }
+}
+
+fn parse_signed_integer(value: &str) -> Option<i64> {
+    let digits = value.strip_prefix('-').unwrap_or(value);
+    (!digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+        .then(|| value.parse::<i64>().ok())
+        .flatten()
 }
 
 fn parse_fixed_digits(value: &str, width: usize, cue_number: usize) -> Result<u64> {
@@ -424,6 +614,12 @@ fn format_subtitles(contract: &TimedTextContract, syntax: SubtitleSyntax) -> Res
         let text = normalized_text.trim();
         if text.is_empty() {
             return invalid(format!("subtitle cue {} has no text", index + 1));
+        }
+        if text.lines().any(|line| line.trim().is_empty()) {
+            return invalid(format!(
+                "subtitle cue {} payload must not contain blank lines",
+                index + 1
+            ));
         }
         if matches!(syntax, SubtitleSyntax::WebVtt) && text.contains("-->") {
             return invalid(format!(

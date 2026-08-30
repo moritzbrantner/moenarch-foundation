@@ -61,7 +61,7 @@ fn parsers_accept_bom_crlf_ids_settings_and_multiline_text() {
 
 #[test]
 fn webvtt_metadata_is_accepted_before_cues_and_discarded() {
-    let input = "WEBVTT\n\nNOTE source metadata\nnot a cue\n\nSTYLE\n::cue { color: lime; }\n\nREGION\nid:main\nwidth:40%\n\nidentifier\n00:01.000 --> 00:02.000 align:start\ncaption\n";
+    let input = "WEBVTT\n\nNOTE source metadata\nnot a cue\n\nSTYLE\n::cue { color: lime; }\n\nREGION\nid:main\nwidth:40%\nlines:3\nregionanchor:0%,100%\nviewportanchor:10%,90%\nscroll:up\n\nidentifier\n00:01.000 --> 00:02.000 vertical:rl line:10%,center position:20%,line-left size:40% align:start region:main\ncaption\n";
     let parsed = parse_webvtt(input).unwrap();
 
     assert_eq!(parsed.segments.len(), 1);
@@ -76,6 +76,41 @@ fn webvtt_metadata_is_accepted_before_cues_and_discarded() {
         "WEBVTT\n\n00:00.000 --> 00:01.000\ncaption\n\nSTYLE\n::cue { color: lime; }\n";
     assert!(parse_webvtt(style_after_cue).is_err());
     assert!(parse_webvtt("WEBVTT\n\nNOTE invalid --> comment\n").is_err());
+}
+
+#[test]
+fn webvtt_rejects_invalid_cue_settings_and_region_fields() {
+    for setting in [
+        "unknown:value",
+        "align:start align:end",
+        "vertical:up",
+        "line:invalid",
+        "line:+1",
+        "line:10%,bogus",
+        "position:101%",
+        "size:-1%",
+        "size:.5%",
+        "size:5.%",
+        "align:middle",
+        "bare-setting",
+    ] {
+        let input = format!("WEBVTT\n\n00:00.000 --> 00:01.000 {setting}\ncaption\n");
+        assert!(parse_webvtt(&input).is_err(), "accepted setting: {setting}");
+    }
+
+    for fields in [
+        "width:40%",
+        "id:main\nid:other",
+        "id:main\nunknown:value",
+        "id:main\nwidth:101%",
+        "id:main\nlines:0",
+        "id:main\nregionanchor:10%",
+        "id:main\nscroll:down",
+        "id main",
+    ] {
+        let input = format!("WEBVTT\n\nREGION\n{fields}\n");
+        assert!(parse_webvtt(&input).is_err(), "accepted REGION: {fields}");
+    }
 }
 
 #[test]
@@ -192,6 +227,55 @@ fn subtitle_parsers_enforce_syntax_specific_timestamp_grammar() {
 }
 
 #[test]
+fn srt_identifiers_are_either_valid_u64_values_or_absent() {
+    for identifier in ["cue-one", "18446744073709551616"] {
+        let input = format!("{identifier}\n00:00:00,000 --> 00:00:01,000\ncaption\n");
+        assert!(parse_srt(&input).is_err());
+    }
+
+    let without_identifiers = parse_srt(
+        "00:00:00,000 --> 00:00:01,000\nfirst\n\n00:00:01,000 --> 00:00:02,000\nsecond\n",
+    )
+    .unwrap();
+    assert_eq!(without_identifiers.segments[0].index, 0);
+    assert_eq!(without_identifiers.segments[1].index, 1);
+}
+
+#[test]
+fn parsed_timestamps_must_round_trip_through_f64_seconds() {
+    fn webvtt_timestamp(milliseconds: u64) -> String {
+        let hours = milliseconds / 3_600_000;
+        let minutes = (milliseconds / 60_000) % 60;
+        let seconds = (milliseconds / 1_000) % 60;
+        let millis = milliseconds % 1_000;
+        format!("{hours:02}:{minutes:02}:{seconds:02}.{millis:03}")
+    }
+
+    for milliseconds in [9_007_199_254_740_993, u64::MAX - 1_000] {
+        let end = webvtt_timestamp(milliseconds);
+        let input = format!("WEBVTT\n\n00:00.000 --> {end}\ncaption\n");
+        assert!(
+            parse_webvtt(&input).is_err(),
+            "accepted non-round-trippable timestamp: {end}"
+        );
+    }
+}
+
+#[test]
+fn webvtt_signature_requires_a_line_terminator_and_blank_separator() {
+    for invalid in [
+        "WEBVTT",
+        "WEBVTT\n",
+        "WEBVTT\n00:00.000 --> 00:01.000\ncaption\n",
+    ] {
+        assert!(parse_webvtt(invalid).is_err());
+    }
+
+    let valid = "\u{feff}WEBVTT source comment\r\n\r\n00:00.000 --> 00:01.000\r\ncaption\r\n";
+    assert_eq!(parse_webvtt(valid).unwrap().segments.len(), 1);
+}
+
+#[test]
 fn srt_preserves_arrows_while_webvtt_rejects_them_in_payloads() {
     let contract = fixture_contract();
 
@@ -220,6 +304,19 @@ fn subtitle_renderers_normalize_constructed_contract_line_endings() {
         format_webvtt(&contract).unwrap(),
         "WEBVTT\n\n00:00.000 --> 00:01.000\nfirst\nsecond\nthird\n\n"
     );
+}
+
+#[test]
+fn subtitle_payloads_cannot_contain_internal_blank_lines() {
+    let contract =
+        TimedTextContract::new(vec![TimedTextSegmentContract::new(0, "first\r\n \rsecond")
+            .with_time_range(Some(0.0), Some(1.0))
+            .unwrap()]);
+
+    assert!(format_srt(&contract).is_err());
+    assert!(format_webvtt(&contract).is_err());
+    assert!(parse_srt("1\n00:00:00,000 --> 00:00:01,000\nfirst\n \nsecond\n").is_err());
+    assert!(parse_webvtt("WEBVTT\n\n00:00.000 --> 00:01.000\nfirst\n \nsecond\n").is_err());
 }
 
 #[test]
