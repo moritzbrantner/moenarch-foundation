@@ -289,6 +289,7 @@ def write_manifest(
     issue: int = 7,
     source: str = SOURCE,
     repair_source: str | None = None,
+    required_checks: list[str] | None = None,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -299,7 +300,8 @@ def write_manifest(
         'registry = "crates.io"',
         "dependency_order = " + json.dumps([package["name"] for package in packages]),
         "expected_tags = " + json.dumps([package["tag"] for package in packages]),
-        "required_checks = " + json.dumps(CONFIG_COMMANDS),
+        "required_checks = "
+        + json.dumps(CONFIG_COMMANDS if required_checks is None else required_checks),
         'required_consumer_checks = ["true"]',
     ]
     if repair_source is not None:
@@ -335,6 +337,44 @@ def write_manifest(
 
 
 class PublishReleaseTests(unittest.TestCase):
+    def test_audio_release_accepts_only_its_exact_historical_gate(self) -> None:
+        manifest = tomllib.loads(
+            (SCRIPT.parents[1] / "releases/foundation-audio-contracts.toml").read_text(
+                encoding="utf-8"
+            )
+        )
+        historical_checks = manifest["required_checks"]
+        self.assertEqual(
+            publish_release.HISTORICAL_REQUIRED_CHECKS_BY_ISSUE[17], historical_checks
+        )
+        self.assertNotEqual(CONFIG_COMMANDS, historical_checks)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            packages, effects = write_fixture(
+                root, [("foundation-a", "1.0.0", ())]
+            )
+            effects.issue_payload["number"] = 17
+            effects.issue_payload["url"] = f"https://github.com/{REPOSITORY}/issues/17"
+            environment = {**ENVIRONMENT, "AGENT_LOOP_ISSUE": "17"}
+            write_manifest(
+                root / "releases/release.toml",
+                packages,
+                issue=17,
+                required_checks=historical_checks,
+            )
+            authorize_manifest(root, effects)
+
+            publish_release.run_release(root, environment, effects)
+
+            write_manifest(root / "releases/release.toml", packages, issue=17)
+            authorize_manifest(root, effects)
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError,
+                "required_checks do not match the release's exact gate",
+            ):
+                publish_release.run_release(root, environment, effects)
+
     def test_missing_agent_loop_binding_refuses_before_external_access(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             effects = ForbiddenEffects()
