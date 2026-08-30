@@ -4,6 +4,12 @@ This guide applies only to explicitly assigned release or distribution work. Ord
 
 Version bumps, registry publication, tags, and registry-only consumer proof begin in a dedicated release task after the source graph has been validated. Source-mode evidence does not weaken any release authorization, packaging, provenance, or registry-only gate below.
 
+`moritzbrantner/moenarch-foundation` is the canonical source and release
+authority for its checked package inventory. Historical copies in
+`rust-packages` are compatibility/provenance-only and must not be published as
+competing package source. This ownership statement grants no publication
+authority; the destination-local gates below remain mandatory.
+
 Issue #110 and the release-control setup issue authorize no publication.
 `docs/repository-split/release-plan.json` remains an exact non-publishing
 bootstrap inventory: every package retains its source version, `publish` is
@@ -180,5 +186,6 @@ delete, republish, infer, or automatically yank anything. Cargo credentials
 remain in Cargo's normal credential mechanism and must never be printed or
 copied into repository files.
 
-Source removal from `rust-packages` remains a later gate after registry-only
-consumer evidence.
+Removal of historical compatibility/provenance source from `rust-packages`
+remains a later gate after registry-only consumer evidence. Its continued
+presence does not retain or restore release authority there.

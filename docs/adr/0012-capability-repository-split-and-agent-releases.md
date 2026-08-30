@@ -3,7 +3,9 @@
 > Destination adaptation: this copy is authoritative only for the
 > `moenarch-foundation` boundary. It retains the original ecosystem decision as
 > historical rationale. Issue `rust-packages#110` performs clean-copy bootstrap
-> only and authorizes no publication, source removal, tag, or release.
+> only and authorizes no publication, source removal, tag, or release. The
+> destination ownership cutover is recorded in
+> [`OWNERSHIP_CUTOVER.md`](../repository-split/OWNERSHIP_CUTOVER.md).
 
 ## Status
 
@@ -98,6 +100,15 @@ additive stable APIs use minor bumps; stable breaking APIs use major bumps at
 versioned old-name deprecation release. One repository is the sole release
 owner at every step.
 
+For every package in this repository's checked ownership inventory,
+`moritzbrantner/moenarch-foundation` is now the sole authority for source
+changes, tests, issues, version selection, release manifests, and future
+publication. Historical source retained in `rust-packages` is
+compatibility/provenance material and does not retain competing authority.
+Canonical ownership is independent from publication readiness: the destination
+may own a package while correctly declining to publish until every release gate
+is satisfied.
+
 Each extraction is a clean copy from an exact source commit. The destination
 records every copied path, licenses, notices, attribution, and relevant history
 notes and starts a focused history. History rewriting, force pushing, repository
@@ -143,11 +154,11 @@ unpublished version. Downstream constraints wait for the required closure.
 ### Source-removal and repository-creation gates
 
 Source leaves `rust-packages` only after the destination is independently green,
-release ownership is active, required crates are verified on the registry,
+required crates are verified on the registry where publication is required,
 consumer migration is possible, compatibility signposts exist, the facade can
-consume released crates, and rollback is documented. Source removal,
-deprecation releases, and consumer migration are separate PRs unless an issue
-proves the family tiny.
+consume released crates, and rollback is documented. Canonical ownership may
+therefore precede physical source removal. Source removal, deprecation releases,
+and consumer migration are separate PRs unless an issue proves the family tiny.
 
 An agent may create a named target repository only when its issue specifies the
 exact `moritzbrantner` repository and visibility and authenticated permissions
@@ -156,13 +167,15 @@ visibility does not change under this ADR.
 
 ## Rollback
 
-Before registry publication, close the extraction/release PR and retain active
-ownership in `rust-packages`. After publication, published artifacts are not
-deleted or yanked automatically: keep the last known-good source and
-compatibility facade, stop further source removal and consumer updates, record
-the exact released state, and ship a forward-compatible repair through a new
-authorized release. A reverse migration of release ownership requires its own
-ADR and issue.
+Before registry publication, a failed destination release attempt stops at the
+canonical destination: close or repair the release PR and retain the last
+known-good published consumer graph. Do not restore competing release ownership
+to `rust-packages` merely because publication has not happened yet. After
+publication, published artifacts are not deleted or yanked automatically: keep
+the last known-good source and compatibility facade, stop further source
+removal and consumer updates, record the exact released state, and ship a
+forward-compatible repair through a new authorized release. A reverse migration
+of canonical ownership requires its own ADR and explicit migration authority.
 
 ## Consequences
 

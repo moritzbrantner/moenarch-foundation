@@ -1,6 +1,7 @@
 # Foundation source development
 
-`moenarch-foundation` is developed as source first and released separately.
+`moenarch-foundation` is the canonical source for its checked package inventory.
+It is developed as source first and released separately.
 
 A downstream consumer may keep its normal registry dependency declaration while using a committed `.coding-tooling.source-deps.json` to pin the exact foundation revision under development. For private cross-repository work, that declaration should enable `cargo.localOnly`: `coding-tooling source-deps activate` then requires the consumer's sibling `moenarch-foundation` checkout to exist at exactly the declared Git `HEAD`. Missing or mismatched local source is an error; ordinary source development does not fall back to an authenticated remote Git fetch.
 
@@ -10,4 +11,7 @@ Keep package versions stable during source work when compatibility permits, upda
 
 Registry-only verification remains mandatory for distribution. A later release task deactivates source mode, determines the minimal publication closure, performs any required version bumps, publishes in dependency order, and verifies clean consumers against crates.io.
 
-Source mode changes dependency resolution only. It does not authorize publication, tags, releases, source removal from `rust-packages`, or new package boundaries.
+Source mode changes dependency resolution only. It does not authorize
+publication, tags, releases, removal of historical compatibility/provenance
+source from `rust-packages`, or new package boundaries. It also does not
+transfer source or release authority back to that historical checkout.

@@ -33,10 +33,10 @@ class ReleasePlanTests(unittest.TestCase):
     def test_live_nonpublishing_plan_is_valid(self) -> None:
         self.assertEqual(self.errors(self.plan), [])
 
-    def test_nonpublishing_plan_names_current_and_next_release_owners(self) -> None:
+    def test_nonpublishing_plan_names_canonical_release_owner(self) -> None:
         self.assertEqual(
             self.plan["active_release_owner"],
-            "moritzbrantner/rust-packages",
+            "moritzbrantner/moenarch-foundation",
         )
         self.assertTrue(
             all(
@@ -46,11 +46,17 @@ class ReleasePlanTests(unittest.TestCase):
             )
         )
 
-    def test_active_release_owner_cannot_move_during_bootstrap(self) -> None:
+    def test_active_release_owner_cannot_return_to_source_repository(self) -> None:
         plan = copy.deepcopy(self.plan)
-        plan["active_release_owner"] = "moritzbrantner/moenarch-foundation"
+        plan["active_release_owner"] = "moritzbrantner/rust-packages"
         errors = self.errors(plan)
         self.assertTrue(any("wrong active release owner" in error for error in errors))
+
+    def test_historical_source_cannot_regain_release_authority(self) -> None:
+        plan = copy.deepcopy(self.plan)
+        plan["historical_source_role"] = "active-release-owner"
+        errors = self.errors(plan)
+        self.assertTrue(any("historical source role" in error for error in errors))
 
     def test_publication_cannot_be_smuggled_into_bootstrap(self) -> None:
         plan = copy.deepcopy(self.plan)

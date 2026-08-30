@@ -50,8 +50,10 @@ global tolerance for callers' application algorithms.
 
 ## Compatibility and release boundary
 
-The source remains in `rust-packages`; F4 creates this owner without deleting
-or redirecting the legacy source. Compatibility facades or migration removal
-require separate authorization. The package is recorded as one approved
+The historical counterpart remains in `rust-packages` for compatibility and
+provenance; F4 created the canonical foundation owner without deleting or
+redirecting that legacy source. Compatibility facades or migration removal
+require separate authorization. Physical presence of the legacy source does
+not confer source or release authority. The package is recorded as one approved
 post-extraction addition: the original 60-record source-inventory digest and
 the single addition digest are validated separately by the boundary checker.
