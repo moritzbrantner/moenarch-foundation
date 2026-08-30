@@ -1,10 +1,15 @@
 #![doc = include_str!("../README.md")]
 
 pub mod timed_text;
+pub mod timed_text_format;
 pub use timed_text::{
     MediaSourceRef, MediaTimeRange, TimedTextCharContract, TimedTextContract,
     TimedTextSegmentContract, TimedTextWordContract, TranscriptCharContract,
     TranscriptSegmentContract, TranscriptWordContract, TranscriptionContract,
+};
+pub use timed_text_format::{
+    format_audacity_labels, format_plain_text, format_srt, format_tsv, format_webvtt,
+    parse_plain_text, parse_srt, parse_webvtt,
 };
 
 /// A compact identifier for the pixel layout of a video frame.

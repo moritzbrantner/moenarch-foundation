@@ -12,6 +12,8 @@ The crate owns only:
 - `MediaTimeRange`, a validated finite interval in media seconds;
 - `TimedTextContract` and its segment/word/character DTOs for text located on a
   media timeline without NLP behavior;
+- deterministic SRT, WebVTT, plain-text, TSV, and Audacity-label parsing or
+  rendering over those DTOs, without product-specific output policy;
 - `PixelFormat` and `AudioSampleFormat`, compact stream-format identifiers
   without frame or buffer ownership;
 - `DetectError` and `Result`, the shared media error identity used across
@@ -27,9 +29,9 @@ Media data stays in its narrowest domain:
 - video frame and pixel-buffer contracts remain in visual/video packages;
 - audio buffer and audio-frame contracts remain in audio packages;
 - image contracts remain in image packages;
-- NLP transcript documents, text-document conversion, SRT/WebVTT/Whisper
-  parsing and formatting, linguistic analysis, and text model behavior remain
-  in `nlp-stack`;
+- NLP transcript documents, text-document conversion, Whisper/WhisperX formats,
+  linguistic analysis, and text model behavior remain in `nlp-stack` or the
+  capability that owns them;
 - detection algorithms and model-lifecycle behavior remain with their current
   domain or foundation owners.
 
@@ -40,6 +42,14 @@ attributes without depending on a text-processing implementation.
 Optional confidence values are finite normalized scores in the inclusive range
 from zero to one. Timings and nested segment/word/character containment are
 validated by fallible constructors and during deserialization.
+
+The generic format functions project only neutral text and timing. In
+particular, timed renderers do not infer missing ranges or add speaker styling,
+word highlighting, line wrapping, language-specific joining, or provider
+defaults. Applications such as Native WhisperX map those product choices onto
+the neutral DTOs before rendering. Audacity labels intentionally contain only
+segment text: the `[[speaker]]` convention is a product decoration, not part of
+the label-track format.
 
 The original issue #108 extraction did not invent a cross-family range or
 transcript contract. `MediaSourceRef`, `MediaTimeRange`, and the timed-text DTOs

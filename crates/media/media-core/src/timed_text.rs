@@ -349,8 +349,10 @@ impl TimedTextSegmentContract {
 
 /// Domain-neutral timed text exchanged between media producers and consumers.
 ///
-/// This contract deliberately does not own transcript parsing, subtitle formats,
-/// NLP annotations, model execution, or provider-specific behavior.
+/// Generic SRT, WebVTT, plain-text, TSV, and Audacity-label projections are
+/// provided by this crate. This contract deliberately does not own NLP
+/// annotations, model execution, provider-specific behavior, or product output
+/// policy.
 #[derive(Debug, Clone, PartialEq, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TimedTextContract {
