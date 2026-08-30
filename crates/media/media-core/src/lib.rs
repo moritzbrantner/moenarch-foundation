@@ -2,9 +2,9 @@
 
 pub mod timed_text;
 pub use timed_text::{
-    normalize_imported_segments, normalize_transcription_contract, MediaSourceRef, MediaTimeRange,
-    TimedTextCharContract, TimedTextContract, TimedTextSegmentContract, TimedTextWordContract,
-    TranscriptCharContract, TranscriptSegmentContract, TranscriptWordContract, TranscriptionContract,
+    MediaSourceRef, MediaTimeRange, TimedTextCharContract, TimedTextContract,
+    TimedTextSegmentContract, TimedTextWordContract, TranscriptCharContract,
+    TranscriptSegmentContract, TranscriptWordContract, TranscriptionContract,
 };
 
 /// A compact identifier for the pixel layout of a video frame.

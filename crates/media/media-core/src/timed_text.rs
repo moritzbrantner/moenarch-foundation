@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize};
 
 use crate::{DetectError, Result};
 
@@ -19,11 +19,11 @@ pub struct MediaSourceRef {
 }
 
 /// A finite interval on a media timeline, expressed in seconds.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaTimeRange {
-    pub start_seconds: f64,
-    pub end_seconds: f64,
+    start_seconds: f64,
+    end_seconds: f64,
 }
 
 impl MediaTimeRange {
@@ -39,13 +39,38 @@ impl MediaTimeRange {
         self.end_seconds - self.start_seconds
     }
 
+    pub fn start_seconds(self) -> f64 {
+        self.start_seconds
+    }
+
+    pub fn end_seconds(self) -> f64 {
+        self.end_seconds
+    }
+
     pub fn midpoint_seconds(self) -> f64 {
         (self.start_seconds + self.end_seconds) * 0.5
     }
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UncheckedMediaTimeRange {
+    start_seconds: f64,
+    end_seconds: f64,
+}
+
+impl<'de> Deserialize<'de> for MediaTimeRange {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let unchecked = UncheckedMediaTimeRange::deserialize(deserializer)?;
+        Self::new(unchecked.start_seconds, unchecked.end_seconds).map_err(D::Error::custom)
+    }
+}
+
 /// Optional character-level timing carried by a timed-text producer.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimedTextCharContract {
     #[serde(rename = "char")]
@@ -66,7 +91,7 @@ pub struct TimedTextCharContract {
 }
 
 /// Optional word-level timing carried by a timed-text producer.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimedTextWordContract {
     pub text: String,
@@ -83,7 +108,7 @@ pub struct TimedTextWordContract {
 }
 
 /// One ordered unit of timed text.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TimedTextSegmentContract {
     pub index: u64,
@@ -131,14 +156,6 @@ impl TimedTextSegmentContract {
         }
     }
 
-    pub fn duration_seconds(&self) -> Option<f64> {
-        Some((self.end_seconds? - self.start_seconds?).max(0.0))
-    }
-
-    pub fn midpoint_seconds(&self) -> Option<f64> {
-        Some((self.start_seconds? + self.end_seconds?) * 0.5)
-    }
-
     pub fn validate(&self) -> Result<()> {
         validate_seconds_range(self.start_seconds, self.end_seconds)?;
         validate_confidence(self.confidence, "timed-text segment")?;
@@ -166,39 +183,13 @@ impl TimedTextSegmentContract {
         }
         Ok(())
     }
-
-    pub fn normalized(mut self) -> Self {
-        self.text = self.text.trim().to_string();
-        self.language = normalize_optional_string(self.language);
-        self.speaker = normalize_optional_string(self.speaker);
-        self.confidence = sanitize_confidence(self.confidence);
-        self.words = self
-            .words
-            .into_iter()
-            .filter_map(|mut word| {
-                word.text = word.text.trim().to_string();
-                word.speaker = normalize_optional_string(word.speaker);
-                word.confidence = sanitize_confidence(word.confidence);
-                (!word.text.is_empty()).then_some(word)
-            })
-            .collect();
-        self.chars = self
-            .chars
-            .into_iter()
-            .filter_map(|mut character| {
-                character.confidence = sanitize_confidence(character.confidence);
-                (!character.character.is_empty()).then_some(character)
-            })
-            .collect();
-        self
-    }
 }
 
 /// Domain-neutral timed text exchanged between media producers and consumers.
 ///
 /// This contract deliberately does not own transcript parsing, subtitle formats,
 /// NLP annotations, model execution, or provider-specific behavior.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TimedTextContract {
     #[serde(default)]
@@ -216,36 +207,169 @@ pub struct TimedTextContract {
     pub attributes: BTreeMap<String, String>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UncheckedTimedTextCharContract {
+    #[serde(rename = "char")]
+    character: String,
+    #[serde(
+        default,
+        rename = "start",
+        alias = "start_seconds",
+        alias = "startSeconds"
+    )]
+    start_seconds: Option<f64>,
+    #[serde(default, rename = "end", alias = "end_seconds", alias = "endSeconds")]
+    end_seconds: Option<f64>,
+    #[serde(default, rename = "score", alias = "confidence")]
+    confidence: Option<f32>,
+    #[serde(default)]
+    attributes: BTreeMap<String, String>,
+}
+
+impl<'de> Deserialize<'de> for TimedTextCharContract {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let unchecked = UncheckedTimedTextCharContract::deserialize(deserializer)?;
+        validate_seconds_range(unchecked.start_seconds, unchecked.end_seconds)
+            .map_err(D::Error::custom)?;
+        validate_confidence(unchecked.confidence, "timed-text character")
+            .map_err(D::Error::custom)?;
+        Ok(Self {
+            character: unchecked.character,
+            start_seconds: unchecked.start_seconds,
+            end_seconds: unchecked.end_seconds,
+            confidence: unchecked.confidence,
+            attributes: unchecked.attributes,
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UncheckedTimedTextWordContract {
+    text: String,
+    #[serde(default)]
+    start_seconds: Option<f64>,
+    #[serde(default)]
+    end_seconds: Option<f64>,
+    #[serde(default)]
+    confidence: Option<f32>,
+    #[serde(default)]
+    speaker: Option<String>,
+    #[serde(default)]
+    attributes: BTreeMap<String, String>,
+}
+
+impl<'de> Deserialize<'de> for TimedTextWordContract {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let unchecked = UncheckedTimedTextWordContract::deserialize(deserializer)?;
+        validate_seconds_range(unchecked.start_seconds, unchecked.end_seconds)
+            .map_err(D::Error::custom)?;
+        validate_confidence(unchecked.confidence, "timed-text word").map_err(D::Error::custom)?;
+        Ok(Self {
+            text: unchecked.text,
+            start_seconds: unchecked.start_seconds,
+            end_seconds: unchecked.end_seconds,
+            confidence: unchecked.confidence,
+            speaker: unchecked.speaker,
+            attributes: unchecked.attributes,
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UncheckedTimedTextSegmentContract {
+    index: u64,
+    #[serde(default)]
+    start_seconds: Option<f64>,
+    #[serde(default)]
+    end_seconds: Option<f64>,
+    text: String,
+    #[serde(default)]
+    language: Option<String>,
+    #[serde(default)]
+    speaker: Option<String>,
+    #[serde(default)]
+    confidence: Option<f32>,
+    is_final: bool,
+    #[serde(default)]
+    words: Vec<TimedTextWordContract>,
+    #[serde(default)]
+    chars: Vec<TimedTextCharContract>,
+    #[serde(default)]
+    attributes: BTreeMap<String, String>,
+}
+
+impl<'de> Deserialize<'de> for TimedTextSegmentContract {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let unchecked = UncheckedTimedTextSegmentContract::deserialize(deserializer)?;
+        let contract = Self {
+            index: unchecked.index,
+            start_seconds: unchecked.start_seconds,
+            end_seconds: unchecked.end_seconds,
+            text: unchecked.text,
+            language: unchecked.language,
+            speaker: unchecked.speaker,
+            confidence: unchecked.confidence,
+            is_final: unchecked.is_final,
+            words: unchecked.words,
+            chars: unchecked.chars,
+            attributes: unchecked.attributes,
+        };
+        contract.validate().map_err(D::Error::custom)?;
+        Ok(contract)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UncheckedTimedTextContract {
+    #[serde(default)]
+    text: Option<String>,
+    #[serde(default)]
+    language: Option<String>,
+    #[serde(default)]
+    segments: Vec<TimedTextSegmentContract>,
+    #[serde(default)]
+    source: Option<String>,
+    #[serde(default)]
+    attributes: BTreeMap<String, String>,
+}
+
+impl<'de> Deserialize<'de> for TimedTextContract {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let unchecked = UncheckedTimedTextContract::deserialize(deserializer)?;
+        let contract = Self {
+            text: unchecked.text,
+            language: unchecked.language,
+            segments: unchecked.segments,
+            source: unchecked.source,
+            attributes: unchecked.attributes,
+        };
+        contract.validate().map_err(D::Error::custom)?;
+        Ok(contract)
+    }
+}
+
 impl TimedTextContract {
     pub fn new(segments: Vec<TimedTextSegmentContract>) -> Self {
         Self {
             segments,
             ..Self::default()
         }
-    }
-
-    pub fn from_segments(
-        source: Option<String>,
-        language: Option<String>,
-        segments: Vec<TimedTextSegmentContract>,
-    ) -> Result<Self> {
-        let segments = segments
-            .into_iter()
-            .map(|mut segment| {
-                if segment.language.is_none() {
-                    segment.language = language.clone();
-                }
-                segment
-            })
-            .collect();
-        Self {
-            text: None,
-            language,
-            segments,
-            source,
-            attributes: BTreeMap::new(),
-        }
-        .normalized()
     }
 
     pub fn validate(&self) -> Result<()> {
@@ -273,43 +397,6 @@ impl TimedTextContract {
         }
         Ok(())
     }
-
-    pub fn joined_text(&self) -> String {
-        self.segments
-            .iter()
-            .map(|segment| segment.text.trim())
-            .filter(|text| !text.is_empty())
-            .collect::<Vec<_>>()
-            .join(" ")
-    }
-
-    pub fn text_or_joined(&self) -> String {
-        self.text
-            .as_deref()
-            .map(str::trim)
-            .filter(|text| !text.is_empty())
-            .map(str::to_string)
-            .unwrap_or_else(|| self.joined_text())
-    }
-
-    pub fn normalized(mut self) -> Result<Self> {
-        self.text = normalize_optional_string(self.text);
-        self.language = normalize_optional_string(self.language);
-        self.source = normalize_optional_string(self.source);
-        self.segments = self
-            .segments
-            .into_iter()
-            .map(TimedTextSegmentContract::normalized)
-            .collect();
-        if self.text.is_none() {
-            let joined = self.joined_text();
-            if !joined.is_empty() {
-                self.text = Some(joined);
-            }
-        }
-        self.validate()?;
-        Ok(self)
-    }
 }
 
 // Compatibility names let capability repositories cut the package dependency
@@ -319,18 +406,6 @@ pub type TranscriptCharContract = TimedTextCharContract;
 pub type TranscriptWordContract = TimedTextWordContract;
 pub type TranscriptSegmentContract = TimedTextSegmentContract;
 pub type TranscriptionContract = TimedTextContract;
-
-pub fn normalize_transcription_contract(contract: TranscriptionContract) -> Result<TranscriptionContract> {
-    contract.normalized()
-}
-
-pub fn normalize_imported_segments(
-    source: Option<String>,
-    language: Option<String>,
-    segments: Vec<TranscriptSegmentContract>,
-) -> Result<TranscriptionContract> {
-    TimedTextContract::from_segments(source, language, segments)
-}
 
 fn validate_seconds_range(start: Option<f64>, end: Option<f64>) -> Result<()> {
     if start.is_some_and(|value| !value.is_finite()) || end.is_some_and(|value| !value.is_finite())
@@ -366,20 +441,13 @@ fn validate_nested_range(
 }
 
 fn validate_confidence(value: Option<f32>, subject: &str) -> Result<()> {
-    if value.is_some_and(|confidence| !confidence.is_finite()) {
-        return invalid(format!("{subject} confidence must be finite"));
+    if value.is_some_and(|confidence| !confidence.is_finite() || !(0.0..=1.0).contains(&confidence))
+    {
+        return invalid(format!(
+            "{subject} confidence must be finite and between zero and one"
+        ));
     }
     Ok(())
-}
-
-fn sanitize_confidence(value: Option<f32>) -> Option<f32> {
-    value.and_then(|confidence| confidence.is_finite().then(|| confidence.clamp(0.0, 1.0)))
-}
-
-fn normalize_optional_string(value: Option<String>) -> Option<String> {
-    value
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
 }
 
 fn invalid<T>(message: impl Into<String>) -> Result<T> {
@@ -394,49 +462,103 @@ mod tests {
     fn media_time_range_rejects_invalid_ranges() {
         assert!(MediaTimeRange::new(2.0, 1.0).is_err());
         assert!(MediaTimeRange::new(f64::NAN, 1.0).is_err());
-        assert_eq!(MediaTimeRange::new(1.0, 2.5).unwrap().duration_seconds(), 1.5);
+        assert_eq!(
+            MediaTimeRange::new(1.0, 2.5).unwrap().duration_seconds(),
+            1.5
+        );
     }
 
     #[test]
-    fn timed_text_normalizes_without_adding_domain_semantics() {
+    fn timed_text_round_trips_without_adding_domain_semantics() {
         let contract = TimedTextContract {
+            text: Some("hello".to_string()),
+            language: Some("en".to_string()),
             source: Some(" clip.wav ".to_string()),
             segments: vec![TimedTextSegmentContract {
                 index: 0,
                 start_seconds: Some(0.0),
                 end_seconds: Some(1.0),
-                text: " hello ".to_string(),
-                language: Some(" en ".to_string()),
-                speaker: Some(" speaker-a ".to_string()),
-                confidence: Some(1.2),
+                text: "hello".to_string(),
+                language: Some("en".to_string()),
+                speaker: Some("speaker-a".to_string()),
+                confidence: Some(0.9),
                 is_final: true,
-                words: Vec::new(),
-                chars: Vec::new(),
+                words: vec![TimedTextWordContract {
+                    text: "hello".to_string(),
+                    start_seconds: Some(0.0),
+                    end_seconds: Some(1.0),
+                    confidence: Some(0.8),
+                    speaker: Some("speaker-a".to_string()),
+                    attributes: BTreeMap::new(),
+                }],
+                chars: vec![TimedTextCharContract {
+                    character: "h".to_string(),
+                    start_seconds: Some(0.0),
+                    end_seconds: Some(0.2),
+                    confidence: Some(0.7),
+                    attributes: BTreeMap::new(),
+                }],
                 attributes: BTreeMap::new(),
             }],
-            ..TimedTextContract::default()
-        }
-        .normalized()
-        .unwrap();
+            attributes: BTreeMap::new(),
+        };
+        contract.validate().unwrap();
 
-        assert_eq!(contract.text.as_deref(), Some("hello"));
-        assert_eq!(contract.source.as_deref(), Some("clip.wav"));
-        assert_eq!(contract.segments[0].language.as_deref(), Some("en"));
-        assert_eq!(contract.segments[0].speaker.as_deref(), Some("speaker-a"));
-        assert_eq!(contract.segments[0].confidence, Some(1.0));
+        let encoded = serde_json::to_string(&contract).unwrap();
+        let decoded: TimedTextContract = serde_json::from_str(&encoded).unwrap();
+
+        assert_eq!(decoded, contract);
     }
 
     #[test]
     fn compatibility_names_preserve_the_neutral_shape() {
-        let contract = normalize_imported_segments(
-            Some("clip.wav".to_string()),
-            Some("en".to_string()),
-            vec![TranscriptSegmentContract::new(0, " hello ")],
+        let segment: TranscriptSegmentContract = TimedTextSegmentContract::new(0, "hello");
+        let contract: TranscriptionContract = TimedTextContract::new(vec![segment]);
+
+        assert_eq!(contract.segments[0].text, "hello");
+    }
+
+    #[test]
+    fn deserialization_rejects_invalid_ranges_at_every_level() {
+        assert!(
+            serde_json::from_str::<MediaTimeRange>(r#"{"startSeconds":2.0,"endSeconds":1.0}"#)
+                .is_err()
+        );
+        assert!(serde_json::from_str::<TimedTextWordContract>(
+            r#"{"text":"hello","startSeconds":2.0,"endSeconds":1.0}"#
         )
-        .unwrap();
-        assert_eq!(contract.text.as_deref(), Some("hello"));
-        assert_eq!(contract.source.as_deref(), Some("clip.wav"));
-        assert_eq!(contract.segments[0].language.as_deref(), Some("en"));
+        .is_err());
+        assert!(serde_json::from_str::<TimedTextSegmentContract>(
+            r#"{"index":0,"startSeconds":1.0,"endSeconds":2.0,"text":"hello","isFinal":true,"words":[{"text":"hello","startSeconds":0.5,"endSeconds":1.5}]}"#
+        )
+        .is_err());
+        assert!(serde_json::from_str::<TimedTextContract>(
+            r#"{"segments":[{"index":0,"startSeconds":2.0,"endSeconds":1.0,"text":"hello","isFinal":true}]}"#
+        )
+        .is_err());
+        assert!(serde_json::from_str::<TimedTextSegmentContract>(
+            r#"{"index":0,"text":"hello","confidence":1.1,"isFinal":true}"#
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn validation_rejects_non_finite_nested_values() {
+        let contract = TimedTextContract::new(vec![TimedTextSegmentContract {
+            index: 0,
+            start_seconds: Some(f64::NAN),
+            end_seconds: Some(1.0),
+            text: "hello".to_string(),
+            language: None,
+            speaker: None,
+            confidence: None,
+            is_final: true,
+            words: Vec::new(),
+            chars: Vec::new(),
+            attributes: BTreeMap::new(),
+        }]);
+
+        assert!(contract.validate().is_err());
     }
 
     #[test]
