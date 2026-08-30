@@ -112,9 +112,8 @@ requires a receipt for the current repository-wide recurring gate.
 
 This preparation is ordered after foundation wave 2 issue #13. The audio
 contracts PR may be reviewed while wave 2 is pending, but it must not merge or
-publish until issue #13 has published. Because main's active Agent Loop and
-draft Harness configuration currently serves wave 2, rebase the audio
-contracts source/control pair after wave 2 if its merge changes either commit.
+publish until issue #13 has published. Because the audio source/control pair is
+exact-head-bound, rebase it after wave 2 if that merge changes either commit.
 Keep issue #17 unapproved and without control-head authorization until that
 ordering requirement and the shared crates.io-capacity constraint are clear.
 
