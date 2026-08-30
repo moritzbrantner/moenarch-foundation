@@ -34,6 +34,12 @@ remain in product-owned mapping layers. Audacity label output is text-only;
 speaker markers such as `[[speaker]]` are product conventions rather than label
 format syntax.
 
+Subtitle parsing is intentionally a canonical projection rather than a
+lossless document representation. Numeric SRT cue identifiers become segment
+indices. WebVTT string identifiers, cue settings, and `NOTE`, `STYLE`, and
+`REGION` metadata are syntax-level inputs that are discarded; the neutral
+contract retains cue text and timing.
+
 `nlp-stack` or the relevant capability continues to own:
 
 - transcript document semantics beyond the neutral interchange DTO;

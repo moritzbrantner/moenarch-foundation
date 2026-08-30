@@ -51,6 +51,12 @@ the neutral DTOs before rendering. Audacity labels intentionally contain only
 segment text: the `[[speaker]]` convention is a product decoration, not part of
 the label-track format.
 
+Parsing is a canonical projection, not a lossless subtitle-document editor.
+Numeric SRT cue identifiers are preserved as segment indices. WebVTT string cue
+identifiers, cue settings, and `NOTE`, `STYLE`, and `REGION` metadata are
+accepted where valid but intentionally discarded. Cue text and timing remain
+the owned interchange data.
+
 The original issue #108 extraction did not invent a cross-family range or
 transcript contract. `MediaSourceRef`, `MediaTimeRange`, and the timed-text DTOs
 are destination-owned post-extraction architecture evolution documented by ADR
