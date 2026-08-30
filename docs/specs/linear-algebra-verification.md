@@ -9,13 +9,14 @@ scenarios and are not part of correctness gates.
 `tests/linear_laws.rs` uses F1's deterministic seed and F2's explicit
 `ApproxTolerance` values. It verifies:
 
-- f32 transpose involution, identity multiplication, distributivity, Gram
-  symmetry, and matrix/vector consistency;
+- f32 transpose involution, distributivity, and Gram symmetry, plus identity
+  multiplication and matrix/vector consistency for both f32 and f64;
 - rank-two tensor/matrix round trips;
 - LU permutation reconstruction, determinant agreement, solve residuals, and
   inverse residuals;
 - QR reconstruction and orthogonality, plus Cholesky reconstruction;
-- f64 SVD reconstruction and all four Moore-Penrose pseudoinverse identities.
+- f64 SVD reconstruction and all four Moore-Penrose pseudoinverse identities
+  for both generated and explicitly rank-deficient matrices.
 
 The tolerances are test evidence, not new production defaults: `2e-4` absolute
 or relative for small f32 generated cases and `1e-8` for f64 SVD/pseudoinverse

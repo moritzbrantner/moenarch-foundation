@@ -57,6 +57,26 @@ fn transpose_f64(matrix: &F64Matrix) -> F64Matrix {
     matrix.transpose_owned().unwrap()
 }
 
+fn assert_moore_penrose_identities(matrix: &F64Matrix, tolerance: ApproxTolerance) {
+    let pseudoinverse = matrix
+        .pseudoinverse(PseudoinverseOptions::default())
+        .unwrap();
+    let a_a_plus = matrix.matmul(&pseudoinverse.as_view()).unwrap();
+    let a_plus_a = pseudoinverse.matmul(&matrix.as_view()).unwrap();
+    assert_f64_matrix_close(
+        &a_a_plus.matmul(&matrix.as_view()).unwrap(),
+        matrix,
+        tolerance,
+    );
+    assert_f64_matrix_close(
+        &a_plus_a.matmul(&pseudoinverse.as_view()).unwrap(),
+        &pseudoinverse,
+        tolerance,
+    );
+    assert_f64_matrix_close(&transpose_f64(&a_a_plus), &a_a_plus, tolerance);
+    assert_f64_matrix_close(&transpose_f64(&a_plus_a), &a_plus_a, tolerance);
+}
+
 proptest! {
     #![proptest_config(deterministic_config())]
 
@@ -101,6 +121,35 @@ proptest! {
         prop_assert_eq!(matrix_vector.shape(), MatrixShape::new(2, 1).unwrap());
         for row in 0..2 {
             prop_assert!(f32_tolerance().allows_f32(matrix_vector.values()[row], vector_result.as_slice()[row]));
+        }
+    }
+
+    #[test]
+    fn f64_identity_and_matrix_vector_laws(
+        values in proptest::collection::vec(-10.0_f64..=10.0_f64, 6),
+        vector_values in proptest::collection::vec(-10.0_f64..=10.0_f64, 3),
+    ) {
+        let matrix = f64_matrix(2, 3, values);
+        let right_identity = matrix
+            .matmul(&F64Matrix::identity(3).unwrap().as_view())
+            .unwrap();
+        let left_identity = F64Matrix::identity(2)
+            .unwrap()
+            .matmul(&matrix.as_view())
+            .unwrap();
+        assert_f64_matrix_close(&right_identity, &matrix, f64_tolerance());
+        assert_f64_matrix_close(&left_identity, &matrix, f64_tolerance());
+
+        let matrix_vector = matrix
+            .matmul(&f64_matrix(3, 1, vector_values.clone()).as_view())
+            .unwrap();
+        let vector_result = matrix.matvec(&vector_values).unwrap();
+        prop_assert_eq!(matrix_vector.shape(), MatrixShape::new(2, 1).unwrap());
+        for (matrix_value, vector_value) in matrix_vector.values().iter().zip(&vector_result) {
+            prop_assert!(f64_tolerance().allows_f64(
+                *matrix_value,
+                *vector_value,
+            ));
         }
     }
 
@@ -198,22 +247,16 @@ proptest! {
         }).unwrap();
         prop_assert!(decomposition.reconstruction.relative_residual <= 1.0e-8);
 
-        let pseudoinverse = matrix.pseudoinverse(PseudoinverseOptions::default()).unwrap();
-        let a_a_plus = matrix.matmul(&pseudoinverse.as_view()).unwrap();
-        let a_plus_a = pseudoinverse.matmul(&matrix.as_view()).unwrap();
-        assert_f64_matrix_close(
-            &a_a_plus.matmul(&matrix.as_view()).unwrap(),
-            &matrix,
-            f64_tolerance(),
-        );
-        assert_f64_matrix_close(
-            &a_plus_a.matmul(&pseudoinverse.as_view()).unwrap(),
-            &pseudoinverse,
-            f64_tolerance(),
-        );
-        assert_f64_matrix_close(&transpose_f64(&a_a_plus), &a_a_plus, f64_tolerance());
-        assert_f64_matrix_close(&transpose_f64(&a_plus_a), &a_plus_a, f64_tolerance());
+        assert_moore_penrose_identities(&matrix, f64_tolerance());
     }
+}
+
+#[test]
+fn rank_deficient_pseudoinverse_satisfies_all_moore_penrose_identities() {
+    let rank_one = f64_matrix(2, 3, vec![1.0, 2.0, 3.0, 2.0, 4.0, 6.0]);
+
+    assert_eq!(rank_one.numerical_rank(None).unwrap(), 1);
+    assert_moore_penrose_identities(&rank_one, f64_tolerance());
 }
 
 #[test]
