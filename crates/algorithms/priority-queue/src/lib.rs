@@ -188,8 +188,7 @@ impl<P: Ord, V> AddressablePriorityQueue<P, V> {
         let left = &self.heap[left];
         let right = &self.heap[right];
         left.priority < right.priority
-            || (left.priority == right.priority
-                && left.insertion_order < right.insertion_order)
+            || (left.priority == right.priority && left.insertion_order < right.insertion_order)
     }
 
     fn swap_entries(&mut self, left: usize, right: usize) {
@@ -285,7 +284,9 @@ mod tests {
             let entry = &model[index];
             (entry.priority, entry.value)
         });
-        let actual = queue.peek_min().map(|(priority, value)| (*priority, *value));
+        let actual = queue
+            .peek_min()
+            .map(|(priority, value)| (*priority, *value));
         assert_eq!(actual, expected);
         assert_eq!(queue.len(), model.len());
         assert_eq!(queue.is_empty(), model.is_empty());
