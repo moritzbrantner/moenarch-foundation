@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "packages": [
+    {
+      "automatic_publish_eligible": true,
+      "contract_owner": "moenarch-priority-queue",
+      "current_domain": "algorithms",
+      "current_package_name": "moenarch-priority-queue",
+      "current_published_version": null,
+      "current_release_workflow": "manual docs/RELEASE_CHECKLIST.md",
+      "ecosystem": "cargo",
+      "extraction_phase": "foundation",
+      "id": "cargo:moenarch-priority-queue",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
+      "intended_package_name": "moenarch-priority-queue",
+      "manifest_path": "crates/algorithms/priority-queue/Cargo.toml",
+      "migration_status": "foundation-authored",
+      "package_kind": "library",
+      "provenance": {
+        "introduced_after_commit": "4bbf6ffb0e1f4e8e3beef278e079d2650fea6bb0",
+        "issue": "https://github.com/moritzbrantner/moenarch-foundation/issues/46"
+      },
+      "publication_class": "crates.io",
+      "source_version": "0.1.0",
+      "target_repository": "moenarch-foundation",
+      "temporary_boundary_violations": [],
+      "wrapped_library": null
+    }
+  ]
+}

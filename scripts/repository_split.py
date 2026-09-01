@@ -13,7 +13,13 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OWNERSHIP_PATH = ROOT / "docs/repository-split/package-ownership.json"
+POST_EXTRACTION_OWNERSHIP_PATH = (
+    ROOT / "docs/repository-split/post-extraction-package-ownership.json"
+)
 RELEASE_PLAN_PATH = ROOT / "docs/repository-split/release-plan.json"
+POST_EXTRACTION_RELEASE_PLAN_PATH = (
+    ROOT / "docs/repository-split/post-extraction-release-plan.json"
+)
 SOURCE_REPOSITORY = "moritzbrantner/rust-packages"
 DESTINATION_REPOSITORY = "moritzbrantner/moenarch-foundation"
 PHASE_A_BASELINE = "d032ad2890c1df3c6a5b9eff024562f00d017fce"
@@ -21,15 +27,41 @@ EXTRACTION_SHA = "364627c233b314807ba4f21298ada4cf63333bed"
 SOURCE_OWNERSHIP_RECORDS_SHA256 = (
     "6d1ae73c470e4e6adaf83705c315e47faa9189db5ce6ab0541c8b711305b9540"
 )
-POST_EXTRACTION_PACKAGE_NAMES = frozenset({"moenarch-math-geometry-3d"})
+POST_EXTRACTION_PACKAGE_NAMES = frozenset(
+    {"moenarch-math-geometry-3d", "moenarch-priority-queue"}
+)
 POST_EXTRACTION_RECORDS_SHA256 = (
-    "778ac8bb845769f044bfaa23f79da5cc74b3a522cd9a6b5256477bbc89b45247"
+    "ed9a76c175d44c6aa9fda1d28843cddd7100a860cf1e9fe7685d2851c750cf6f"
 )
 
 
-def load_json(path: Path) -> dict:
+def _load_json_file(path: Path) -> dict:
     with path.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _extend_list(document: dict, extension: dict, key: str) -> None:
+    values = extension.get(key, [])
+    if values:
+        document.setdefault(key, []).extend(values)
+
+
+def load_json(path: Path) -> dict:
+    """Load JSON plus explicit post-extraction metadata for canonical plans."""
+
+    document = _load_json_file(path)
+    resolved = path.resolve()
+    if resolved == OWNERSHIP_PATH.resolve() and POST_EXTRACTION_OWNERSHIP_PATH.is_file():
+        extension = _load_json_file(POST_EXTRACTION_OWNERSHIP_PATH)
+        _extend_list(document, extension, "packages")
+    elif (
+        resolved == RELEASE_PLAN_PATH.resolve()
+        and POST_EXTRACTION_RELEASE_PLAN_PATH.is_file()
+    ):
+        extension = _load_json_file(POST_EXTRACTION_RELEASE_PLAN_PATH)
+        _extend_list(document, extension, "packages")
+        _extend_list(document, extension, "dependency_order")
+    return document
 
 
 def cargo_metadata(root: Path = ROOT) -> dict:
