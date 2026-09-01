@@ -2,13 +2,26 @@
 
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_QUEUE_ID: AtomicU64 = AtomicU64::new(1);
+
+fn allocate_queue_id() -> u64 {
+    NEXT_QUEUE_ID
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+            current.checked_add(1)
+        })
+        .expect("exhausted addressable priority queue identities")
+}
 
 /// Opaque identity for an entry in an [`AddressablePriorityQueue`].
 ///
-/// Handles are stable while the entry is present. Once the entry is removed,
-/// the handle is permanently stale even if its internal storage slot is reused.
+/// Handles are stable while the entry is present and are specific to the queue
+/// that created them. Once the entry is removed, the handle is permanently
+/// stale even if its internal storage slot is reused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Handle {
+    queue_id: u64,
     slot: usize,
     generation: u64,
 }
@@ -47,6 +60,7 @@ struct Slot {
 /// tie-breaking order.
 #[derive(Debug)]
 pub struct AddressablePriorityQueue<P, V> {
+    queue_id: u64,
     heap: Vec<Entry<P, V>>,
     slots: Vec<Slot>,
     free_slots: Vec<usize>,
@@ -56,6 +70,7 @@ pub struct AddressablePriorityQueue<P, V> {
 impl<P, V> Default for AddressablePriorityQueue<P, V> {
     fn default() -> Self {
         Self {
+            queue_id: allocate_queue_id(),
             heap: Vec::new(),
             slots: Vec::new(),
             free_slots: Vec::new(),
@@ -138,7 +153,11 @@ impl<P: Ord, V> AddressablePriorityQueue<P, V> {
         if let Some(slot) = self.free_slots.pop() {
             let generation = self.slots[slot].generation;
             self.slots[slot].heap_index = Some(heap_index);
-            Handle { slot, generation }
+            Handle {
+                queue_id: self.queue_id,
+                slot,
+                generation,
+            }
         } else {
             let slot = self.slots.len();
             self.slots.push(Slot {
@@ -146,6 +165,7 @@ impl<P: Ord, V> AddressablePriorityQueue<P, V> {
                 generation: 0,
             });
             Handle {
+                queue_id: self.queue_id,
                 slot,
                 generation: 0,
             }
@@ -153,6 +173,10 @@ impl<P: Ord, V> AddressablePriorityQueue<P, V> {
     }
 
     fn resolve(&self, handle: Handle) -> Result<usize, InvalidHandle> {
+        if handle.queue_id != self.queue_id {
+            return Err(InvalidHandle);
+        }
+
         self.slots
             .get(handle.slot)
             .filter(|slot| slot.generation == handle.generation)
@@ -296,6 +320,19 @@ mod tests {
         assert_eq!(queue.pop_min(), Some((2, "new")));
     }
 
+    #[test]
+    fn handles_from_other_queues_are_rejected() {
+        let mut first = AddressablePriorityQueue::new();
+        let foreign = first.insert(1, "first");
+
+        let mut second = AddressablePriorityQueue::new();
+        second.insert(2, "second");
+
+        assert_eq!(second.update_priority(foreign, 0), Err(InvalidHandle));
+        assert_eq!(second.remove(foreign), Err(InvalidHandle));
+        assert_eq!(second.pop_min(), Some((2, "second")));
+    }
+
     proptest! {
         #[test]
         fn operation_sequences_match_scan_reference(
@@ -367,8 +404,18 @@ mod tests {
         let first = queue.insert(7, 1);
         let second = queue.insert(3, 2);
         let model = vec![
-            ModelEntry { handle: first, priority: 7, value: 1, insertion_order: 0 },
-            ModelEntry { handle: second, priority: 3, value: 2, insertion_order: 1 },
+            ModelEntry {
+                handle: first,
+                priority: 7,
+                value: 1,
+                insertion_order: 0,
+            },
+            ModelEntry {
+                handle: second,
+                priority: 3,
+                value: 2,
+                insertion_order: 1,
+            },
         ];
         assert_same_min(&queue, &model);
     }
