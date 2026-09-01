@@ -31,7 +31,7 @@ assert!(queue.update_priority(fast, 0).is_err());
 
 Equal priorities are deterministic and stable by insertion order. Updating an existing item's priority does not change that insertion-order tie breaker. Removing and reinserting an item creates a new insertion order.
 
-Handles use generations so a handle to a removed entry cannot silently mutate a later entry that reuses the same internal slot.
+Handles carry a queue identity and a slot generation. A handle from another queue is rejected, and a handle to a removed entry cannot silently mutate a later entry that reuses the same internal slot.
 
 ## Evidence model
 
