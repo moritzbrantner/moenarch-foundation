@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/algorithms/priority-queue",
     "crates/audio/audio-contracts",
     "crates/bindings/data-inversion-core-wasm",
     "crates/bindings/dense-data-wasm",
@@ -106,6 +107,7 @@ math-statistics = { package = "moenarch-math-statistics", version = "=0.1.0", pa
 media-core = { package = "moenarch-media-core", version = "=0.1.0", path = "crates/media/media-core" }
 model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1", path = "crates/runtime/model-runtime" }
 numbers-core = { package = "moenarch-numbers-core", version = "=0.1.1", path = "crates/data/numbers-core" }
+priority-queue = { package = "moenarch-priority-queue", version = "=0.1.0", path = "crates/algorithms/priority-queue" }
 runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1", path = "crates/runtime/runtime-core" }
 tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
 vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
