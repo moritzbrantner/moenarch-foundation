@@ -1841,6 +1841,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "moenarch-priority-queue"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "proptest",
+]
+
+[[package]]
 name = "moenarch-runtime-core"
 version = "0.2.1"
 dependencies = [
