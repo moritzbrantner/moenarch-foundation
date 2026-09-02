@@ -11,6 +11,7 @@ This crate is part of the Analytical Math Crates family.
 - Sparse vector norms, scaling, addition, Hadamard product, pruning, and top-k entries
 - CSR row/column counts and sums, matrix summaries, row normalization,
   matrix-vector multiply, dense matrix multiply, COO/CSR transpose, and COO round trips
+- Canonical CSR×CSR multiplication and sparse row/column Gram composition
 - Dense and sparse conversion bridges
 
 ## Example
@@ -42,6 +43,8 @@ products are deterministic helpers for small and medium sparse feature
 matrices. Dense matrix outputs use `math-linear::F32Matrix`, allowing sparse
 feature workflows to move into linear algebra and statistics without adding an
 external math backend.
+
+CSR×CSR multiplication uses a row-local sparse accumulator rather than a dense output or dense row buffer. Output columns are sorted, duplicate contributions are combined, exact-zero cancellations are removed, and `SparseProductStats` exposes candidate scalar products plus output nnz as deterministic performance evidence.
 
 ## Package surface
 

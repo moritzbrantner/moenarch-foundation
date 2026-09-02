@@ -75,13 +75,7 @@ impl CsrMatrix {
         }
 
         let output_nnz = values.len();
-        let matrix = Self::new(
-            self.rows,
-            right.cols,
-            row_offsets,
-            column_indices,
-            values,
-        )?;
+        let matrix = Self::new(self.rows, right.cols, row_offsets, column_indices, values)?;
         Ok((
             matrix,
             SparseProductStats {
@@ -141,30 +135,15 @@ mod tests {
 
     #[test]
     fn csr_product_matches_dense_reference() {
-        let left = csr(
-            3,
-            4,
-            &[(0, 0, 2.0), (0, 3, -1.0), (1, 1, 3.0), (2, 2, 4.0)],
-        );
-        let right = csr(
-            4,
-            2,
-            &[(0, 0, 5.0), (1, 1, 2.0), (2, 0, -2.0), (3, 1, 7.0)],
-        );
+        let left = csr(3, 4, &[(0, 0, 2.0), (0, 3, -1.0), (1, 1, 3.0), (2, 2, 4.0)]);
+        let right = csr(4, 2, &[(0, 0, 5.0), (1, 1, 2.0), (2, 0, -2.0), (3, 1, 7.0)]);
         let sparse = left.mul_csr(&right).unwrap();
         assert_dense_close(&sparse, &dense_product(&left, &right));
     }
 
     #[test]
     fn product_is_canonical_and_reports_structural_work() {
-        let left = CsrMatrix::new(
-            1,
-            2,
-            vec![0, 3],
-            vec![1, 0, 0],
-            vec![1.0, 2.0, -2.0],
-        )
-        .unwrap();
+        let left = CsrMatrix::new(1, 2, vec![0, 3], vec![1, 0, 0], vec![1.0, 2.0, -2.0]).unwrap();
         let right = csr(2, 3, &[(0, 2, 3.0), (1, 1, 4.0)]);
         let (product, stats) = left.mul_csr_with_stats(&right).unwrap();
         assert_eq!(product.to_coo().unwrap().entries(), &[(0, 1, 4.0)]);
@@ -207,15 +186,17 @@ mod tests {
 
     #[test]
     fn sparse_gram_helpers_match_dense_composition() {
-        let matrix = csr(
-            3,
-            4,
-            &[(0, 0, 1.0), (0, 3, 2.0), (1, 1, -1.0), (2, 3, 4.0)],
-        );
+        let matrix = csr(3, 4, &[(0, 0, 1.0), (0, 3, 2.0), (1, 1, -1.0), (2, 3, 4.0)]);
         let columns = matrix.gram_columns_sparse().unwrap();
         let rows = matrix.gram_rows_sparse().unwrap();
-        assert_dense_close(&columns, &matrix.transpose().unwrap().mul_csr(&matrix).unwrap());
-        assert_dense_close(&rows, &matrix.mul_csr(&matrix.transpose().unwrap()).unwrap());
+        assert_dense_close(
+            &columns,
+            &matrix.transpose().unwrap().mul_csr(&matrix).unwrap(),
+        );
+        assert_dense_close(
+            &rows,
+            &matrix.mul_csr(&matrix.transpose().unwrap()).unwrap(),
+        );
     }
 
     #[test]
