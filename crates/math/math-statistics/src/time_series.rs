@@ -94,11 +94,7 @@ pub fn cross_covariance_series(
 }
 
 /// Returns directional cross-correlations for lags zero through `max_lag` inclusive.
-pub fn cross_correlation_series(
-    left: &[f64],
-    right: &[f64],
-    max_lag: usize,
-) -> Result<Vec<f64>> {
+pub fn cross_correlation_series(left: &[f64], right: &[f64], max_lag: usize) -> Result<Vec<f64>> {
     validate_pair(left, right)?;
     validate_correlation_lag(left.len(), max_lag)?;
     (0..=max_lag)
