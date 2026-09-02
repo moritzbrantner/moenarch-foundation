@@ -53,9 +53,9 @@ jobs:
       - name: Install Rust toolchain
         run: rustup toolchain install 1.95.0 --profile minimal
 
-      - name: Verify focused math-statistics change
+      - name: Format and verify focused math-statistics change
         run: |
-          cargo +1.95.0 fmt --all -- --check
+          cargo +1.95.0 fmt --all
           cargo +1.95.0 test -p moenarch-math-statistics --locked
           cargo +1.95.0 clippy -p moenarch-math-statistics --all-targets --all-features --locked -- -D warnings
 
@@ -67,6 +67,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add crates/math/math-statistics/src/lib.rs crates/math/math-statistics/README.md
+          git add crates/math/math-statistics/src/lib.rs crates/math/math-statistics/src/time_series.rs crates/math/math-statistics/README.md
           git commit -m "Add lagged time-series statistics"
           git push origin HEAD:feat/61-lagged-time-series-statistics
