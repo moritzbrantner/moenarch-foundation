@@ -130,6 +130,7 @@ jobs:
           release_check = release_check_path.read_text()
           release_check = release_check.replace("len(packages) != 63", "len(packages) != 64", 1)
           release_check = release_check.replace("the 63 owned packages", "the 64 owned packages", 1)
+          release_check = release_check.replace("63 packages retained at source versions", "64 packages retained at source versions", 1)
           release_check_path.write_text(release_check)
 
           release_test_path = root / "scripts/test_check_release_plan.py"
@@ -149,7 +150,7 @@ jobs:
           cargo +1.95.0 metadata --format-version 1 --no-deps --locked > /tmp/metadata.json
           python3 scripts/check_repository_boundaries.py --check
           python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
-          python3 -m unittest scripts/test_check_release_plan.py
+          python3 -m unittest discover -s scripts -p 'test_check_release_plan.py'
           cargo +1.95.0 package -p moenarch-math-probability --locked --allow-dirty
 
       - name: Commit deterministic patch
