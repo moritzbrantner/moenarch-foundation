@@ -1,0 +1,120 @@
+name: Agent patch issue 64
+
+on:
+  push:
+    branches:
+      - feat/64-expanded-math-evidence
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: feat/64-expanded-math-evidence
+          fetch-depth: 0
+
+      - name: Refresh authoritative numerical map
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("docs/specs/numerical-contract-map.md")
+          text = path.read_text()
+
+          old_status = """Status: authoritative current-state audit for
+[F0](https://github.com/moritzbrantner/moenarch-foundation/issues/27). This
+document records the source tree at baseline `25fd240` as inspected on
+2026-08-30; it makes no API, serialization, package-version, or release change.
+"""
+          new_status = """Status: authoritative current-state ownership and numerical-contract map.
+The original F0 audit inspected baseline `25fd240` on 2026-08-30; this map is
+updated through the analytical expansion tracked by
+[#64](https://github.com/moritzbrantner/moenarch-foundation/issues/64) on
+2026-09-03.
+"""
+          if old_status in text:
+              text = text.replace(old_status, new_status, 1)
+
+          old_linear = "| Dense matrices, decompositions, kernels, and tensor/vector bridges | `moenarch-math-linear` | `MatrixShape`, `MatrixLayout`, `F32Matrix`/views/row/column views, `F64Matrix`/views/row/column views, LU/QR/SVD/pseudoinverse diagnostics and options, `Kernel1d`, `Kernel2d` | finite row-major `f32` and `f64`; transpose views may be column-major without copying |"
+          new_linear = "| Dense matrices, decompositions, kernels, and tensor/vector bridges | `moenarch-math-linear` | `MatrixShape`, `MatrixLayout`, `F32Matrix`/views/row/column views, `F64Matrix`/views/row/column views, LU/QR/SVD/pseudoinverse diagnostics and options, deterministic symmetric eigendecomposition, `Kernel1d`, `Kernel2d` | finite row-major `f32` and `f64`; transpose views may be column-major without copying |"
+          text = text.replace(old_linear, new_linear, 1)
+
+          old_sparse = "| Sparse vectors and matrices | `moenarch-math-sparse-data` | `SparseVector`, `CooMatrix`, `CsrMatrix`, `SparseRow`, `SparseMatrixSummary`, sparse similarity | finite `f32` values with `usize` dimensions and indices; dense interop uses `math-linear` |"
+          new_sparse = "| Sparse vectors and matrices | `moenarch-math-sparse-data` | `SparseVector`, `CooMatrix`, `CsrMatrix`, `SparseRow`, `SparseMatrixSummary`, `SparseProductStats`, sparse similarity, canonical CSR×CSR multiplication, sparse Gram composition | finite `f32` values with `usize` dimensions and indices; dense interop uses `math-linear` |"
+          text = text.replace(old_sparse, new_sparse, 1)
+
+          old_stats = "| Descriptive, streaming, multivariate, regression, and risk statistics | `moenarch-math-statistics` | variance/change/rank modes; series/pairwise/risk/regression summaries; `WeightedObservation`, `RunningCovariance`, normalizers, PCA; scalar, rolling, and regression functions | scalar statistics use finite `f64`; matrix and multivariate workflows use finite `f32` matrices |"
+          new_probability = "| Probability distributions | `moenarch-math-probability` | validated Bernoulli, uniform, normal, binomial, and Poisson parameter contracts; deterministic PMF/PDF/CDF/log-probability evaluation and moments | finite `f64` analytical parameters/results; discrete support indices use `u64`; no RNG or sampling policy |\n"
+          new_stats = "| Descriptive, streaming, multivariate, regression, risk, and lagged statistics | `moenarch-math-statistics` | variance/change/rank modes; series/pairwise/risk/regression summaries; `WeightedObservation`, `RunningCovariance`, normalizers, PCA; scalar, rolling, lagged auto/cross covariance/correlation, and regression functions | scalar statistics use finite `f64`; matrix and multivariate workflows use finite `f32` matrices |"
+          if new_probability not in text:
+              text = text.replace(old_stats, new_probability + new_stats, 1)
+          else:
+              text = text.replace(old_stats, new_stats, 1)
+
+          old_linear_contract = "| `math-linear` | Matrix, vector, and kernel inputs and produced decomposition values must be finite. Matrix shapes are non-zero. | Several local policies exist: rank tolerance accepts a finite non-negative caller value or derives `f32::EPSILON * max(rows, cols) * max_column_l2_norm`; LU uses a pivot-derived threshold; QR/Cholesky and normalization reject effectively zero values. | Matrix/tensor element counts and shape bridges are checked; `F32Tensor` conversion is rank-2 only. Failures use `DetectError`. | Core matrix/decomposition structs are Rust library types, not Serde data models; JSON is confined to `surface`. `faer` and `nalgebra` are optional, feature-gated reference/benchmark paths and do not appear in public signatures. |"
+          new_linear_contract = "| `math-linear` | Matrix, vector, kernel, and decomposition inputs/results must be finite. Matrix shapes are non-zero; symmetric eigendecomposition additionally requires square input and symmetry within its resolved tolerance. | Several local policies exist: rank tolerance accepts a finite non-negative caller value or derives a scale-aware threshold; LU uses a pivot-derived threshold; QR/Cholesky and normalization reject effectively zero values; symmetric eigendecomposition uses explicit or scale-derived symmetry/convergence tolerances and a bounded Jacobi sweep count. | Matrix/tensor element counts and shape bridges are checked; `F32Tensor` conversion is rank-2 only. Symmetric eigen f32 compatibility promotes to f64 and narrows through checked conversion. Failures use `DetectError`. | Core matrix/decomposition structs are Rust library types, not Serde data models; JSON is confined to `surface`. `faer` and `nalgebra` are optional, feature-gated reference/benchmark paths and do not appear in public signatures. |"
+          text = text.replace(old_linear_contract, new_linear_contract, 1)
+
+          old_sparse_contract = "| `math-sparse-data` | Sparse vector/COO/CSR values and dense operands must be finite; indices and offsets are checked. | Cosine/normalization rejects norms at or below `f32::EPSILON`; prune thresholds must be finite and non-negative. | Matrix dimensions and CSR offsets are checked; dense interop returns `math-linear` types. Failures use `DetectError`. | Core sparse types are Rust library types rather than Serde models; JSON is confined to `surface`. No backend types are exposed. |"
+          new_sparse_contract = "| `math-sparse-data` | Sparse vector/COO/CSR values and dense operands must be finite; indices and offsets are checked. CSR×CSR multiplication also rejects non-finite scalar contributions or accumulated values. | Cosine/normalization rejects norms at or below `f32::EPSILON`; prune thresholds must be finite and non-negative. Sparse products use exact-zero elision and deterministic sorted output rather than a numerical epsilon. | Matrix dimensions and CSR offsets are checked; sparse multiplication checks shape compatibility and candidate-count overflow; dense interop returns `math-linear` types. Failures use `DetectError`. | Core sparse types are Rust library types rather than Serde models; JSON is confined to `surface`. `SparseProductStats` exposes deterministic candidate-work/output-nnz evidence; no backend types are exposed. |"
+          text = text.replace(old_sparse_contract, new_sparse_contract, 1)
+
+          old_stats_contract = "| `math-statistics` | Scalar series and weights must be finite; multivariate data relies on finite matrix contracts. | Correlation, z-score, regression, and PCA use `f64::EPSILON` or `f32::EPSILON` checks appropriate to their input precision. OLS promotes f32 matrix work to f64 when needed and rejects a non-finite/out-of-range conversion back to f32. | Series dimensions, rolling windows, confidence, weights, and regularization are checked; failures use `DetectError`. | Core result types are Rust library types rather than Serde data models; JSON is confined to `surface`. No backend types are exposed. |"
+          new_probability_contract = "| `math-probability` | Distribution parameters and continuous evaluation points are validated as finite; probability parameters are constrained to `[0, 1]`, scales/intervals obey their distribution invariants, and mathematically zero mass/density may map to negative infinity only in log-probability results. | Normal CDF uses a documented deterministic approximation; discrete mass/CDF evaluation uses logarithmic formulations and recurrence instead of factorial arithmetic. CDF results are bounded to `[0, 1]`. | Invalid parameters/evaluation points use `DetectError::InvalidArgument`; integer support indices require no lossy numeric conversion. | Distribution structs are Rust library types, not backend wrappers or RNG types. No random-number generator, sampler, or third-party probability type is exposed. |\n"
+          new_stats_contract = "| `math-statistics` | Scalar series and weights must be finite; multivariate data relies on finite matrix contracts. Lagged operations validate the complete input series before selecting their overlap. | Correlation, z-score, regression, and PCA use precision-appropriate epsilon checks. Lagged covariance/correlation centers over the overlapping slices; positive cross lag pairs `left[t]` with `right[t + lag]`. Population covariance may use a one-observation overlap, while sample covariance/correlation require at least two. OLS promotes f32 matrix work to f64 when needed and checks narrowing. | Series dimensions, rolling windows, lags/overlap sizes, confidence, weights, and regularization are checked; failures use `DetectError`. | Core result types are Rust library types rather than Serde data models; JSON is confined to `surface`. No backend types are exposed. |"
+          if new_probability_contract not in text:
+              text = text.replace(old_stats_contract, new_probability_contract + new_stats_contract, 1)
+          else:
+              text = text.replace(old_stats_contract, new_stats_contract, 1)
+
+          text = text.replace(
+              "statistics/algorithms\n  math-statistics, search, decomposition, sparse algorithms",
+              "statistics/algorithms\n  math-probability, math-statistics, search, decomposition, sparse algorithms",
+              1,
+          )
+
+          required = [
+              "`moenarch-math-probability`",
+              "deterministic symmetric eigendecomposition",
+              "canonical CSR×CSR multiplication",
+              "lagged auto/cross covariance/correlation",
+          ]
+          missing = [marker for marker in required if marker not in text]
+          if missing:
+              raise SystemExit(f"numerical map patch missing markers: {missing}")
+          path.write_text(text)
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+
+      - name: Verify integrated analytical math wave
+        run: |
+          cargo +1.95.0 check -p moenarch-math-statistics
+          cargo +1.95.0 fmt --all
+          cargo +1.95.0 test -p moenarch-math-statistics --locked
+          cargo +1.95.0 test -p moenarch-math-linear --locked --all-features
+          cargo +1.95.0 test -p moenarch-math-sparse-data --locked
+          cargo +1.95.0 test -p moenarch-math-probability --locked
+          cargo +1.95.0 clippy -p moenarch-math-statistics --all-targets --locked -- -D warnings
+          cargo +1.95.0 doc -p moenarch-math-statistics --no-deps --locked
+          cargo +1.95.0 metadata --format-version 1 --no-deps --locked > /tmp/metadata.json
+          python3 scripts/check_repository_boundaries.py --check
+          python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
+          cargo +1.95.0 package -p moenarch-math-statistics --locked --allow-dirty
+
+      - name: Commit deterministic evidence patch
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock crates/math/math-statistics/Cargo.toml crates/math/math-statistics/tests/expanded_math_interop.rs docs/specs/analytical-math-expansion.md docs/specs/numerical-contract-map.md
+          git commit -m "Prove expanded analytical math interoperability"
+          git push origin HEAD:feat/64-expanded-math-evidence
