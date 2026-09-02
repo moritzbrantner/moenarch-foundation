@@ -19,19 +19,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Ownership and release validators
         run: |
-          cargo metadata --format-version 1 --no-deps
+          cargo metadata --locked --format-version 1 --no-deps
           python3 scripts/check_repository_boundaries.py --check
           python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
           python3 -m unittest discover -s scripts -p 'test_*.py'
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
       - name: Test all features
-        run: cargo test --workspace --all-features
+        run: cargo test --locked --workspace --all-features
       - name: Test no default features
-        run: cargo test --workspace --no-default-features
+        run: cargo test --locked --workspace --no-default-features
       - name: Documentation
-        run: cargo doc --workspace --no-deps
+        run: cargo doc --locked --workspace --no-deps
       - name: Package all crates without publishing
         run: python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
