@@ -9,5 +9,5 @@ python3 scripts/check_repository_boundaries.py --check
 python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json
 python3 -m unittest discover -s scripts -p 'test_*.py'
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked --workspace
