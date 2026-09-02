@@ -51,7 +51,7 @@ jobs:
           readme.write_text(text)
 
       - name: Install Rust toolchain
-        run: rustup toolchain install 1.95.0 --profile minimal
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
 
       - name: Format and verify focused math-statistics change
         run: |
