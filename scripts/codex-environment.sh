@@ -57,6 +57,8 @@ if [[ -n "$rust_toolchain" ]]; then
     printf 'Rust toolchain must use an exact version, got %s\n' "$rust_toolchain" >&2
     exit 2
   fi
+  # Machine bootstrap is intentionally outside the repository contract: an agent
+  # must arrive with a trusted rustup instead of executing a mutable installer.
   if ! command -v rustup >/dev/null 2>&1; then
     printf '%s\n' 'rustup is required before repository setup; provision it through the trusted agent/base environment rather than an unpinned installer.' >&2
     exit 2
