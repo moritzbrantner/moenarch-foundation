@@ -294,8 +294,7 @@ impl Binomial {
             let mut log_term = self.trials as f64 * (-self.probability).ln_1p();
             let mut log_sum = log_term;
             for successes in 0..k {
-                log_term += ((self.trials - successes) as f64).ln()
-                    - ((successes + 1) as f64).ln()
+                log_term += ((self.trials - successes) as f64).ln() - ((successes + 1) as f64).ln()
                     + self.probability.ln()
                     - (-self.probability).ln_1p();
                 log_sum = log_add_exp(log_sum, log_term);
@@ -407,8 +406,7 @@ fn erf_approx(value: f64) -> f64 {
                 + t * (-0.186_288_06
                     + t * (0.278_868_07
                         + t * (-1.135_203_98
-                            + t * (1.488_515_87
-                                + t * (-0.822_152_23 + t * 0.170_872_77)))))));
+                            + t * (1.488_515_87 + t * (-0.822_152_23 + t * 0.170_872_77)))))));
     let tau = t * (-absolute * absolute - 1.265_512_23 + t * polynomial).exp();
     if value >= 0.0 {
         1.0 - tau
@@ -437,8 +435,7 @@ fn log_factorial(value: u64) -> f64 {
     }
     let n = value as f64;
     let inverse = 1.0 / n;
-    n * n.ln() - n + 0.5 * (2.0 * PI * n).ln() + inverse / 12.0
-        - inverse.powi(3) / 360.0
+    n * n.ln() - n + 0.5 * (2.0 * PI * n).ln() + inverse / 12.0 - inverse.powi(3) / 360.0
         + inverse.powi(5) / 1260.0
 }
 
@@ -446,9 +443,7 @@ fn log_binomial_coefficient(trials: u64, successes: u64) -> f64 {
     let reduced = successes.min(trials - successes);
     if reduced <= 256 {
         return (1..=reduced)
-            .map(|index| {
-                ((trials - reduced + index) as f64).ln() - (index as f64).ln()
-            })
+            .map(|index| ((trials - reduced + index) as f64).ln() - (index as f64).ln())
             .sum();
     }
     log_factorial(trials) - log_factorial(successes) - log_factorial(trials - successes)
@@ -493,11 +488,27 @@ mod tests {
     #[test]
     fn standard_normal_matches_reference_fixtures() {
         let distribution = Normal::new(0.0, 1.0).unwrap();
-        assert_close(distribution.pdf(0.0).unwrap(), 0.398_942_280_401_432_7, 1.0e-15);
+        assert_close(
+            distribution.pdf(0.0).unwrap(),
+            0.398_942_280_401_432_7,
+            1.0e-15,
+        );
         assert_close(distribution.cdf(0.0).unwrap(), 0.5, 2.0e-7);
-        assert_close(distribution.cdf(1.0).unwrap(), 0.841_344_746_068_542_9, 2.0e-7);
-        assert_close(distribution.cdf(-1.0).unwrap(), 0.158_655_253_931_457_07, 2.0e-7);
-        assert_close(distribution.cdf(3.0).unwrap(), 0.998_650_101_968_369_9, 2.0e-7);
+        assert_close(
+            distribution.cdf(1.0).unwrap(),
+            0.841_344_746_068_542_9,
+            2.0e-7,
+        );
+        assert_close(
+            distribution.cdf(-1.0).unwrap(),
+            0.158_655_253_931_457_07,
+            2.0e-7,
+        );
+        assert_close(
+            distribution.cdf(3.0).unwrap(),
+            0.998_650_101_968_369_9,
+            2.0e-7,
+        );
         assert_eq!(distribution.mean(), 0.0);
         assert_eq!(distribution.variance(), 1.0);
     }
