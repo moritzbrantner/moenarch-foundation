@@ -13,6 +13,7 @@ Dense matrix and kernel contracts bridging `moritzbrantner-tensor-data` and
 - Matrix multiply, matrix-vector multiply, and row cosine helpers
 - Tolerance-aware rank estimates and QR-based least-squares fits
 - Pure Rust real-valued SVD, pseudoinverse, and singular-value numerical rank
+- Pure Rust symmetric eigendecomposition with deterministic eigenpair ordering
 - Pure Rust LU decomposition with partial pivoting, determinant, solve, and
   inverse helpers
 - Pure Rust Cholesky and modified Gram-Schmidt QR decomposition for
@@ -68,6 +69,8 @@ singular or near-singular matrices, and powers determinant, vector solve, matrix
 solve, and inverse helpers. This crate owns deterministic Analytical Math
 Crates matrix primitives for workspace packages, not a user-selectable
 numerical backend layer.
+
+Symmetric eigendecomposition uses a pure-Rust cyclic Jacobi path for finite square matrices. Symmetry and convergence tolerances are explicit or scale-derived; accepted near-symmetric inputs are averaged before rotation. Eigenvalues are sorted descending, eigenvector columns follow the same order, and each vector sign is canonicalized by its largest-magnitude component. Repeated eigenspaces therefore have deterministic output for a fixed input while consumers should compare invariant subspaces rather than demand a unique mathematical basis.
 
 Cholesky decomposition requires a symmetric positive definite square matrix. QR
 decomposition currently computes a thin factorization and requires

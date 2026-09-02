@@ -4,9 +4,13 @@ mod backend;
 mod f64_matrix;
 pub mod surface;
 mod svd;
+mod symmetric_eigen;
 
 pub use f64_matrix::{F64ColumnView, F64Matrix, F64MatrixView, F64RowView};
 pub use svd::{PseudoinverseOptions, ReconstructionDiagnostics, SvdDecomposition, SvdOptions};
+pub use symmetric_eigen::{
+    SymmetricEigenDecomposition, SymmetricEigenDecompositionF32, SymmetricEigenOptions,
+};
 
 use media_core::{DetectError, Result};
 use numbers_core::is_finite_f32_slice;
