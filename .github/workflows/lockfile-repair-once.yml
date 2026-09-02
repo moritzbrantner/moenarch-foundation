@@ -1,0 +1,43 @@
+name: Lockfile repair once
+
+on:
+  push:
+    branches: [chore/agent-fast-loop-environment]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: chore/agent-fast-loop-environment
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95.0"
+      - name: Reconcile and validate exact lock drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fetch
+
+          test "$(git diff --name-only)" = "Cargo.lock"
+          test "$(git diff --numstat -- Cargo.lock)" = $'8\t0\tCargo.lock'
+          test "$(grep -c '^name = "moenarch-priority-queue"$' Cargo.lock)" = "1"
+
+          expected=$'@@ -1840,6 +1840,14 @@ dependencies = [\n  "wasm-bindgen",\n ]\n \n+[[package]]\n+name = "moenarch-priority-queue"\n+version = "0.1.0"\n+dependencies = [\n+ "criterion",\n+ "proptest",\n+]\n+\n [[package]]\n name = "moenarch-runtime-core"\n version = "0.2.1"'
+          actual="$(git diff --unified=3 -- Cargo.lock | sed -n '/^@@ /,$p')"
+          test "$actual" = "$expected"
+      - name: Commit generated lockfile and remove diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Cargo.lock
+          git rm .github/workflows/lockfile-diagnostic.yml .github/workflows/lockfile-repair-once.yml
+          git commit -m "Reconcile Cargo lockfile"
+          git push origin HEAD:chore/agent-fast-loop-environment
