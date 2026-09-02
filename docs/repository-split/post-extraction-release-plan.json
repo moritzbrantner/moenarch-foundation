@@ -3,6 +3,16 @@
   "packages": [
     {
       "expected_tag": null,
+      "manifest_path": "crates/corpus/corpus-core/Cargo.toml",
+      "name": "moenarch-corpus-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": []
+    },
+    {
+      "expected_tag": null,
       "manifest_path": "crates/algorithms/priority-queue/Cargo.toml",
       "name": "moenarch-priority-queue",
       "new_version": "0.1.0",
@@ -13,6 +23,7 @@
     }
   ],
   "dependency_order": [
+    "moenarch-corpus-core",
     "moenarch-priority-queue"
   ]
 }

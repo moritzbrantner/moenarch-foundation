@@ -16,6 +16,7 @@ members = [
     "crates/bindings/tensor-data-wasm",
     "crates/bindings/vector-analysis-core-wasm",
     "crates/bindings/vector-analysis-index-wasm",
+    "crates/corpus/corpus-core",
     "crates/data/data-inversion-core",
     "crates/data/data-inversion-core-cli",
     "crates/data/data-inversion-core-server",
@@ -94,6 +95,7 @@ tempfile = "3.23.0"
 thiserror = "2.0.17"
 
 audio-contracts = { package = "moenarch-audio-contracts", version = "=0.1.0", path = "crates/audio/audio-contracts" }
+corpus-core = { package = "moenarch-corpus-core", version = "=0.1.0", path = "crates/corpus/corpus-core" }
 data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1", path = "crates/data/data-inversion-core" }
 dense-data = { package = "moenarch-dense-data", version = "=0.1.0", path = "crates/data/dense-data" }
 graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "=0.1.0", path = "crates/data/graph-analysis-core" }
