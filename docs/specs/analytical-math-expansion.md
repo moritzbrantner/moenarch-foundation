@@ -17,7 +17,7 @@ This wave extends the established numerical ownership map without changing its l
 
 ## Cross-crate canaries
 
-`crates/math/math-statistics/tests/expanded_math_interop.rs` exercises the seams together rather than merely repeating crate-local unit tests:
+`crates/math/math-probability/tests/expanded_math_interop.rs` exercises the seams together rather than merely repeating crate-local unit tests. The canary lives in the new, still-unpublished probability package so already-publishable math packages do not acquire a dev-dependency on an unavailable registry version.
 
 1. An explicit Bernoulli fixture is summarized by `math-statistics` and its population mean/variance must equal the distribution's analytical moments. No sampler or hidden RNG is involved.
 2. A shifted paired fixture verifies the positive-lag direction used by cross-correlation.
