@@ -1,0 +1,79 @@
+name: Agent patch issue 62
+
+on:
+  push:
+    branches:
+      - feat/62-symmetric-eigendecomposition
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: feat/62-symmetric-eigendecomposition
+          fetch-depth: 0
+
+      - name: Wire symmetric eigen module and documentation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          lib = Path("crates/math/math-linear/src/lib.rs")
+          text = lib.read_text()
+          marker = "mod svd;\n"
+          replacement = marker + "mod symmetric_eigen;\n"
+          if "mod symmetric_eigen;" not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit("expected exactly one svd module declaration")
+              text = text.replace(marker, replacement, 1)
+
+          export_marker = "pub use svd::{PseudoinverseOptions, ReconstructionDiagnostics, SvdDecomposition, SvdOptions};\n"
+          export = export_marker + "pub use symmetric_eigen::{SymmetricEigenDecomposition, SymmetricEigenDecompositionF32, SymmetricEigenOptions};\n"
+          if "pub use symmetric_eigen" not in text:
+              if text.count(export_marker) != 1:
+                  raise SystemExit("expected exactly one svd export declaration")
+              text = text.replace(export_marker, export, 1)
+          lib.write_text(text)
+
+          readme = Path("crates/math/math-linear/README.md")
+          text = readme.read_text()
+          highlight = "- Pure Rust real-valued SVD, pseudoinverse, and singular-value numerical rank\n"
+          addition = highlight + "- Pure Rust symmetric eigendecomposition with deterministic eigenpair ordering\n"
+          if "symmetric eigendecomposition" not in text.lower():
+              if text.count(highlight) != 1:
+                  raise SystemExit("expected linear highlight marker")
+              text = text.replace(highlight, addition, 1)
+
+          behavior_marker = "Cholesky decomposition requires a symmetric positive definite square matrix. QR\n"
+          behavior = "Symmetric eigendecomposition uses a pure-Rust cyclic Jacobi path for finite square matrices. Symmetry and convergence tolerances are explicit or scale-derived; accepted near-symmetric inputs are averaged before rotation. Eigenvalues are sorted descending, eigenvector columns follow the same order, and each vector sign is canonicalized by its largest-magnitude component. Repeated eigenspaces therefore have deterministic output for a fixed input while consumers should compare invariant subspaces rather than demand a unique mathematical basis.\n\n" + behavior_marker
+          if "Eigenvalues are sorted descending" not in text:
+              if text.count(behavior_marker) != 1:
+                  raise SystemExit("expected linear behavior marker")
+              text = text.replace(behavior_marker, behavior, 1)
+          readme.write_text(text)
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+
+      - name: Format and verify focused linear change
+        run: |
+          cargo +1.95.0 fmt --all
+          cargo +1.95.0 test -p moenarch-math-linear --locked --all-features
+          cargo +1.95.0 clippy -p moenarch-math-linear --all-targets --all-features --locked -- -D warnings
+
+      - name: Commit deterministic patch
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/math/math-linear/src/lib.rs crates/math/math-linear/src/symmetric_eigen.rs crates/math/math-linear/README.md
+          git commit -m "Add symmetric eigendecomposition"
+          git push origin HEAD:feat/62-symmetric-eigendecomposition
