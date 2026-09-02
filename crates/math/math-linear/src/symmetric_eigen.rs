@@ -316,8 +316,7 @@ fn sort_and_canonicalize_eigenpairs(
             1.0
         };
         for row in 0..size {
-            sorted_vectors[row * size + target_col] =
-                eigenvectors[row * size + source_col] * sign;
+            sorted_vectors[row * size + target_col] = eigenvectors[row * size + source_col] * sign;
         }
     }
     (sorted_values, sorted_vectors)
@@ -397,18 +396,19 @@ mod tests {
     #[test]
     fn accepts_tiny_asymmetry_only_with_explicit_tolerance() {
         let matrix = F64Matrix::from_rows([[2.0, 1.0 + 1.0e-9], [1.0, 3.0]]).unwrap();
-        assert!(
-            matrix
-                .symmetric_eigendecomposition(SymmetricEigenOptions::default())
-                .is_err()
-        );
+        assert!(matrix
+            .symmetric_eigendecomposition(SymmetricEigenOptions::default())
+            .is_err());
         let decomposition = matrix
             .symmetric_eigendecomposition(SymmetricEigenOptions {
                 symmetry_tolerance: Some(2.0e-9),
                 ..SymmetricEigenOptions::default()
             })
             .unwrap();
-        assert!(decomposition.eigenvalues.iter().all(|value| value.is_finite()));
+        assert!(decomposition
+            .eigenvalues
+            .iter()
+            .all(|value| value.is_finite()));
     }
 
     #[test]
@@ -424,28 +424,22 @@ mod tests {
     #[test]
     fn rejects_invalid_options_and_shapes() {
         let rectangular = F64Matrix::from_rows([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]).unwrap();
-        assert!(
-            rectangular
-                .symmetric_eigendecomposition(SymmetricEigenOptions::default())
-                .is_err()
-        );
+        assert!(rectangular
+            .symmetric_eigendecomposition(SymmetricEigenOptions::default())
+            .is_err());
         let square = F64Matrix::identity(2).unwrap();
-        assert!(
-            square
-                .symmetric_eigendecomposition(SymmetricEigenOptions {
-                    convergence_tolerance: Some(f64::NAN),
-                    ..SymmetricEigenOptions::default()
-                })
-                .is_err()
-        );
-        assert!(
-            square
-                .symmetric_eigendecomposition(SymmetricEigenOptions {
-                    max_sweeps: Some(0),
-                    ..SymmetricEigenOptions::default()
-                })
-                .is_err()
-        );
+        assert!(square
+            .symmetric_eigendecomposition(SymmetricEigenOptions {
+                convergence_tolerance: Some(f64::NAN),
+                ..SymmetricEigenOptions::default()
+            })
+            .is_err());
+        assert!(square
+            .symmetric_eigendecomposition(SymmetricEigenOptions {
+                max_sweeps: Some(0),
+                ..SymmetricEigenOptions::default()
+            })
+            .is_err());
     }
 
     #[cfg(feature = "nalgebra-backend")]
@@ -453,9 +447,7 @@ mod tests {
     fn eigenvalues_match_nalgebra_reference() {
         use nalgebra::{linalg::SymmetricEigen, DMatrix};
 
-        let values = [
-            4.0, 1.0, -2.0, 1.0, 2.0, 0.5, -2.0, 0.5, 3.0,
-        ];
+        let values = [4.0, 1.0, -2.0, 1.0, 2.0, 0.5, -2.0, 0.5, 3.0];
         let matrix = F64Matrix::new(MatrixShape::new(3, 3).unwrap(), values.to_vec()).unwrap();
         let ours = matrix
             .symmetric_eigendecomposition(SymmetricEigenOptions::default())
