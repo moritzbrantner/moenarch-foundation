@@ -8,6 +8,7 @@ finite local inputs.
 - Streaming covariance accumulation
 - Scalar series summaries, sample/population variance, and z-scores
 - Pairwise covariance and correlation
+- Lagged auto/cross covariance and correlation with ACF-style series helpers
 - Average ranks, Spearman correlation, simple linear regression, and OLS
   regression over dense design matrices
 - OLS diagnostics, deterministic ridge regression, and row-wise covariance and
@@ -48,6 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 Scalar series helpers reject empty or non-finite inputs. Sample variance uses
 `n - 1` and requires at least two observations; population variance uses `n`.
 Relative changes and log-ratios require strictly positive adjacent values.
+Lagged statistics use overlap-local centering. Positive cross lag pairs `left[t]` with `right[t + lag]`; lag zero therefore matches the existing covariance/correlation contracts. Population covariance permits a one-observation overlap, while sample covariance and correlation require at least two.
 Drawdown and compounded-return helpers require period values greater than or
 equal to `-1.0`.
 
