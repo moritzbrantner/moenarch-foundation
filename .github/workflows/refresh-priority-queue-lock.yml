@@ -18,7 +18,7 @@ jobs:
         with:
           toolchain: "1.95.0"
       - name: Refresh Cargo lockfile from manifests
-        run: cargo metadata --format-version 1 --no-deps >/dev/null
+        run: cargo check -p moenarch-priority-queue
       - name: Commit generated lockfile and remove this one-shot workflow
         run: |
           git diff --check
