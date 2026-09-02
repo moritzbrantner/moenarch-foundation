@@ -119,6 +119,15 @@ jobs:
           )
           split_path.write_text(split)
 
+          boundary_path = root / "scripts/check_repository_boundaries.py"
+          boundary = boundary_path.read_text()
+          if "len(records) != 64" not in boundary:
+              if boundary.count("len(records) != 63") != 1:
+                  raise SystemExit("expected ownership-count invariant")
+              boundary = boundary.replace("len(records) != 63", "len(records) != 64", 1)
+              boundary = boundary.replace("exactly 63 packages", "exactly 64 packages", 1)
+              boundary_path.write_text(boundary)
+
       - name: Install Rust toolchain
         run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
 
@@ -142,6 +151,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Cargo.toml Cargo.lock crates/math/math-probability docs/repository-split/post-extraction-package-ownership.json docs/repository-split/post-extraction-release-plan.json scripts/repository_split.py
+          git add Cargo.toml Cargo.lock crates/math/math-probability docs/repository-split/post-extraction-package-ownership.json docs/repository-split/post-extraction-release-plan.json scripts/repository_split.py scripts/check_repository_boundaries.py
           git commit -m "Add deterministic probability distributions"
           git push origin HEAD:feat/60-probability-distributions
