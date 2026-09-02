@@ -1,0 +1,72 @@
+name: Agent patch issue 63
+
+on:
+  push:
+    branches:
+      - feat/63-sparse-matrix-composition
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: feat/63-sparse-matrix-composition
+          fetch-depth: 0
+
+      - name: Wire sparse product module and documentation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          lib = Path("crates/math/math-sparse-data/src/lib.rs")
+          text = lib.read_text()
+          marker = "pub mod surface;\n"
+          export = "pub mod sparse_product;\npub mod surface;\npub use sparse_product::SparseProductStats;\n"
+          if "pub mod sparse_product;" not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit("expected exactly one surface module declaration")
+              text = text.replace(marker, export, 1)
+              lib.write_text(text)
+
+          readme = Path("crates/math/math-sparse-data/README.md")
+          text = readme.read_text()
+          marker = "  matrix-vector multiply, dense matrix multiply, COO/CSR transpose, and COO round trips\n"
+          replacement = marker + "- Canonical CSR×CSR multiplication and sparse row/column Gram composition\n"
+          if "Canonical CSR×CSR multiplication" not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit("expected sparse highlight marker")
+              text = text.replace(marker, replacement, 1)
+
+          behavior_marker = "external math backend.\n"
+          behavior = behavior_marker + "\nCSR×CSR multiplication uses a row-local sparse accumulator rather than a dense output or dense row buffer. Output columns are sorted, duplicate contributions are combined, exact-zero cancellations are removed, and `SparseProductStats` exposes candidate scalar products plus output nnz as deterministic performance evidence.\n"
+          if "row-local sparse accumulator" not in text:
+              if text.count(behavior_marker) != 1:
+                  raise SystemExit("expected sparse behavior marker")
+              text = text.replace(behavior_marker, behavior, 1)
+          readme.write_text(text)
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+
+      - name: Format and verify focused sparse change
+        run: |
+          cargo +1.95.0 fmt --all
+          cargo +1.95.0 test -p moenarch-math-sparse-data --locked
+          cargo +1.95.0 clippy -p moenarch-math-sparse-data --all-targets --all-features --locked -- -D warnings
+
+      - name: Commit deterministic patch
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/math/math-sparse-data/src/lib.rs crates/math/math-sparse-data/src/sparse_product.rs crates/math/math-sparse-data/README.md
+          git commit -m "Add sparse matrix composition"
+          git push origin HEAD:feat/63-sparse-matrix-composition
