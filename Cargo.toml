@@ -42,6 +42,7 @@ members = [
     "crates/math/math-linear",
     "crates/math/math-linear-cli",
     "crates/math/math-linear-server",
+    "crates/math/math-probability",
     "crates/math/math-signal-core",
     "crates/math/math-signal-core-cli",
     "crates/math/math-signal-core-server",
@@ -103,6 +104,7 @@ jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2", path = "crates
 math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "=0.1.1", path = "crates/math/math-geometry-2d" }
 math-geometry-3d = { package = "moenarch-math-geometry-3d", version = "=0.1.0", path = "crates/math/math-geometry-3d" }
 math-linear = { package = "moenarch-math-linear", version = "=0.1.1", path = "crates/math/math-linear" }
+math-probability = { package = "moenarch-math-probability", version = "=0.1.0", path = "crates/math/math-probability" }
 math-signal-core = { package = "moenarch-math-signal-core", version = "=0.1.1", path = "crates/math/math-signal-core" }
 math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1", path = "crates/math/math-sparse-data" }
 math-statistics = { package = "moenarch-math-statistics", version = "=0.1.0", path = "crates/math/math-statistics" }

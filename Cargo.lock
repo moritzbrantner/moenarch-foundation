@@ -1611,6 +1611,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "moenarch-math-probability"
+version = "0.1.0"
+dependencies = [
+ "moenarch-media-core",
+ "proptest",
+]
+
+[[package]]
 name = "moenarch-math-signal-core"
 version = "0.1.1"
 dependencies = [
