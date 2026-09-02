@@ -25,8 +25,6 @@ numbers-core.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
-math-probability.workspace = true
-math-sparse-data.workspace = true
 
 [[bench]]
 name = "multivariate"
