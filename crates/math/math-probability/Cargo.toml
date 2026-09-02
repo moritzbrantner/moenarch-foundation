@@ -20,3 +20,6 @@ media-core.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
+math-linear.workspace = true
+math-sparse-data.workspace = true
+math-statistics.workspace = true
