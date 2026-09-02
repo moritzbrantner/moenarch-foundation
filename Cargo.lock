@@ -1614,6 +1614,9 @@ dependencies = [
 name = "moenarch-math-probability"
 version = "0.1.0"
 dependencies = [
+ "moenarch-math-linear",
+ "moenarch-math-sparse-data",
+ "moenarch-math-statistics",
  "moenarch-media-core",
  "proptest",
 ]

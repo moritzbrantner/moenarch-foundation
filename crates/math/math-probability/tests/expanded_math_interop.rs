@@ -1,9 +1,7 @@
 use math_linear::{F32Matrix, F64Matrix, SymmetricEigenOptions};
 use math_probability::Bernoulli;
 use math_sparse_data::CooMatrix;
-use math_statistics::{
-    RunningCovariance, VarianceMode, cross_correlation, summarize_series,
-};
+use math_statistics::{cross_correlation, summarize_series, RunningCovariance, VarianceMode};
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
     assert!(
@@ -37,13 +35,8 @@ fn shifted_fixture_uses_the_documented_positive_lag_direction() {
 
 #[test]
 fn covariance_round_trips_through_symmetric_eigendecomposition() {
-    let observations = F32Matrix::from_rows([
-        [0.0, 0.0],
-        [1.0, 2.0],
-        [2.0, 1.0],
-        [3.0, 3.0],
-    ])
-    .expect("finite observation matrix");
+    let observations = F32Matrix::from_rows([[0.0, 0.0], [1.0, 2.0], [2.0, 1.0], [3.0, 3.0]])
+        .expect("finite observation matrix");
     let covariance = RunningCovariance::from_matrix(&observations.as_view())
         .expect("valid observations")
         .covariance_matrix()
@@ -56,7 +49,10 @@ fn covariance_round_trips_through_symmetric_eigendecomposition() {
 
     assert!(decomposition.sweeps > 0);
     assert!(decomposition.sweeps <= 64);
-    assert!(decomposition.eigenvalues.iter().all(|value| *value >= -1.0e-10));
+    assert!(decomposition
+        .eigenvalues
+        .iter()
+        .all(|value| *value >= -1.0e-10));
     for (actual, expected) in reconstructed.values().iter().zip(matrix.values()) {
         assert_close(*actual, *expected, 1.0e-10);
     }
@@ -100,7 +96,11 @@ fn sparse_product_matches_dense_oracle_and_exposes_less_candidate_work() {
     assert!(work.candidate_products < dense_candidate_products);
     assert_eq!(
         work.output_nnz,
-        product.to_coo().expect("canonical COO evidence").entries().len()
+        product
+            .to_coo()
+            .expect("canonical COO evidence")
+            .entries()
+            .len()
     );
 
     let finite_values = actual
