@@ -1,8 +1,8 @@
 # moenarch-priority-queue
 
-`moenarch-priority-queue` provides a focused addressable min-priority queue for algorithms that need to update or remove an existing queued item without rebuilding the whole queue.
+`moenarch-priority-queue` is a compatibility facade for the addressable priority queue owned by [`rust-kernels`](https://github.com/moritzbrantner/rust-kernels), specifically `collection-kernels::AddressablePriorityQueue`.
 
-The initial implementation is an indexed binary heap. Its representation is private so later implementations can be compared without making consumers depend on heap indices or tree layout.
+The algorithm and data-structure implementation, correctness evidence, and primary benchmarks belong in `rust-kernels`. This package keeps the existing Moenarch package and Rust API names stable while delegating the mechanism across the repository boundary.
 
 ## Operations
 
@@ -22,19 +22,14 @@ assert!(queue.update_priority(fast, 0).is_err());
 # Ok::<(), priority_queue::InvalidHandle>(())
 ```
 
-- `insert`: `O(log n)` and returns an opaque handle.
-- `peek_min`: `O(1)`.
-- `pop_min`: `O(log n)`.
-- `update_priority`: `O(log n)`.
-- `remove`: `O(log n)`.
-- handle validation: `O(1)`.
+The compatibility facade re-exports:
 
-Equal priorities are deterministic and stable by insertion order. Updating an existing item's priority does not change that insertion-order tie breaker. Removing and reinserting an item creates a new insertion order.
+- `AddressablePriorityQueue`
+- `PriorityQueueHandle` as the existing `Handle`
+- `InvalidPriorityQueueHandle` as the existing `InvalidHandle`
 
-Handles carry a queue identity and a slot generation. A handle from another queue is rejected, and a handle to a removed entry cannot silently mutate a later entry that reuses the same internal slot.
+The operational contract remains unchanged: `insert`, `update_priority`, and `remove` are `O(log n)`, `peek_min` is `O(1)`, equal priorities are deterministic by insertion order, and stale or foreign handles are rejected.
 
-## Evidence model
+## Ownership boundary
 
-Tests keep a deliberately simple scan-based reference model independent from the production heap and use property-generated operation sequences to compare observable behavior. Criterion workloads record insert/pop, update-heavy, and mixed mutation patterns for future comparisons with pairing, d-ary, Fibonacci, or other implementations.
-
-The benchmarks are evidence, not a claim that the indexed binary heap is always the fastest choice.
+`rust-kernels` owns the mechanism. `moenarch-foundation` retains this facade only to preserve the existing package contract and extraction/provenance inventory. New low-level algorithm work belongs in `rust-kernels`; Moenarch capabilities may consume those kernels rather than grow parallel implementations here.
