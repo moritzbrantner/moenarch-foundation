@@ -1,0 +1,72 @@
+name: Agent patch issue 61
+
+on:
+  push:
+    branches:
+      - feat/61-lagged-time-series-statistics
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: feat/61-lagged-time-series-statistics
+          fetch-depth: 0
+
+      - name: Wire time-series module and documentation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          lib = Path("crates/math/math-statistics/src/lib.rs")
+          text = lib.read_text()
+          marker = "pub mod surface;\n"
+          export = """pub mod surface;\npub mod time_series;\npub use time_series::{\n    autocorrelation, autocorrelation_series, autocovariance, autocovariance_series,\n    cross_correlation, cross_correlation_series, cross_covariance, cross_covariance_series,\n};\n"""
+          if "pub mod time_series;" not in text:
+              if text.count(marker) != 1:
+                  raise SystemExit("expected exactly one surface module declaration")
+              text = text.replace(marker, export, 1)
+              lib.write_text(text)
+
+          readme = Path("crates/math/math-statistics/README.md")
+          text = readme.read_text()
+          highlight = "- Pairwise covariance and correlation\n"
+          addition = highlight + "- Lagged auto/cross covariance and correlation with ACF-style series helpers\n"
+          if "Lagged auto/cross covariance" not in text:
+              if text.count(highlight) != 1:
+                  raise SystemExit("expected statistics highlight marker")
+              text = text.replace(highlight, addition, 1)
+
+          behavior_marker = "Relative changes and log-ratios require strictly positive adjacent values.\n"
+          behavior = behavior_marker + "Lagged statistics use overlap-local centering. Positive cross lag pairs `left[t]` with `right[t + lag]`; lag zero therefore matches the existing covariance/correlation contracts. Population covariance permits a one-observation overlap, while sample covariance and correlation require at least two.\n"
+          if "Lagged statistics use overlap-local centering" not in text:
+              if text.count(behavior_marker) != 1:
+                  raise SystemExit("expected statistics behavior marker")
+              text = text.replace(behavior_marker, behavior, 1)
+          readme.write_text(text)
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal
+
+      - name: Verify focused math-statistics change
+        run: |
+          cargo +1.95.0 fmt --all -- --check
+          cargo +1.95.0 test -p moenarch-math-statistics --locked
+          cargo +1.95.0 clippy -p moenarch-math-statistics --all-targets --all-features --locked -- -D warnings
+
+      - name: Commit deterministic patch
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/math/math-statistics/src/lib.rs crates/math/math-statistics/README.md
+          git commit -m "Add lagged time-series statistics"
+          git push origin HEAD:feat/61-lagged-time-series-statistics
