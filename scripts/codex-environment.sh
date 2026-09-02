@@ -58,8 +58,8 @@ if [[ -n "$rust_toolchain" ]]; then
     exit 2
   fi
   if ! command -v rustup >/dev/null 2>&1; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-    export PATH="$HOME/.cargo/bin:$PATH"
+    printf '%s\n' 'rustup is required before repository setup; provision it through the trusted agent/base environment rather than an unpinned installer.' >&2
+    exit 2
   fi
   if [[ -d "$HOME/.cargo/bin" ]]; then
     publish_path "$HOME/.cargo/bin"
