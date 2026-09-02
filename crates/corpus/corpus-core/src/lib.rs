@@ -49,7 +49,10 @@ impl Display for CorpusContractError {
             }
             Self::InvalidQuery(message) => write!(formatter, "invalid retrieval query: {message}"),
             Self::InvalidVectorValue { index } => {
-                write!(formatter, "dense query vector contains a non-finite value at index {index}")
+                write!(
+                    formatter,
+                    "dense query vector contains a non-finite value at index {index}"
+                )
             }
         }
     }
@@ -98,9 +101,7 @@ fn derive_identifier(namespace: &str, parts: &[&str]) -> String {
 macro_rules! typed_id {
     ($name:ident, $namespace:literal, $kind:literal) => {
         #[doc = concat!("Stable typed identifier for a corpus ", $kind, ".")]
-        #[derive(
-            Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-        )]
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         #[serde(transparent)]
         pub struct $name(String);
 
@@ -447,10 +448,7 @@ pub trait CorpusStore {
     fn upsert(&mut self, record: CorpusRecord) -> std::result::Result<(), Self::Error>;
 
     /// Loads one record by typed identity.
-    fn get(
-        &self,
-        id: &CorpusItemRef,
-    ) -> std::result::Result<Option<CorpusRecord>, Self::Error>;
+    fn get(&self, id: &CorpusItemRef) -> std::result::Result<Option<CorpusRecord>, Self::Error>;
 
     /// Deletes one record and reports whether a record existed.
     fn delete(&mut self, id: &CorpusItemRef) -> std::result::Result<bool, Self::Error>;

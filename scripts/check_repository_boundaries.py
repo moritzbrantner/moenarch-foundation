@@ -89,8 +89,8 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
         errors.append("unclassified Cargo packages: " + ", ".join(missing))
     if extra:
         errors.append("ownership entries absent from cargo metadata: " + ", ".join(extra))
-    if len(records) != 62:
-        errors.append(f"ownership must contain exactly 62 packages, found {len(records)}")
+    if len(records) != 63:
+        errors.append(f"ownership must contain exactly 63 packages, found {len(records)}")
     source_document = {"packages": records_except_named(ownership, POST_EXTRACTION_PACKAGE_NAMES)}
     if ownership_records_sha256(source_document) != SOURCE_OWNERSHIP_RECORDS_SHA256:
         errors.append("source ownership records differ from the extraction inventory")
@@ -161,7 +161,7 @@ def main() -> int:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
-    print("repository boundaries pass: 62 uniquely owned foundation packages; no path escapes or moving Git dependencies")
+    print("repository boundaries pass: 63 uniquely owned foundation packages; no path escapes or moving Git dependencies")
     return 0
 
 
