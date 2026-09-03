@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use vector_analysis_core::{DenseVector, VectorMetric};
 use vector_analysis_index::{
-    approximate::{CosineLshConfig, CosineLshIndex, CosineLshSearchConfig}, SearchConfig,
-    VectorRecord, VectorRecordMetadata, VectorSearchFilter, VectorSearchIndex,
+    approximate::{CosineLshConfig, CosineLshIndex, CosineLshSearchConfig},
+    SearchConfig, VectorRecord, VectorRecordMetadata, VectorSearchFilter, VectorSearchIndex,
 };
 
 fn vector(dimensions: usize, seed: usize) -> DenseVector {
@@ -46,11 +46,7 @@ fn records(record_count: usize, dimensions: usize) -> Vec<VectorRecord> {
 fn bench_search(c: &mut Criterion) {
     let records = records(4_096, 128);
     let index = VectorSearchIndex::from_records(records.clone()).unwrap();
-    let approximate = CosineLshIndex::from_records(
-        CosineLshConfig::default(),
-        records,
-    )
-    .unwrap();
+    let approximate = CosineLshIndex::from_records(CosineLshConfig::default(), records).unwrap();
     let query = vector(128, 17);
     let query_slice = query.as_slice().to_vec();
     let cosine = SearchConfig {
