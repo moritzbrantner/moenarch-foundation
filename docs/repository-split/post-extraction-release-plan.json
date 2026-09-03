@@ -32,11 +32,22 @@
       "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": []
+    },
+    {
+      "expected_tag": null,
+      "manifest_path": "crates/semantic/semantic-core/Cargo.toml",
+      "name": "moenarch-semantic-core",
+      "new_version": "0.1.0",
+      "old_version": "0.1.0",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
+      "publish": false,
+      "release_dependencies": []
     }
   ],
   "dependency_order": [
     "moenarch-corpus-core",
     "moenarch-priority-queue",
+    "moenarch-semantic-core",
     "moenarch-math-probability"
   ]
 }
