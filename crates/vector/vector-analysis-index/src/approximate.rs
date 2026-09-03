@@ -130,7 +130,10 @@ impl CosineLshIndex {
         );
         let record_index = self.records.len();
         self.records.push(record);
-        self.buckets.entry(signature).or_default().push(record_index);
+        self.buckets
+            .entry(signature)
+            .or_default()
+            .push(record_index);
         Ok(())
     }
 
@@ -166,16 +169,9 @@ impl CosineLshIndex {
             }
         }
 
-        let query_signature = signature(
-            query.as_slice(),
-            self.config.hash_bits,
-            self.config.seed,
-        );
-        let probe_signatures = signatures_within_radius(
-            query_signature,
-            self.config.hash_bits,
-            config.probe_radius,
-        );
+        let query_signature = signature(query.as_slice(), self.config.hash_bits, self.config.seed);
+        let probe_signatures =
+            signatures_within_radius(query_signature, self.config.hash_bits, config.probe_radius);
         let mut candidate_indices = BTreeSet::new();
         let mut probed_bucket_count = 0usize;
 
@@ -227,10 +223,7 @@ fn validate_build_config(config: CosineLshConfig) -> Result<()> {
     Ok(())
 }
 
-fn validate_search_config(
-    build: CosineLshConfig,
-    search: CosineLshSearchConfig,
-) -> Result<()> {
+fn validate_search_config(build: CosineLshConfig, search: CosineLshSearchConfig) -> Result<()> {
     if search.limit == 0 {
         return Err(invalid_argument("search limit must be greater than zero"));
     }
@@ -272,7 +265,11 @@ fn hyperplane_weight(seed: u64, bit: u8, dimension: usize) -> f32 {
         seed ^ (u64::from(bit) + 1).wrapping_mul(0x9e37_79b9_7f4a_7c15)
             ^ (dimension as u64 + 1).wrapping_mul(0xbf58_476d_1ce4_e5b9),
     );
-    if mixed & 1 == 0 { -1.0 } else { 1.0 }
+    if mixed & 1 == 0 {
+        -1.0
+    } else {
+        1.0
+    }
 }
 
 fn splitmix64(mut value: u64) -> u64 {
@@ -307,9 +304,7 @@ fn signatures_within_radius(signature: u64, hash_bits: u8, radius: u8) -> Vec<u6
     for first in 0..hash_bits {
         for second in (first + 1)..hash_bits {
             for third in (second + 1)..hash_bits {
-                signatures.push(
-                    signature ^ (1u64 << first) ^ (1u64 << second) ^ (1u64 << third),
-                );
+                signatures.push(signature ^ (1u64 << first) ^ (1u64 << second) ^ (1u64 << third));
             }
         }
     }
@@ -345,14 +340,17 @@ mod tests {
     #[test]
     fn deterministic_lsh_returns_same_result_for_same_config() {
         let records = clustered_records();
-        let left = CosineLshIndex::from_records(CosineLshConfig::default(), records.clone())
-            .unwrap();
+        let left =
+            CosineLshIndex::from_records(CosineLshConfig::default(), records.clone()).unwrap();
         let right = CosineLshIndex::from_records(CosineLshConfig::default(), records).unwrap();
         let query = clustered_vector(3, 7);
 
         assert_eq!(
-            left.search(&query, CosineLshSearchConfig::default()).unwrap(),
-            right.search(&query, CosineLshSearchConfig::default()).unwrap()
+            left.search(&query, CosineLshSearchConfig::default())
+                .unwrap(),
+            right
+                .search(&query, CosineLshSearchConfig::default())
+                .unwrap()
         );
     }
 
@@ -398,8 +396,14 @@ mod tests {
             .filter(|result| exact_ids.contains(result.id.as_str()))
             .count();
 
-        assert_eq!(report.results.first().map(|result| result.id.as_str()), exact_results.first().map(|result| result.id.as_str()));
-        assert!(shared >= 8, "expected at least 8/10 exact-neighbor recall, got {shared}");
+        assert_eq!(
+            report.results.first().map(|result| result.id.as_str()),
+            exact_results.first().map(|result| result.id.as_str())
+        );
+        assert!(
+            shared >= 8,
+            "expected at least 8/10 exact-neighbor recall, got {shared}"
+        );
         assert!(report.candidate_count <= 64);
         assert!(report.candidate_count < report.total_record_count / 2);
     }
