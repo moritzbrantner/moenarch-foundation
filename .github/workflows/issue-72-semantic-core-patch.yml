@@ -68,11 +68,11 @@ jobs:
               path.write_text(text)
           PY
 
-      - name: Confirm dependency resolution stays narrow
+      - name: Resolve semantic-core without dependency drift
         shell: bash
         run: |
           set -euo pipefail
-          cargo metadata --format-version 1 --no-deps >/dev/null
+          cargo check -p moenarch-semantic-core
           git diff -- Cargo.lock
           python3 - <<'PY'
           import subprocess
@@ -96,8 +96,8 @@ jobs:
           unexpected = [line for line in added if line not in expected]
           if unexpected:
               raise SystemExit(f'unexpected Cargo.lock additions: {unexpected}; full additions={added}')
-          if added and 'name = "moenarch-semantic-core"' not in added:
-              raise SystemExit(f'lockfile changed without registering semantic-core: {added}')
+          if 'name = "moenarch-semantic-core"' not in added:
+              raise SystemExit(f'lockfile did not register semantic-core: {added}')
           PY
 
       - name: Format
