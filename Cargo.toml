@@ -58,6 +58,7 @@ members = [
     "crates/runtime/model-runtime-server",
     "crates/runtime/runtime-core",
     "crates/runtime/runtime-onnx",
+    "crates/semantic/semantic-core",
     "crates/vector/vector-analysis-core",
     "crates/vector/vector-analysis-core-cli",
     "crates/vector/vector-analysis-core-server",
@@ -113,6 +114,7 @@ model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1", path =
 numbers-core = { package = "moenarch-numbers-core", version = "=0.1.1", path = "crates/data/numbers-core" }
 priority-queue = { package = "moenarch-priority-queue", version = "=0.1.0", path = "crates/algorithms/priority-queue" }
 runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1", path = "crates/runtime/runtime-core" }
+semantic-core = { package = "moenarch-semantic-core", version = "=0.1.0", path = "crates/semantic/semantic-core" }
 tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
 vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
 vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1", path = "crates/vector/vector-analysis-index" }
