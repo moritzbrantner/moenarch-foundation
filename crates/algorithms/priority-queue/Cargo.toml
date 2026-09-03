@@ -16,7 +16,7 @@ categories.workspace = true
 name = "priority_queue"
 
 [dependencies]
-collection-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "d7b6cab643573d3d47c899194cfda4718573ae5e" }
+collection-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "d7b6cab643573d3d47c899194cfda4718573ae5e" }
 
 [dev-dependencies]
 criterion.workspace = true
