@@ -28,10 +28,10 @@ SOURCE_OWNERSHIP_RECORDS_SHA256 = (
     "6d1ae73c470e4e6adaf83705c315e47faa9189db5ce6ab0541c8b711305b9540"
 )
 POST_EXTRACTION_PACKAGE_NAMES = frozenset(
-    {"moenarch-corpus-core", "moenarch-math-geometry-3d", "moenarch-math-probability", "moenarch-priority-queue"}
+    {"moenarch-corpus-core", "moenarch-math-geometry-3d", "moenarch-math-probability", "moenarch-priority-queue", "moenarch-semantic-core"}
 )
 POST_EXTRACTION_RECORDS_SHA256 = (
-    "4e7225483ac8d17388df5973b48ff2670c5726ed5f7a166a585c3ab4bdf6410d"
+    "51601607987f43fa74e889cb998193d36cfbc5fc5ebc856e65123d4c8febb598"
 )
 
 

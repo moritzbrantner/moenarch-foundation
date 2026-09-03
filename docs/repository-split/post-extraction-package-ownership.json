@@ -75,6 +75,31 @@
       "target_repository": "moenarch-foundation",
       "temporary_boundary_violations": [],
       "wrapped_library": null
+    },
+    {
+      "automatic_publish_eligible": true,
+      "contract_owner": "moenarch-semantic-core",
+      "current_domain": "semantic",
+      "current_package_name": "moenarch-semantic-core",
+      "current_published_version": null,
+      "current_release_workflow": "manual docs/RELEASE_CHECKLIST.md",
+      "ecosystem": "cargo",
+      "extraction_phase": "foundation",
+      "id": "cargo:moenarch-semantic-core",
+      "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
+      "intended_package_name": "moenarch-semantic-core",
+      "manifest_path": "crates/semantic/semantic-core/Cargo.toml",
+      "migration_status": "foundation-authored",
+      "package_kind": "library",
+      "provenance": {
+        "introduced_after_commit": "21d73ab92474152bbaf92d3c7ee960adb299c38f",
+        "issue": "https://github.com/moritzbrantner/moenarch-foundation/issues/72"
+      },
+      "publication_class": "crates.io",
+      "source_version": "0.1.0",
+      "target_repository": "moenarch-foundation",
+      "temporary_boundary_violations": [],
+      "wrapped_library": null
     }
   ]
 }
