@@ -192,8 +192,8 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
     duplicates = sorted(name for name, count in Counter(names).items() if count > 1)
     if duplicates:
         errors.append("duplicate package names: " + ", ".join(duplicates))
-    if len(packages) != 64 or set(names) != set(owned):
-        errors.append("release plan must name all and only the 64 owned packages")
+    if len(packages) != 65 or set(names) != set(owned):
+        errors.append("release plan must name all and only the 65 owned packages")
     metadata_packages = {
         package["name"]: package for package in metadata.get("packages", [])
     }
@@ -529,7 +529,7 @@ def main() -> int:
             "source/control binding verified"
         )
     else:
-        print("release plan passes: 64 packages retained at source versions; publication is not authorized")
+        print("release plan passes: 65 packages retained at source versions; publication is not authorized")
     return 0
 
 

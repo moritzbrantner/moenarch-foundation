@@ -1887,6 +1887,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "moenarch-semantic-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "moenarch-tensor-data"
 version = "0.1.1"
 dependencies = [
