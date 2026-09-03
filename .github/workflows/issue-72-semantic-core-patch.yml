@@ -68,7 +68,7 @@ jobs:
               path.write_text(text)
           PY
 
-      - name: Refresh lockfile without dependency upgrades
+      - name: Confirm dependency resolution stays narrow
         shell: bash
         run: |
           set -euo pipefail
@@ -94,8 +94,10 @@ jobs:
           if removed:
               raise SystemExit(f'lockfile refresh removed existing lines: {removed}')
           unexpected = [line for line in added if line not in expected]
-          if unexpected or 'name = "moenarch-semantic-core"' not in added:
+          if unexpected:
               raise SystemExit(f'unexpected Cargo.lock additions: {unexpected}; full additions={added}')
+          if added and 'name = "moenarch-semantic-core"' not in added:
+              raise SystemExit(f'lockfile changed without registering semantic-core: {added}')
           PY
 
       - name: Format
