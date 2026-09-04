@@ -3,30 +3,31 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 use serde::Serialize;
-use vector_analysis_core::cosine_similarity;
 
 use crate::EntityId;
 
-/// Borrowed entity/vector pair supplied by a consumer to semantic-map derivation.
+/// Borrowed entity/value pair supplied by a consumer to semantic-map derivation.
 ///
-/// The vector remains consumer-owned. `semantic-core` neither generates nor persists
-/// embeddings; it only derives deterministic structural evidence from the supplied values.
+/// The value is opaque to `semantic-core`. Consumers choose the representation and
+/// similarity function, so text embeddings, visual embeddings, attributes, and fused
+/// multimodal evidence can share the same structural derivation without leaking domain
+/// or vector-math ownership into this crate.
 #[derive(Debug, Clone, Copy)]
-pub struct SemanticMapInput<'a> {
-    /// Stable identity of the entity represented by the vector.
+pub struct SemanticMapInput<'a, T: ?Sized> {
+    /// Stable identity of the entity represented by the value.
     pub entity_id: &'a EntityId,
-    /// Caller-owned finite vector representation for this analysis pass.
-    pub vector: &'a [f32],
+    /// Caller-owned value used by the supplied similarity function.
+    pub value: &'a T,
 }
 
-/// Structural options for exact semantic-map derivation.
+/// Structural options for semantic-map derivation.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SemanticMapOptions {
     /// Maximum number of nearest candidates contributed by each entity.
     pub neighbors_per_entity: usize,
-    /// Minimum cosine similarity required for a neighborhood edge.
+    /// Minimum similarity required for a neighborhood edge.
     pub neighbor_threshold: f32,
-    /// Minimum cosine similarity used to connect entities into clusters.
+    /// Minimum similarity used to connect entities into clusters.
     pub cluster_threshold: f32,
 }
 
@@ -40,29 +41,29 @@ impl Default for SemanticMapOptions {
     }
 }
 
-/// Undirected exact-similarity edge between two entities.
+/// Undirected similarity edge between two entities.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SemanticMapNeighbor {
     /// First endpoint in deterministic input-order orientation.
     pub source_entity_id: EntityId,
     /// Second endpoint in deterministic input-order orientation.
     pub target_entity_id: EntityId,
-    /// Cosine similarity of the two supplied vectors.
+    /// Caller-supplied similarity of the two values.
     pub similarity: f32,
 }
 
-/// Deterministic connected component over the supplied semantic vectors.
+/// Deterministic connected component over the supplied entities.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SemanticMapCluster {
     /// Member identities in original input order.
     pub member_entity_ids: Vec<EntityId>,
     /// Medoid selected by maximum mean similarity, with input order breaking ties.
     pub representative_entity_id: EntityId,
-    /// Mean pairwise cosine similarity inside the cluster.
+    /// Mean pairwise similarity inside the cluster.
     pub mean_similarity: f32,
 }
 
-/// Domain-neutral exact semantic structure derived from caller-provided vectors.
+/// Domain-neutral semantic structure derived from caller-owned similarity evidence.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SemanticMap {
     /// Undirected nearest-neighbor edges.
@@ -71,14 +72,14 @@ pub struct SemanticMap {
     pub clusters: Vec<SemanticMapCluster>,
 }
 
-/// Validation failures produced before semantic-map derivation.
+/// Validation failures produced before or during semantic-map derivation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SemanticMapError {
     /// No entities were supplied.
     EmptyInput,
     /// The nearest-neighbor limit was zero.
     ZeroNeighborsPerEntity,
-    /// A similarity threshold was NaN, infinite, or outside `[-1, 1]`.
+    /// A configured similarity threshold was NaN, infinite, or outside `[-1, 1]`.
     InvalidSimilarityThreshold {
         /// Option name that rejected the value.
         name: &'static str,
@@ -90,24 +91,14 @@ pub enum SemanticMapError {
         /// Duplicated identity.
         entity_id: EntityId,
     },
-    /// An entity was represented by an empty vector.
-    EmptyVector {
-        /// Entity with the invalid vector.
-        entity_id: EntityId,
-    },
-    /// A vector contained NaN or infinity.
-    NonFiniteVector {
-        /// Entity with the invalid vector.
-        entity_id: EntityId,
-    },
-    /// All vectors in one map must use one dimensionality.
-    InconsistentDimensions {
-        /// Expected dimensions established by the first input.
-        expected: usize,
-        /// Dimensions found on this entity.
-        actual: usize,
-        /// Entity with the mismatched vector.
-        entity_id: EntityId,
+    /// The caller returned NaN, infinity, or a score outside `[-1, 1]`.
+    InvalidSimilarity {
+        /// First entity in the rejected pair.
+        source_entity_id: EntityId,
+        /// Second entity in the rejected pair.
+        target_entity_id: EntityId,
+        /// Rejected similarity value.
+        value: f32,
     },
 }
 
@@ -125,23 +116,13 @@ impl Display for SemanticMapError {
             Self::DuplicateEntity { entity_id } => {
                 write!(formatter, "duplicate semantic map entity `{entity_id}`")
             }
-            Self::EmptyVector { entity_id } => {
-                write!(
-                    formatter,
-                    "semantic map entity `{entity_id}` has an empty vector"
-                )
-            }
-            Self::NonFiniteVector { entity_id } => write!(
-                formatter,
-                "semantic map entity `{entity_id}` has non-finite vector components"
-            ),
-            Self::InconsistentDimensions {
-                expected,
-                actual,
-                entity_id,
+            Self::InvalidSimilarity {
+                source_entity_id,
+                target_entity_id,
+                value,
             } => write!(
                 formatter,
-                "semantic map entity `{entity_id}` has {actual} dimensions; expected {expected}"
+                "semantic map similarity between `{source_entity_id}` and `{target_entity_id}` must be finite and between -1 and 1, got {value}"
             ),
         }
     }
@@ -149,26 +130,31 @@ impl Display for SemanticMapError {
 
 impl Error for SemanticMapError {}
 
-/// Derives an exact deterministic semantic neighborhood and cluster map.
+/// Derives a deterministic semantic neighborhood and cluster map with caller-owned similarity.
 ///
-/// Input order is semantically observable: it breaks otherwise-equal medoid ties and
-/// determines cluster/member ordering. Stable entity identities break nearest-neighbor
-/// score ties, so repeated runs over the same ordered inputs produce identical output.
-pub fn build_semantic_map(
-    inputs: &[SemanticMapInput<'_>],
+/// The supplied function is evaluated exactly once for every unordered pair. Input order is
+/// semantically observable: it breaks otherwise-equal medoid ties and determines cluster/member
+/// ordering. Stable entity identities break nearest-neighbor score ties, so repeated runs over
+/// the same ordered inputs and deterministic similarity function produce identical output.
+pub fn build_semantic_map_with<T: ?Sized, F>(
+    inputs: &[SemanticMapInput<'_, T>],
     options: SemanticMapOptions,
-) -> Result<SemanticMap, SemanticMapError> {
+    mut similarity: F,
+) -> Result<SemanticMap, SemanticMapError>
+where
+    F: FnMut(&T, &T) -> f32,
+{
     validate_inputs(inputs, options)?;
 
-    let similarities = similarity_matrix(inputs);
+    let similarities = similarity_matrix(inputs, &mut similarity)?;
     Ok(SemanticMap {
         neighbors: neighborhood_graph(inputs, &similarities, options),
         clusters: concept_clusters(inputs, &similarities, options.cluster_threshold),
     })
 }
 
-fn validate_inputs(
-    inputs: &[SemanticMapInput<'_>],
+fn validate_inputs<T: ?Sized>(
+    inputs: &[SemanticMapInput<'_, T>],
     options: SemanticMapOptions,
 ) -> Result<(), SemanticMapError> {
     if inputs.is_empty() {
@@ -180,28 +166,10 @@ fn validate_inputs(
     validate_similarity_threshold("neighbor_threshold", options.neighbor_threshold)?;
     validate_similarity_threshold("cluster_threshold", options.cluster_threshold)?;
 
-    let expected_dimensions = inputs[0].vector.len();
     let mut seen = BTreeSet::new();
     for input in inputs {
         if !seen.insert(input.entity_id.clone()) {
             return Err(SemanticMapError::DuplicateEntity {
-                entity_id: input.entity_id.clone(),
-            });
-        }
-        if input.vector.is_empty() {
-            return Err(SemanticMapError::EmptyVector {
-                entity_id: input.entity_id.clone(),
-            });
-        }
-        if input.vector.len() != expected_dimensions {
-            return Err(SemanticMapError::InconsistentDimensions {
-                expected: expected_dimensions,
-                actual: input.vector.len(),
-                entity_id: input.entity_id.clone(),
-            });
-        }
-        if !input.vector.iter().all(|value| value.is_finite()) {
-            return Err(SemanticMapError::NonFiniteVector {
                 entity_id: input.entity_id.clone(),
             });
         }
@@ -210,27 +178,44 @@ fn validate_inputs(
 }
 
 fn validate_similarity_threshold(name: &'static str, value: f32) -> Result<(), SemanticMapError> {
-    if !value.is_finite() || !(-1.0..=1.0).contains(&value) {
+    if !is_similarity(value) {
         return Err(SemanticMapError::InvalidSimilarityThreshold { name, value });
     }
     Ok(())
 }
 
-fn similarity_matrix(inputs: &[SemanticMapInput<'_>]) -> Vec<Vec<f32>> {
+fn is_similarity(value: f32) -> bool {
+    value.is_finite() && (-1.0..=1.0).contains(&value)
+}
+
+fn similarity_matrix<T: ?Sized, F>(
+    inputs: &[SemanticMapInput<'_, T>],
+    similarity: &mut F,
+) -> Result<Vec<Vec<f32>>, SemanticMapError>
+where
+    F: FnMut(&T, &T) -> f32,
+{
     let mut matrix = vec![vec![0.0; inputs.len()]; inputs.len()];
     for left in 0..inputs.len() {
         matrix[left][left] = 1.0;
         for right in (left + 1)..inputs.len() {
-            let similarity = cosine(inputs[left].vector, inputs[right].vector);
-            matrix[left][right] = similarity;
-            matrix[right][left] = similarity;
+            let score = similarity(inputs[left].value, inputs[right].value);
+            if !is_similarity(score) {
+                return Err(SemanticMapError::InvalidSimilarity {
+                    source_entity_id: inputs[left].entity_id.clone(),
+                    target_entity_id: inputs[right].entity_id.clone(),
+                    value: score,
+                });
+            }
+            matrix[left][right] = score;
+            matrix[right][left] = score;
         }
     }
-    matrix
+    Ok(matrix)
 }
 
-fn neighborhood_graph(
-    inputs: &[SemanticMapInput<'_>],
+fn neighborhood_graph<T: ?Sized>(
+    inputs: &[SemanticMapInput<'_, T>],
     similarities: &[Vec<f32>],
     options: SemanticMapOptions,
 ) -> Vec<SemanticMapNeighbor> {
@@ -274,8 +259,8 @@ fn neighborhood_graph(
         .collect()
 }
 
-fn concept_clusters(
-    inputs: &[SemanticMapInput<'_>],
+fn concept_clusters<T: ?Sized>(
+    inputs: &[SemanticMapInput<'_, T>],
     similarities: &[Vec<f32>],
     threshold: f32,
 ) -> Vec<SemanticMapCluster> {
@@ -356,13 +341,6 @@ fn cluster_mean_similarity(members: &[usize], similarities: &[Vec<f32>]) -> f32 
     total / pairs as f32
 }
 
-fn cosine(left: &[f32], right: &[f32]) -> f32 {
-    // Map construction validates non-empty, finite, equal-dimensional vectors first.
-    // `vector-analysis-core` therefore only rejects the effectively-zero norm case,
-    // which the existing semantic-map baseline intentionally treats as zero similarity.
-    cosine_similarity(left, right).unwrap_or(0.0)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,33 +349,41 @@ mod tests {
         EntityId::new(value).unwrap()
     }
 
+    fn axis_similarity(left: &f32, right: &f32) -> f32 {
+        1.0 - (left - right).abs()
+    }
+
     #[test]
-    fn clothing_vectors_form_a_domain_neutral_cluster() {
+    fn clothing_values_form_a_domain_neutral_cluster() {
         let navy_shirt = entity("clothes:navy-shirt");
         let blue_shirt = entity("clothes:blue-shirt");
         let running_shoe = entity("clothes:running-shoe");
+        let navy_style = 0.0;
+        let blue_style = 0.05;
+        let shoe_style = 1.0;
         let inputs = [
             SemanticMapInput {
                 entity_id: &navy_shirt,
-                vector: &[1.0, 0.0, 0.0],
+                value: &navy_style,
             },
             SemanticMapInput {
                 entity_id: &blue_shirt,
-                vector: &[0.99, 0.10, 0.0],
+                value: &blue_style,
             },
             SemanticMapInput {
                 entity_id: &running_shoe,
-                vector: &[0.0, 0.0, 1.0],
+                value: &shoe_style,
             },
         ];
 
-        let map = build_semantic_map(
+        let map = build_semantic_map_with(
             &inputs,
             SemanticMapOptions {
                 neighbors_per_entity: 2,
                 neighbor_threshold: 0.5,
                 cluster_threshold: 0.8,
             },
+            axis_similarity,
         )
         .unwrap();
 
@@ -418,23 +404,30 @@ mod tests {
         let first = entity("entity:first");
         let second = entity("entity:second");
         let third = entity("entity:third");
+        let first_value = 0.0;
+        let second_value = 0.1;
+        let third_value = 1.0;
         let inputs = [
             SemanticMapInput {
                 entity_id: &first,
-                vector: &[1.0, 0.0],
+                value: &first_value,
             },
             SemanticMapInput {
                 entity_id: &second,
-                vector: &[1.0, 0.0],
+                value: &second_value,
             },
             SemanticMapInput {
                 entity_id: &third,
-                vector: &[0.0, 1.0],
+                value: &third_value,
             },
         ];
 
-        let first_map = build_semantic_map(&inputs, SemanticMapOptions::default()).unwrap();
-        let second_map = build_semantic_map(&inputs, SemanticMapOptions::default()).unwrap();
+        let first_map =
+            build_semantic_map_with(&inputs, SemanticMapOptions::default(), axis_similarity)
+                .unwrap();
+        let second_map =
+            build_semantic_map_with(&inputs, SemanticMapOptions::default(), axis_similarity)
+                .unwrap();
 
         assert_eq!(first_map, second_map);
     }
@@ -444,99 +437,81 @@ mod tests {
         let source = entity("entity:source");
         let alpha = entity("entity:alpha");
         let zeta = entity("entity:zeta");
+        let source_value = 0.5;
+        let zeta_value = 1.0;
+        let alpha_value = 0.0;
         let inputs = [
             SemanticMapInput {
                 entity_id: &source,
-                vector: &[1.0, 0.0],
+                value: &source_value,
             },
             SemanticMapInput {
                 entity_id: &zeta,
-                vector: &[1.0, 0.0],
+                value: &zeta_value,
             },
             SemanticMapInput {
                 entity_id: &alpha,
-                vector: &[1.0, 0.0],
+                value: &alpha_value,
             },
         ];
 
-        let map = build_semantic_map(
+        let map = build_semantic_map_with(
             &inputs,
             SemanticMapOptions {
                 neighbors_per_entity: 1,
                 neighbor_threshold: 0.0,
                 cluster_threshold: 1.0,
             },
+            axis_similarity,
         )
         .unwrap();
 
         assert!(map
             .neighbors
             .iter()
-            .any(|edge| { edge.source_entity_id == source && edge.target_entity_id == alpha }));
+            .any(|edge| edge.source_entity_id == source && edge.target_entity_id == alpha));
     }
 
     #[test]
-    fn rejects_duplicate_ids_and_invalid_vectors() {
+    fn rejects_duplicate_ids_and_invalid_similarity() {
         let repeated = entity("entity:repeated");
+        let first_value = 0.0;
+        let second_value = 1.0;
         let duplicate_inputs = [
             SemanticMapInput {
                 entity_id: &repeated,
-                vector: &[1.0],
+                value: &first_value,
             },
             SemanticMapInput {
                 entity_id: &repeated,
-                vector: &[2.0],
+                value: &second_value,
             },
         ];
         assert!(matches!(
-            build_semantic_map(&duplicate_inputs, SemanticMapOptions::default()),
+            build_semantic_map_with(
+                &duplicate_inputs,
+                SemanticMapOptions::default(),
+                axis_similarity
+            ),
             Err(SemanticMapError::DuplicateEntity { .. })
         ));
 
         let other = entity("entity:other");
-        let mismatched = [
+        let invalid_inputs = [
             SemanticMapInput {
                 entity_id: &repeated,
-                vector: &[1.0],
+                value: &first_value,
             },
             SemanticMapInput {
                 entity_id: &other,
-                vector: &[1.0, 2.0],
+                value: &second_value,
             },
         ];
         assert!(matches!(
-            build_semantic_map(&mismatched, SemanticMapOptions::default()),
-            Err(SemanticMapError::InconsistentDimensions { .. })
+            build_semantic_map_with(&invalid_inputs, SemanticMapOptions::default(), |_, _| {
+                f32::NAN
+            }),
+            Err(SemanticMapError::InvalidSimilarity { .. })
         ));
-    }
-
-    #[test]
-    fn zero_vectors_are_valid_but_have_zero_similarity() {
-        let zero = entity("entity:zero");
-        let nonzero = entity("entity:nonzero");
-        let inputs = [
-            SemanticMapInput {
-                entity_id: &zero,
-                vector: &[0.0, 0.0],
-            },
-            SemanticMapInput {
-                entity_id: &nonzero,
-                vector: &[1.0, 0.0],
-            },
-        ];
-
-        let map = build_semantic_map(
-            &inputs,
-            SemanticMapOptions {
-                neighbors_per_entity: 1,
-                neighbor_threshold: 0.0,
-                cluster_threshold: 0.5,
-            },
-        )
-        .unwrap();
-
-        assert_eq!(map.neighbors.len(), 1);
-        assert_eq!(map.neighbors[0].similarity, 0.0);
-        assert_eq!(map.clusters.len(), 2);
     }
 }
