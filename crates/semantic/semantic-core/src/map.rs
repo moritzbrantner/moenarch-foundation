@@ -125,7 +125,10 @@ impl Display for SemanticMapError {
                 write!(formatter, "duplicate semantic map entity `{entity_id}`")
             }
             Self::EmptyVector { entity_id } => {
-                write!(formatter, "semantic map entity `{entity_id}` has an empty vector")
+                write!(
+                    formatter,
+                    "semantic map entity `{entity_id}` has an empty vector"
+                )
             }
             Self::NonFiniteVector { entity_id } => write!(
                 formatter,
@@ -205,10 +208,7 @@ fn validate_inputs(
     Ok(())
 }
 
-fn validate_similarity_threshold(
-    name: &'static str,
-    value: f32,
-) -> Result<(), SemanticMapError> {
+fn validate_similarity_threshold(name: &'static str, value: f32) -> Result<(), SemanticMapError> {
     if !value.is_finite() || !(-1.0..=1.0).contains(&value) {
         return Err(SemanticMapError::InvalidSimilarityThreshold { name, value });
     }
@@ -247,10 +247,7 @@ fn neighborhood_graph(
             })
         });
 
-        for (target, similarity) in candidates
-            .into_iter()
-            .take(options.neighbors_per_entity)
-        {
+        for (target, similarity) in candidates.into_iter().take(options.neighbors_per_entity) {
             if similarity < options.neighbor_threshold {
                 continue;
             }
@@ -480,9 +477,10 @@ mod tests {
         )
         .unwrap();
 
-        assert!(map.neighbors.iter().any(|edge| {
-            edge.source_entity_id == source && edge.target_entity_id == alpha
-        }));
+        assert!(map
+            .neighbors
+            .iter()
+            .any(|edge| { edge.source_entity_id == source && edge.target_entity_id == alpha }));
     }
 
     #[test]
