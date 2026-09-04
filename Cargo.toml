@@ -83,6 +83,7 @@ categories = ["science", "algorithms", "multimedia"]
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "serde"] }
 clap = { version = "4.5.51", features = ["derive"] }
 criterion = "0.5.1"
+iai-callgrind = "0.16.1"
 faer = { version = "0.24.0", default-features = false, features = ["std", "linalg"] }
 hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
 nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }

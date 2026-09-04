@@ -2,12 +2,7 @@
   "schemaVersion": 1,
   "profile": "repository-foundation-v1",
   "tiers": {
-    "fast": [
-      "format:check",
-      "lint",
-      "build",
-      "test:unit"
-    ],
+    "fast": ["format:check", "lint", "build", "test:unit"],
     "full": [
       "format:check",
       "lint",
@@ -16,21 +11,15 @@
       "test:integration",
       "benchmark:smoke"
     ],
-    "integration": [
-      "test:integration"
-    ],
-    "performance": [
-      "benchmark:smoke"
-    ]
+    "integration": ["test:integration"],
+    "performance": ["benchmark:smoke", "benchmark"]
   },
-  "requiredCapabilities": [
-    "format:check",
-    "lint",
-    "build",
-    "test:unit"
-  ],
-  "optionalCapabilities": [
-    "test:integration",
-    "benchmark:smoke"
-  ]
+  "requiredCapabilities": ["format:check", "lint", "build", "test:unit"],
+  "optionalCapabilities": ["test:integration", "benchmark:smoke", "benchmark"],
+  "capabilityCommands": {
+    ".": {
+      "benchmark": ["cargo", "bench", "--locked", "-p", "moenarch-vector-analysis-core", "--bench", "metrics"],
+      "benchmark:smoke": ["bash", "scripts/benchmark-smoke.sh"]
+    }
+  }
 }

@@ -35,3 +35,30 @@ jobs:
         run: cargo doc --locked --workspace --no-deps
       - name: Package all crates without publishing
         run: python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
+
+  performance-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95.0"
+      - name: Install Callgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes valgrind
+      - name: Install Iai-Callgrind runner
+        run: cargo install iai-callgrind-runner --version 0.16.1 --locked
+      - name: Run deterministic performance smoke
+        env:
+          PERF_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+        run: bash scripts/benchmark-smoke.sh
+      - name: Upload performance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-smoke-${{ github.sha }}
+          path: .artifacts/performance-smoke/
+          if-no-files-found: warn

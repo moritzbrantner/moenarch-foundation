@@ -1,18 +1,21 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "8a6bd286b108a0be889073cc22698dd8add8c50b",
+  "sourceRevision": "cd6c229e8c61ff3e3bd949ca82394fa788039897",
   "requestedModules": [
     "dependencies",
     "environment",
     "git",
-    "rust"
+    "rust",
+    "rust-performance"
   ],
   "resolvedModules": [
     "base",
     "dependencies",
     "environment",
     "git",
-    "rust"
+    "rust",
+    "benchmarking",
+    "rust-performance"
   ],
   "files": {
     "modules/base/principles/README.md": "cf42738840df175d9968923006488c8fe2837cbce1530563a6df04c2d7cb6a20",
@@ -35,7 +38,11 @@
     "modules/git/conventions/git/GIT-004.json": "0521ce533d9055e07dfa2183c947aa2578ae5d0da77a9296454ab0bb0f3d822d",
     "modules/rust/technologies/rust/README.md": "cf6eaeb058e999e8df328f9d2c9d17dc7330c6323074720efbf297d72deea583",
     "modules/rust/technologies/rust/RUST-002.json": "1d3e4fb66ffb2206b2c7259c8f401d2fe1fdf3ec04b01b91fec1f227ed888b86",
+    "modules/benchmarking/conventions/benchmarking/README.md": "e68be9cbc3770838afc8c38a9988ec06a2f2f581ab15c5975642ace1150d6367",
+    "modules/benchmarking/conventions/benchmarking/BENCH-002.json": "f5813c38a52ae73694745a1d2d518ba9ac041e2fbf0d0a5551fb93de968b0ce0",
+    "modules/rust-performance/technologies/rust/performance/README.md": "28a8291b89b4915f96919dc1ff11d9f1827cbec2495b4c81eb3d549af94d0b87",
+    "modules/rust-performance/technologies/rust/performance/RUST-005.json": "0630f45bd16867822d713729e9d572be121659c47f3afc2bd4cccfcfa0b7e775",
     "configurations.json": "569bf6db9f0a2c85726ccb231698002bb12727682fbfd96e93472591427b14f2",
-    "index.md": "e07956ebe67d891594d31e025412ccd51ce7f37886a3bda06755fc7b8d4250e4"
+    "index.md": "3a33ad4f0330eabd2d08d208e3434d1f55f0033556cd40e1f6a62c6a13c69dab"
   }
 }
