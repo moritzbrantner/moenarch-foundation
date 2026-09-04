@@ -5,6 +5,7 @@
     "dependencies",
     "environment",
     "git",
-    "rust"
+    "rust",
+    "rust-performance"
   ]
 }

@@ -130,6 +130,15 @@ Read this section first. Open the linked managed source when a rule is relevant,
 - **RUST-001 — Encode invariants in types** — Prefer types that make invalid domain states unrepresentable. ([details](modules/rust/technologies/rust/README.md))
 - **RUST-002 — Avoid `unwrap` and `expect` in normal production control flow** — Handle or propagate recoverable errors explicitly. ([details](modules/rust/technologies/rust/README.md))
 - **RUST-003 — Do not clone merely to satisfy the borrow checker** — Treat unnecessary cloning as a signal to inspect ownership boundaries first. ([details](modules/rust/technologies/rust/README.md))
+- **BENCH-001 — Benchmark named representative scenarios** — Define a named workload, measured unit, optimization direction, sampling method, and environment fingerprint. ([details](modules/benchmarking/conventions/benchmarking/README.md))
+- **BENCH-002 — Compare candidates against versioned baselines** — Compare equivalent harness runs on equivalent infrastructure. ([details](modules/benchmarking/conventions/benchmarking/README.md))
+- **BENCH-003 — Separate blocking regression signals from noisy wall-clock timing** — Do not make raw wall-clock deltas from ordinary shared CI runners a blocking gate. ([details](modules/benchmarking/conventions/benchmarking/README.md))
+- **BENCH-004 — Benchmark enough workload shapes to expose scaling regressions** — Performance-sensitive algorithms should cover multiple representative input sizes or shapes when one fixed case could hide an asymptotic, cache, allocation, or branch-behavior regression. ([details](modules/benchmarking/conventions/benchmarking/README.md))
+- **BENCH-005 — Keep benchmark references outside production boundaries** — Reference implementations and comparison libraries should remain development-only or explicitly feature-gated unless production behavior deliberately depends on them. ([details](modules/benchmarking/conventions/benchmarking/README.md))
+- **RUST-004 — Use Divan for new Rust microbenchmarks** — Prefer Divan for new developer-facing Rust microbenchmark suites. ([details](modules/rust-performance/technologies/rust/performance/README.md))
+- **RUST-005 — Use Iai-Callgrind for bounded blocking regression sentinels** — Performance-sensitive kernels that need a blocking CI regression signal should expose a deliberately small Iai-Callgrind suite through `benchmark:smoke` on supported Linux environments. ([details](modules/rust-performance/technologies/rust/performance/README.md))
+- **RUST-006 — Fingerprint Rust performance comparisons** — Record the Rust toolchain, target triple, target features or relevant `RUSTFLAGS`, optimization profile, dependency lock state, and benchmark workload version. ([details](modules/rust-performance/technologies/rust/performance/README.md))
+- **RUST-007 — Keep wall-clock regression evidence on controlled runners** — Treat raw wall-clock timing from ordinary shared CI runners as informational rather than a blocking regression gate. ([details](modules/rust-performance/technologies/rust/performance/README.md))
 
 ## Installed modules
 
@@ -167,6 +176,16 @@ Read this section first. Open the linked managed source when a rule is relevant,
 
 - [modules/rust/technologies/rust/README.md](modules/rust/technologies/rust/README.md)
 - [modules/rust/technologies/rust/RUST-002.json](modules/rust/technologies/rust/RUST-002.json)
+
+### benchmarking
+
+- [modules/benchmarking/conventions/benchmarking/README.md](modules/benchmarking/conventions/benchmarking/README.md)
+- [modules/benchmarking/conventions/benchmarking/BENCH-002.json](modules/benchmarking/conventions/benchmarking/BENCH-002.json)
+
+### rust-performance
+
+- [modules/rust-performance/technologies/rust/performance/README.md](modules/rust-performance/technologies/rust/performance/README.md)
+- [modules/rust-performance/technologies/rust/performance/RUST-005.json](modules/rust-performance/technologies/rust/performance/RUST-005.json)
 
 ## Companion configuration assets
 
