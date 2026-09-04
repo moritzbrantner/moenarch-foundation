@@ -44,12 +44,19 @@ jobs:
             --root "$GITHUB_WORKSPACE" \
             --json
 
-      - name: Commit generated convention artifacts
+      - name: Generate locked benchmark dependency state
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal
+          cargo +1.95.0 check -p moenarch-vector-analysis-core --bench performance_smoke
+
+      - name: Commit generated rollout artifacts
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add conventions.json conventions.lock.json .conventions
+          git add conventions.json conventions.lock.json .conventions Cargo.lock
           git diff --cached --quiet && exit 0
-          git commit -m "chore: install rust-performance conventions"
+          git commit -m "chore: refresh rust-performance generated state"
           git push origin HEAD
