@@ -1,8 +1,10 @@
 #![doc = include_str!("../README.md")]
 #![allow(deprecated)]
 
+#[cfg(not(target_arch = "wasm32"))]
 mod bundles;
 mod conformance;
+#[cfg(not(target_arch = "wasm32"))]
 mod download;
 pub mod jobs;
 mod predictions;
@@ -10,8 +12,10 @@ mod presets;
 mod spec;
 pub mod surface;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub use bundles::*;
 pub use conformance::*;
+#[cfg(not(target_arch = "wasm32"))]
 pub use download::*;
 pub use jobs::{
     plan_model_access, plan_model_bundle, ModelAccessJobRequest, ModelAccessPlan, ModelBundlePlan,
