@@ -49,7 +49,10 @@ fn signal_levels_match_reference_statistics_exhaustively() {
     for len in 1..=6 {
         for samples in exhaustive_signals(len) {
             let levels = signal_levels(&samples).unwrap();
-            let peak = samples.iter().map(|sample| sample.abs()).fold(0.0, f32::max);
+            let peak = samples
+                .iter()
+                .map(|sample| sample.abs())
+                .fold(0.0, f32::max);
             let mean = samples.iter().sum::<f32>() / samples.len() as f32;
             let rms = (samples.iter().map(|sample| sample * sample).sum::<f32>()
                 / samples.len() as f32)
