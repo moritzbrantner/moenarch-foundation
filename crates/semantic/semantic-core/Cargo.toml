@@ -18,6 +18,7 @@ name = "semantic_core"
 [dependencies]
 serde.workspace = true
 sha2.workspace = true
+vector-analysis-core.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
