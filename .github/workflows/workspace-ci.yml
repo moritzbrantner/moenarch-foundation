@@ -45,6 +45,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.95.0"
+      - name: Compile full benchmark matrix
+        run: |
+          mkdir -p .artifacts/performance-smoke
+          cargo bench --locked --workspace --all-features --no-run 2>&1 \
+            | tee .artifacts/performance-smoke/benchmark-compile.log
       - name: Install Callgrind
         run: |
           sudo apt-get update
