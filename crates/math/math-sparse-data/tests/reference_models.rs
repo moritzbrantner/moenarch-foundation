@@ -37,7 +37,10 @@ fn sparse_dense_round_trip_covers_small_domains_exhaustively() {
             let sparse = SparseVector::from_dense(&dense).unwrap();
             assert_eq!(sparse.dimensions(), dimensions);
             assert_slice_close(&sparse.to_dense(), &dense);
-            assert_eq!(sparse.nnz(), dense.iter().filter(|value| **value != 0.0).count());
+            assert_eq!(
+                sparse.nnz(),
+                dense.iter().filter(|value| **value != 0.0).count()
+            );
         }
     }
 }
@@ -101,12 +104,7 @@ fn sparse_norms_scaling_and_cosine_match_dense_reference() {
 
 #[test]
 fn canonicalization_is_idempotent_and_combines_duplicate_indices() {
-    let sparse = SparseVector::new(
-        4,
-        vec![2, 0, 2, 1, 0],
-        vec![3.0, 1.0, -1.0, 4.0, 2.0],
-    )
-    .unwrap();
+    let sparse = SparseVector::new(4, vec![2, 0, 2, 1, 0], vec![3.0, 1.0, -1.0, 4.0, 2.0]).unwrap();
     let canonical = sparse.canonicalized().unwrap();
     assert_eq!(canonical.indices(), &[0, 1, 2]);
     assert_slice_close(canonical.values(), &[3.0, 4.0, 2.0]);
