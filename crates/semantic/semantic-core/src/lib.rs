@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+pub mod map;
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::error::Error;

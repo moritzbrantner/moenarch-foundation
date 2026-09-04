@@ -1,8 +1,8 @@
 # moenarch-semantic-core
 
-`moenarch-semantic-core` defines the small, domain-neutral contract for attaching inspectable semantic claims to arbitrary entities.
+`moenarch-semantic-core` defines the small, domain-neutral contract for attaching inspectable semantic claims to arbitrary entities and deriving deterministic semantic structure from caller-owned similarity evidence.
 
-It is deliberately not an ontology engine, classifier framework, vector store, knowledge-graph database, or application policy package.
+It is deliberately not an ontology engine, classifier framework, vector store, knowledge-graph database, embedding provider, vector-math package, or application policy package.
 
 ## Model
 
@@ -12,6 +12,9 @@ EntityId
 
 EntityId / ConceptId
   -> Relation(predicate, EntityId / ConceptId, confidence?, producer?, evidence[])
+
+(EntityId, consumer-owned value)[] + similarity(value, value)
+  -> neighbors + deterministic clusters
 ```
 
 The crate separates three layers that consumers should keep distinct:
@@ -45,21 +48,36 @@ A reference may point to a corpus record, OCR region, file fragment, external UR
 
 ## Relations
 
-A relation connects two `SemanticNodeRef` values through a predicate `ConceptId`. Endpoints may be entities or concepts, which is enough to express domain-owned relationships such as `is_a`, `part_of`, `used_for`, `supports`, or `contradicts` without baking those predicates into Foundation.
+A relation connects two `SemanticNodeRef` values through a predicate `ConceptId`. Endpoints may be entities or concepts, which is enough to express domain-owned relationships such as `is_a`, `part_of`, `used_for`, `supports`, `contradicts`, or `pairs_with` without baking those predicates into Foundation.
 
 The predicate vocabulary remains consumer-owned. Graph traversal, inheritance, cycle validation, transitive closure, contradiction resolution, and persistence are later layers.
+
+## Semantic maps
+
+The `map` module derives deterministic nearest-neighbor edges and threshold-connected clusters from ordered entities plus a caller-supplied similarity function.
+
+The values supplied to that function are opaque to `semantic-core`. An NLP consumer can use text embeddings with cosine similarity, a clothing catalog can combine visual and attribute evidence, and another consumer can use a non-vector similarity measure. The shared layer validates only the resulting similarity scores and structural options.
+
+Semantic-map derivation deliberately exposes only structural evidence in this first slice:
+
+- nearest-neighbor edges with stable ID tie-breaking;
+- deterministic connected clusters;
+- medoid representatives;
+- mean within-cluster similarity.
+
+Input order remains observable for cluster/member ordering and otherwise-equal medoid ties. The similarity function is evaluated once for every unordered pair and must return a finite value in `[-1, 1]`. Consumers that need a different ordering or similarity policy own that normalization before calling the shared layer.
 
 ## Non-goals
 
 This crate does not:
 
-- define OCR roles, music genres, product categories, NLP labels, or another ontology;
+- define OCR roles, music genres, product categories, NLP labels, clothing categories, or another ontology;
 - define a classifier trait or model-provider interface;
 - resolve conflicting or overlapping claims;
 - assign application actions such as `include`, `display`, `rank`, or `delete`;
-- generate or store embeddings;
+- generate embeddings, choose embedding models, implement vector metrics, fuse evidence channels, or provide a vector database;
 - choose a graph/vector/database backend;
-- depend on `corpus-core`, `nlp-stack`, `visual-analysis`, `speedreader`, or another capability repository;
+- depend on `corpus-core`, `vector-analysis-core`, `nlp-stack`, `visual-analysis`, `speedreader`, a clothes application, or another capability repository;
 - publish or release itself merely because source-development consumers need the contract.
 
-The first consumers should dogfood these primitives before classifier composition, ontology tooling, graph traversal, or persistence is standardized.
+The first consumers should dogfood these primitives before classifier composition, ontology tooling, graph traversal, persistence, indexed semantic maps, or multimodal fusion is standardized.
