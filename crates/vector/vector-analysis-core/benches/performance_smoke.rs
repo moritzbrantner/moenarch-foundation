@@ -1,9 +1,8 @@
 use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, Callgrind, EventKind,
-    LibraryBenchmarkConfig,
+    Callgrind, EventKind, LibraryBenchmarkConfig, library_benchmark, library_benchmark_group, main,
 };
 use std::hint::black_box;
-use vector_analysis_core::{cosine_similarity, dot, mean_vector, DenseVector};
+use vector_analysis_core::{DenseVector, cosine_similarity, dot, mean_vector};
 
 fn vector(dimensions: usize, phase: f32) -> Vec<f32> {
     (0..dimensions)
