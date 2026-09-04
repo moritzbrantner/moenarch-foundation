@@ -3,6 +3,7 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 use serde::Serialize;
+use vector_analysis_core::cosine_similarity;
 
 use crate::EntityId;
 
@@ -356,19 +357,10 @@ fn cluster_mean_similarity(members: &[usize], similarities: &[Vec<f32>]) -> f32 
 }
 
 fn cosine(left: &[f32], right: &[f32]) -> f32 {
-    let mut dot = 0.0;
-    let mut left_norm = 0.0;
-    let mut right_norm = 0.0;
-    for (left, right) in left.iter().zip(right) {
-        dot += left * right;
-        left_norm += left * left;
-        right_norm += right * right;
-    }
-    if left_norm <= f32::EPSILON || right_norm <= f32::EPSILON {
-        0.0
-    } else {
-        dot / (left_norm.sqrt() * right_norm.sqrt())
-    }
+    // Map construction validates non-empty, finite, equal-dimensional vectors first.
+    // `vector-analysis-core` therefore only rejects the effectively-zero norm case,
+    // which the existing semantic-map baseline intentionally treats as zero similarity.
+    cosine_similarity(left, right).unwrap_or(0.0)
 }
 
 #[cfg(test)]
