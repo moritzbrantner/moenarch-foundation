@@ -62,7 +62,9 @@ fn bucketing_is_a_lossless_partition_of_source_points() {
     for count in 1..=96 {
         let points = sample_points(count);
         let dataset = DenseDataset::from_points(points.clone()).unwrap();
-        let buckets = dataset.buckets(&BucketGrid::uniform(2, 1.0).unwrap()).unwrap();
+        let buckets = dataset
+            .buckets(&BucketGrid::uniform(2, 1.0).unwrap())
+            .unwrap();
 
         let mut indices = buckets
             .iter()
@@ -112,7 +114,11 @@ fn k_means_is_deterministic_and_partitions_every_input_exactly_once() {
             assert!(cluster.centroid.iter().all(|value| value.is_finite()));
         }
         assert_close(
-            first.clusters.iter().map(|cluster| cluster.weight_sum).sum(),
+            first
+                .clusters
+                .iter()
+                .map(|cluster| cluster.weight_sum)
+                .sum(),
             points.iter().map(|point| point.weight).sum(),
         );
     }
