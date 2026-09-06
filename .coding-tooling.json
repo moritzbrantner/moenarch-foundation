@@ -21,5 +21,9 @@
       "benchmark": ["cargo", "bench", "--locked", "-p", "moenarch-vector-analysis-core", "--bench", "metrics"],
       "benchmark:smoke": ["bash", "scripts/benchmark-smoke.sh"]
     }
+  },
+  "merge": {
+    "authority": "hosted",
+    "requiredChecks": ["verify", "wasm-bindings", "cold-setup"]
   }
 }
