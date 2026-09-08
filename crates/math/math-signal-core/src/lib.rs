@@ -567,6 +567,7 @@ pub fn resample_interleaved(
             channels,
         });
     }
+    ResampleRatio::new(input_rate, output_rate)?;
     if !samples.len().is_multiple_of(channels as usize) {
         return Err(invalid_argument(
             "interleaved sample length must be divisible by channel count",
@@ -856,6 +857,30 @@ mod tests {
                 2,
                 rate,
                 SampleRate::new(96_000).unwrap(),
+                InterpolationMode::Linear,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn interleaved_resampling_validates_rates_before_fast_paths() {
+        assert!(
+            resample_interleaved(
+                &[0.0, 0.0],
+                2,
+                SampleRate(0),
+                SampleRate(0),
+                InterpolationMode::Linear,
+            )
+            .is_err()
+        );
+        assert!(
+            resample_interleaved(
+                &[],
+                2,
+                SampleRate(0),
+                SampleRate(48_000),
                 InterpolationMode::Linear,
             )
             .is_err()
