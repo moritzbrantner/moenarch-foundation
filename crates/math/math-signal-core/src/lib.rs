@@ -842,49 +842,37 @@ mod tests {
     fn interleaved_resampling_rejects_non_finite_samples() {
         let rate = SampleRate::new(48_000).unwrap();
         assert!(
-            resample_interleaved(
-                &[f32::NAN, 0.0],
-                2,
-                rate,
-                rate,
-                InterpolationMode::Linear,
-            )
-            .is_err()
+            resample_interleaved(&[f32::NAN, 0.0], 2, rate, rate, InterpolationMode::Linear,)
+                .is_err()
         );
-        assert!(
-            resample_interleaved(
-                &[0.0, f32::INFINITY],
-                2,
-                rate,
-                SampleRate::new(96_000).unwrap(),
-                InterpolationMode::Linear,
-            )
-            .is_err()
-        );
+        assert!(resample_interleaved(
+            &[0.0, f32::INFINITY],
+            2,
+            rate,
+            SampleRate::new(96_000).unwrap(),
+            InterpolationMode::Linear,
+        )
+        .is_err());
     }
 
     #[test]
     fn interleaved_resampling_validates_rates_before_fast_paths() {
-        assert!(
-            resample_interleaved(
-                &[0.0, 0.0],
-                2,
-                SampleRate(0),
-                SampleRate(0),
-                InterpolationMode::Linear,
-            )
-            .is_err()
-        );
-        assert!(
-            resample_interleaved(
-                &[],
-                2,
-                SampleRate(0),
-                SampleRate(48_000),
-                InterpolationMode::Linear,
-            )
-            .is_err()
-        );
+        assert!(resample_interleaved(
+            &[0.0, 0.0],
+            2,
+            SampleRate(0),
+            SampleRate(0),
+            InterpolationMode::Linear,
+        )
+        .is_err());
+        assert!(resample_interleaved(
+            &[],
+            2,
+            SampleRate(0),
+            SampleRate(48_000),
+            InterpolationMode::Linear,
+        )
+        .is_err());
     }
 
     #[test]
