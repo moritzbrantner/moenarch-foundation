@@ -4,6 +4,19 @@ set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
+tooling_command=()
+if [[ "${1:-}" == "--tooling-command" ]]; then
+  shift
+  if (($# == 0)); then
+    printf '%s\n' "--tooling-command requires at least one command argument" >&2
+    exit 2
+  fi
+  tooling_command=("$@")
+elif (($# > 0)); then
+  printf 'unexpected readiness argument: %s\n' "$1" >&2
+  exit 2
+fi
+
 tooling_dir="${CODING_TOOLING_DIR:-$root/../coding-tooling}"
 minimum_free_gib="${AGENT_MIN_FREE_GIB:-8}"
 target_dir="${CARGO_TARGET_DIR:-$root/target}"
@@ -11,6 +24,10 @@ target_parent="$(dirname "$target_dir")"
 mkdir -p "$target_parent"
 
 run_tooling() {
+  if ((${#tooling_command[@]} > 0)); then
+    "${tooling_command[@]}" "$@"
+    return
+  fi
   if command -v coding-tooling >/dev/null 2>&1; then
     coding-tooling "$@"
     return
