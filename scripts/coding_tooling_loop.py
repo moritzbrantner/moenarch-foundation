@@ -20,6 +20,8 @@ PROTECTED_CONTROL_PATHS = (
     ".github/workflows/workspace-ci.yml",
     "scripts/check-fast.sh",
 )
+MAX_CANDIDATES = 20
+MAX_REPAIRS = 5
 
 
 class LoopError(RuntimeError):
@@ -78,7 +80,9 @@ def resolve_agent_command(explicit: str | None) -> list[str] | None:
         return command
 
     codex = shutil.which("codex")
-    return [codex, "exec", "{prompt}"] if codex else None
+    if codex:
+        return [codex, "exec", "--json", "--approve-for-me", "{prompt}"]
+    return None
 
 
 def parse_json_result(stdout: str, *, operation: str) -> dict[str, Any]:
@@ -462,7 +466,6 @@ def final_acceptance(
     root: Path,
     tooling: Sequence[str],
     *,
-    tier: str,
     artifact_dir: Path,
 ) -> None:
     failures = run_repository_gate(root, artifact_dir=artifact_dir, label="final")
@@ -472,12 +475,18 @@ def final_acceptance(
     failures = run_coding_tooling_tier(
         root,
         tooling,
-        tier,
+        "full",
         artifact_dir=artifact_dir,
         label="final",
     )
     if failures:
         raise LoopError(f"final coding-tooling tier failed; see {failures[0]}")
+
+
+def bounded_count(value: int, *, name: str, maximum: int) -> int:
+    if not 1 <= value <= maximum:
+        raise argparse.ArgumentTypeError(f"{name} must be between 1 and {maximum}")
+    return value
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -493,14 +502,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Opt into baselined findings in addition to active new findings.",
     )
-    parser.add_argument("--max-candidates", type=int, default=5)
-    parser.add_argument("--max-repairs", type=int, default=3)
-    parser.add_argument("--final-tier", default="full")
-    parser.add_argument("--skip-readiness", action="store_true")
+    parser.add_argument(
+        "--max-candidates",
+        type=lambda value: bounded_count(
+            int(value), name="max-candidates", maximum=MAX_CANDIDATES
+        ),
+        default=5,
+    )
+    parser.add_argument(
+        "--max-repairs",
+        type=lambda value: bounded_count(
+            int(value), name="max-repairs", maximum=MAX_REPAIRS
+        ),
+        default=3,
+    )
     args = parser.parse_args(argv)
-
-    if args.max_candidates < 1 or args.max_repairs < 1:
-        parser.error("--max-candidates and --max-repairs must be positive")
 
     root = repository_root()
     require_clean_start(root)
@@ -508,9 +524,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     artifact_dir.mkdir(parents=True, exist_ok=True)
     tooling = resolve_coding_tooling(root)
     agent_command = resolve_agent_command(args.agent_command)
-
-    if not args.skip_readiness:
-        run_readiness(root, artifact_dir=artifact_dir)
+    run_readiness(root, artifact_dir=artifact_dir)
 
     for index in range(1, args.max_candidates + 1):
         candidates = remediation_plan(
@@ -520,12 +534,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             artifact_dir=artifact_dir,
         )
         if not candidates:
-            final_acceptance(
-                root,
-                tooling,
-                tier=args.final_tier,
-                artifact_dir=artifact_dir,
-            )
+            final_acceptance(root, tooling, artifact_dir=artifact_dir)
             scope = "new/baseline" if args.include_baseline else "new"
             print(
                 f"coding-tooling loop: converged with no active {scope} "
@@ -559,12 +568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{len(remaining)} candidate(s) still active"
         )
 
-    final_acceptance(
-        root,
-        tooling,
-        tier=args.final_tier,
-        artifact_dir=artifact_dir,
-    )
+    final_acceptance(root, tooling, artifact_dir=artifact_dir)
     return 0
 
 
