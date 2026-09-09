@@ -18,6 +18,7 @@ PROTECTED_CONTROL_PATHS = (
     ".agent-loop.toml",
     ".coding-tooling.json",
     ".github/workflows/workspace-ci.yml",
+    "scripts/check-agent-readiness.sh",
     "scripts/check-fast.sh",
 )
 MAX_CANDIDATES = 20
@@ -262,12 +263,12 @@ def apply_scaffolds(
     candidate: dict[str, Any],
     *,
     artifact_dir: Path,
-) -> bool:
+) -> tuple[bool, Path | None]:
     scaffolds = candidate.get("scaffolds", [])
     if not isinstance(scaffolds, list):
         raise LoopError("candidate scaffolds are malformed")
     if not scaffolds:
-        return False
+        return False, None
 
     for index, scaffold in enumerate(scaffolds, start=1):
         if not isinstance(scaffold, dict):
@@ -281,8 +282,8 @@ def apply_scaffolds(
         log_path = artifact_dir / f"scaffold-{index}.log"
         write_log(log_path, result)
         if result.returncode != 0:
-            raise LoopError(f"deterministic scaffold failed; see {log_path}")
-    return True
+            return True, log_path
+    return True, None
 
 
 def invoke_agent(
@@ -293,7 +294,7 @@ def invoke_agent(
     failure_logs: Sequence[Path],
     artifact_dir: Path,
     attempt: int,
-) -> None:
+) -> Path | None:
     result = run(
         render_agent_command(
             agent_command,
@@ -303,8 +304,7 @@ def invoke_agent(
     )
     log_path = artifact_dir / f"agent-attempt-{attempt}.log"
     write_log(log_path, result)
-    if result.returncode != 0:
-        raise LoopError(f"agent command failed; see {log_path}")
+    return log_path if result.returncode != 0 else None
 
 
 def verification_commands(candidate: dict[str, Any]) -> list[list[str]]:
@@ -394,10 +394,11 @@ def repair_candidate(
         identity_before = git_identity(root)
         fingerprint_before = worktree_fingerprint(root)
         controls_before = control_hashes(root)
+        mutation_failure: Path | None = None
 
         scaffolded = False
         if attempt == 1 and candidate.get("kind") == "deterministic-scaffold":
-            scaffolded = apply_scaffolds(
+            scaffolded, mutation_failure = apply_scaffolds(
                 root, tooling, candidate, artifact_dir=candidate_dir
             )
 
@@ -406,7 +407,7 @@ def repair_candidate(
                 raise LoopError(
                     f"{candidate_id} requires an agent, but no agent command is available"
                 )
-            invoke_agent(
+            mutation_failure = invoke_agent(
                 root,
                 agent_command,
                 candidate,
@@ -428,6 +429,9 @@ def repair_candidate(
                 f"{candidate_id} changed protected validation controls without "
                 f"candidate evidence: {', '.join(unauthorized)}"
             )
+
+        if mutation_failure is not None:
+            raise LoopError(f"mutation command failed; see {mutation_failure}")
 
         if worktree_fingerprint(root) == fingerprint_before:
             raise LoopError(f"{candidate_id} made no repository progress")
@@ -454,8 +458,16 @@ def repair_candidate(
     )
 
 
-def run_readiness(root: Path, *, artifact_dir: Path) -> None:
-    result = run(["bash", "scripts/check-agent-readiness.sh"], cwd=root)
+def run_readiness(
+    root: Path,
+    tooling: Sequence[str],
+    *,
+    artifact_dir: Path,
+) -> None:
+    result = run(
+        ["bash", "scripts/check-agent-readiness.sh", "--tooling-command", *tooling],
+        cwd=root,
+    )
     log_path = artifact_dir / "readiness.log"
     write_log(log_path, result)
     if result.returncode != 0:
@@ -524,7 +536,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     artifact_dir.mkdir(parents=True, exist_ok=True)
     tooling = resolve_coding_tooling(root)
     agent_command = resolve_agent_command(args.agent_command)
-    run_readiness(root, artifact_dir=artifact_dir)
+    run_readiness(root, tooling, artifact_dir=artifact_dir)
 
     for index in range(1, args.max_candidates + 1):
         candidates = remediation_plan(
