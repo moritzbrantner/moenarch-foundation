@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 
 import coding_tooling_loop as loop
 
@@ -13,11 +16,12 @@ class CodingToolingLoopTests(unittest.TestCase):
         )
         self.assertEqual(payload["status"], "passed")
 
-        with self.assertRaises(loop.LoopError):
-            loop.parse_json_result(
-                json.dumps({"status": "error", "diagnostics": [{"message": "bad"}]}),
-                operation="plan",
-            )
+        for status in ("error", "warning", "unavailable"):
+            with self.assertRaises(loop.LoopError):
+                loop.parse_json_result(
+                    json.dumps({"status": status, "diagnostics": [{"message": "bad"}]}),
+                    operation="plan",
+                )
 
     def test_remediation_candidates_fail_closed_on_malformed_shape(self):
         self.assertEqual(
@@ -83,6 +87,37 @@ class CodingToolingLoopTests(unittest.TestCase):
         self.assertIn("Do not baseline or suppress findings", prompt)
         self.assertIn("Do not commit, push, switch branches", prompt)
         self.assertIn("failure.log", prompt)
+
+    def test_candidate_verification_stops_on_first_failure(self):
+        candidate = {"verification": [["first"], ["second"]]}
+        with tempfile.TemporaryDirectory() as directory:
+            artifact_dir = Path(directory)
+            failure = subprocess.CompletedProcess(["first"], 1, "", "failed")
+            with patch.object(loop, "run", return_value=failure) as mocked_run:
+                failures = loop.run_candidate_verification(
+                    Path(directory),
+                    ["coding-tooling"],
+                    candidate,
+                    artifact_dir=artifact_dir,
+                )
+
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(mocked_run.call_count, 1)
+
+    def test_final_acceptance_does_not_run_full_tier_after_fast_failure(self):
+        failure = Path(".artifacts/coding-tooling/loop/final-repository-fast.log")
+        with patch.object(loop, "run_repository_gate", return_value=[failure]), patch.object(
+            loop, "run_coding_tooling_tier"
+        ) as full_tier:
+            with self.assertRaises(loop.LoopError):
+                loop.final_acceptance(
+                    Path("."),
+                    ["coding-tooling"],
+                    tier="full",
+                    artifact_dir=Path(".artifacts/coding-tooling/loop"),
+                )
+
+        full_tier.assert_not_called()
 
 
 if __name__ == "__main__":
