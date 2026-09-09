@@ -32,19 +32,30 @@ FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 def immutable_git_source(source: str) -> bool:
-    """Accept only an exact requested revision plus Cargo's resolved commit."""
+    """Accept only Git dependencies requested at an exact commit revision.
+
+    Cargo metadata reports a manifest `rev = "<sha>"` dependency as
+    `...?rev=<sha>` while lockfile-derived source identifiers may additionally
+    contain `#<resolved-sha>`. A full requested SHA is already immutable; when a
+    resolved fragment is present, require it to name that same commit.
+    """
 
     if not source.startswith("git+"):
         return True
     parsed = urlsplit(source[4:])
     query = parse_qs(parsed.query, keep_blank_values=True)
     revisions = query.get("rev", [])
-    return (
-        set(query) == {"rev"}
-        and len(revisions) == 1
-        and FULL_SHA_RE.fullmatch(revisions[0]) is not None
-        and FULL_SHA_RE.fullmatch(parsed.fragment) is not None
-    )
+    if set(query) != {"rev"} or len(revisions) != 1:
+        return False
+
+    revision = revisions[0]
+    if FULL_SHA_RE.fullmatch(revision) is None:
+        return False
+
+    if not parsed.fragment:
+        return True
+
+    return parsed.fragment == revision
 
 
 def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:

@@ -108,13 +108,25 @@ class RepositoryBoundaryTests(unittest.TestCase):
         errors = validate(metadata, self.ownership)
         self.assertTrue(any("non-immutable Git" in error for error in errors), errors)
 
-    def test_exact_git_revision_and_resolved_hash_is_allowed(self) -> None:
+    def test_exact_git_revision_metadata_form_is_allowed(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        metadata["packages"][0]["dependencies"].append(
+            {
+                "name": "remote",
+                "source": "git+https://example.invalid/repository?rev=" + "a" * 40,
+            }
+        )
+        self.assertFalse(
+            any("Git dependency" in error for error in validate(metadata, self.ownership))
+        )
+
+    def test_exact_git_revision_and_matching_resolved_hash_is_allowed(self) -> None:
         metadata = copy.deepcopy(self.metadata)
         metadata["packages"][0]["dependencies"].append(
             {
                 "name": "remote",
                 "source": "git+https://example.invalid/repository?rev="
-                + "b" * 40
+                + "a" * 40
                 + "#"
                 + "a" * 40,
             }
@@ -122,6 +134,20 @@ class RepositoryBoundaryTests(unittest.TestCase):
         self.assertFalse(
             any("Git dependency" in error for error in validate(metadata, self.ownership))
         )
+
+    def test_exact_git_revision_with_mismatched_resolved_hash_fails(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        metadata["packages"][0]["dependencies"].append(
+            {
+                "name": "remote",
+                "source": "git+https://example.invalid/repository?rev="
+                + "a" * 40
+                + "#"
+                + "b" * 40,
+            }
+        )
+        errors = validate(metadata, self.ownership)
+        self.assertTrue(any("non-immutable Git" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

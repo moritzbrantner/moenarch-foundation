@@ -84,6 +84,56 @@ def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
     }
 
 
+def exact_external_git_patches(
+    ownership: dict, root: Path = ROOT
+) -> dict[str, tuple[str, str]]:
+    """Return immutable external Git dependencies needed to verify packaged crates."""
+
+    owned = {
+        record["current_package_name"] for record in ownership.get("packages", [])
+    }
+    patches: dict[str, tuple[str, str]] = {}
+
+    def inspect_dependencies(dependencies: object, manifest_path: str) -> None:
+        if not isinstance(dependencies, dict):
+            return
+        for alias, specification in dependencies.items():
+            if not isinstance(specification, dict) or "git" not in specification:
+                continue
+            name = specification.get("package", alias)
+            if name in owned:
+                continue
+            git = specification.get("git")
+            rev = specification.get("rev")
+            if not isinstance(git, str) or not git:
+                raise ValueError(f"{manifest_path}: {name} has an invalid Git source")
+            if not isinstance(rev, str) or re.fullmatch(r"[0-9a-f]{40}", rev) is None:
+                raise ValueError(
+                    f"{manifest_path}: {name} Git dependency must use an exact 40-character rev"
+                )
+            source = (git, rev)
+            previous = patches.get(name)
+            if previous is not None and previous != source:
+                raise ValueError(
+                    f"{name} resolves to conflicting exact Git sources during packaging"
+                )
+            patches[name] = source
+
+    for record in ownership.get("packages", []):
+        manifest_path = record["manifest_path"]
+        manifest = tomllib.loads((root / manifest_path).read_text(encoding="utf-8"))
+        for table in ("dependencies", "dev-dependencies", "build-dependencies"):
+            inspect_dependencies(manifest.get(table), manifest_path)
+        targets = manifest.get("target", {})
+        if isinstance(targets, dict):
+            for target in targets.values():
+                if not isinstance(target, dict):
+                    continue
+                for table in ("dependencies", "dev-dependencies", "build-dependencies"):
+                    inspect_dependencies(target.get(table), manifest_path)
+    return patches
+
+
 def package_all(plan: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     """Package every crate without publishing or mutating tracked manifests."""
 
@@ -96,6 +146,12 @@ def package_all(plan: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     for name in sorted(records):
         crate = (root / records[name]["manifest_path"]).parent.resolve()
         patch_lines.append(f'"{name}" = {{ path = "{crate}" }}')
+    try:
+        external_git = exact_external_git_patches(ownership, root)
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError, ValueError) as error:
+        return [f"cannot construct deterministic packaging sources: {error}"]
+    for name, (git, rev) in sorted(external_git.items()):
+        patch_lines.append(f'"{name}" = {{ git = "{git}", rev = "{rev}" }}')
     failures: list[str] = []
     with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
         config.write("\n".join(patch_lines) + "\n")
