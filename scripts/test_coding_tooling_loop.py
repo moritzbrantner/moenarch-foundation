@@ -1,3 +1,4 @@
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -123,10 +124,50 @@ class CodingToolingLoopTests(unittest.TestCase):
                 max_repairs=3,
             )
 
+    def test_failed_agent_cannot_hide_head_movement(self):
+        failure_log = Path(".artifacts/coding-tooling/loop/agent-attempt-1.log")
+        candidate = {"id": "CT-RM-FAIL", "kind": "implementation"}
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            loop, "git_identity", side_effect=[("branch", "before"), ("branch", "after")]
+        ), patch.object(loop, "worktree_fingerprint", return_value="before"), patch.object(
+            loop, "control_hashes", return_value={}
+        ), patch.object(loop, "invoke_agent", return_value=failure_log):
+            with self.assertRaisesRegex(loop.LoopError, "moved Git branch/HEAD"):
+                loop.repair_candidate(
+                    Path(directory),
+                    ["coding-tooling"],
+                    ["codex", "exec", "{prompt}"],
+                    candidate,
+                    artifact_dir=Path(directory) / "artifacts",
+                    max_repairs=1,
+                )
+
+    def test_readiness_uses_the_resolved_tooling_command(self):
+        success = subprocess.CompletedProcess(["bash"], 0, "ready", "")
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            loop, "run", return_value=success
+        ) as mocked_run:
+            loop.run_readiness(
+                Path(directory),
+                ["bun", "/tmp/coding-tooling/src/cli.ts"],
+                artifact_dir=Path(directory) / "artifacts",
+            )
+
+        self.assertEqual(
+            mocked_run.call_args.args[0],
+            [
+                "bash",
+                "scripts/check-agent-readiness.sh",
+                "--tooling-command",
+                "bun",
+                "/tmp/coding-tooling/src/cli.ts",
+            ],
+        )
+
     def test_loop_bounds_reject_runaway_values(self):
         self.assertEqual(loop.bounded_count(3, name="repairs", maximum=5), 3)
         for value in (0, 6):
-            with self.assertRaises(Exception):
+            with self.assertRaises(argparse.ArgumentTypeError):
                 loop.bounded_count(value, name="repairs", maximum=5)
 
     def test_final_acceptance_does_not_run_full_tier_after_fast_failure(self):
