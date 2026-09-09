@@ -54,6 +54,14 @@ class CodingToolingLoopTests(unittest.TestCase):
             ["claude", "-p", "fix this"],
         )
 
+    def test_default_codex_command_is_non_interactive(self):
+        with patch.object(loop.shutil, "which", return_value="/usr/bin/codex"):
+            command = loop.resolve_agent_command(None)
+        self.assertEqual(
+            command,
+            ["/usr/bin/codex", "exec", "--json", "--approve-for-me", "{prompt}"],
+        )
+
     def test_protected_control_changes_require_candidate_evidence(self):
         before = {path: "old" for path in loop.PROTECTED_CONTROL_PATHS}
         after = dict(before)
@@ -115,6 +123,12 @@ class CodingToolingLoopTests(unittest.TestCase):
                 max_repairs=3,
             )
 
+    def test_loop_bounds_reject_runaway_values(self):
+        self.assertEqual(loop.bounded_count(3, name="repairs", maximum=5), 3)
+        for value in (0, 6):
+            with self.assertRaises(Exception):
+                loop.bounded_count(value, name="repairs", maximum=5)
+
     def test_final_acceptance_does_not_run_full_tier_after_fast_failure(self):
         failure = Path(".artifacts/coding-tooling/loop/final-repository-fast.log")
         with patch.object(loop, "run_repository_gate", return_value=[failure]), patch.object(
@@ -124,7 +138,6 @@ class CodingToolingLoopTests(unittest.TestCase):
                 loop.final_acceptance(
                     Path("."),
                     ["coding-tooling"],
-                    tier="full",
                     artifact_dir=Path(".artifacts/coding-tooling/loop"),
                 )
 
