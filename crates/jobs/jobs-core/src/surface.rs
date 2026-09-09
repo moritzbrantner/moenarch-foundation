@@ -27,91 +27,91 @@ pub fn package_surface() -> PackageSurface {
         operations: vec![
             curated(
                 surface_operation(
-                "describe",
-                "Describe package",
-                "Reusable long-running job state, cancellation, progress, logs, and artifact primitives.",
-                serde_json::json!({"includeOperations": true}),
-            ),
+                    "describe",
+                    "Describe package",
+                    "Reusable long-running job state, cancellation, progress, logs, and artifact primitives.",
+                    serde_json::json!({"includeOperations": true}),
+                ),
                 SurfaceOperationCuration::debug(900),
             ),
             curated(
                 surface_operation_with_execution_plan(
-                "jobs.spec",
-                "Validate job spec",
-                "Validates a JobSpec input and returns normalized id, name, kind, and metadata.",
-                serde_json::json!({"id": "job-1", "name": "Demo job", "kind": "demo", "metadata": {"owner": "surface"}}),
-                in_memory_plan("jobs.spec", None, Vec::new()),
-            ),
+                    "jobs.spec",
+                    "Validate job spec",
+                    "Validates a JobSpec input and returns normalized id, name, kind, and metadata.",
+                    serde_json::json!({"id": "job-1", "name": "Demo job", "kind": "demo", "metadata": {"owner": "surface"}}),
+                    in_memory_plan("jobs.spec", None, Vec::new()),
+                ),
                 SurfaceOperationCuration::debug(910),
             ),
             curated(
                 surface_operation_with_execution_plan(
-                "jobs.progress",
-                "Validate job progress",
-                "Validates JobProgress input and returns fraction and percent when a total is known.",
-                serde_json::json!({"completed": 2, "total": 4, "unit": "steps", "message": "halfway"}),
-                in_memory_plan("jobs.progress", Some("steps"), Vec::new()),
-            ),
+                    "jobs.progress",
+                    "Validate job progress",
+                    "Validates JobProgress input and returns fraction and percent when a total is known.",
+                    serde_json::json!({"completed": 2, "total": 4, "unit": "steps", "message": "halfway"}),
+                    in_memory_plan("jobs.progress", Some("steps"), Vec::new()),
+                ),
                 SurfaceOperationCuration::debug(920),
             ),
             curated(
                 surface_operation_with_execution_plan(
-                "jobs.lifecycle",
-                "Script job lifecycle",
-                "Creates an in-memory tracker, applies a short lifecycle script, and returns the final snapshot and events.",
-                serde_json::json!({"spec": {"id": "job-1", "name": "Demo job"}, "script": ["running", "progress", "log", "artifact", "succeeded"]}),
-                in_memory_plan(
                     "jobs.lifecycle",
-                    Some("steps"),
-                    vec![SurfaceArtifactExpectation {
-                        id: "artifact-1".to_string(),
-                        kind: "json".to_string(),
-                        media_type: "application/json".to_string(),
-                        required: false,
-                        description: Some("Inline lifecycle demo artifact".to_string()),
-                    }],
+                    "Script job lifecycle",
+                    "Creates an in-memory tracker, applies a short lifecycle script, and returns the final snapshot and events.",
+                    serde_json::json!({"spec": {"id": "job-1", "name": "Demo job"}, "script": ["running", "progress", "log", "artifact", "succeeded"]}),
+                    in_memory_plan(
+                        "jobs.lifecycle",
+                        Some("steps"),
+                        vec![SurfaceArtifactExpectation {
+                            id: "artifact-1".to_string(),
+                            kind: "json".to_string(),
+                            media_type: "application/json".to_string(),
+                            required: false,
+                            description: Some("Inline lifecycle demo artifact".to_string()),
+                        }],
+                    ),
                 ),
-            ),
                 SurfaceOperationCuration::workflow(10).primary(),
             ),
             curated(
                 surface_operation_with_execution_plan(
-                "jobs.manifest",
-                "Build job manifest",
-                "Builds a deterministic JobManifest from inline spec, progress, artifact, and metadata inputs.",
-                serde_json::json!({"operationId": "demo.operation", "spec": {"id": "job-1", "name": "Demo job", "kind": "demo"}, "status": "succeeded", "progress": {"completed": 1, "total": 1, "unit": "steps"}, "artifacts": [{"id": "report", "kind": "json", "mediaType": "application/json", "uri": "memory://job-1/report.json"}], "metadata": {"source": "surface"}}),
-                in_memory_plan(
                     "jobs.manifest",
-                    Some("steps"),
-                    vec![SurfaceArtifactExpectation {
-                        id: "report".to_string(),
-                        kind: "json".to_string(),
-                        media_type: "application/json".to_string(),
-                        required: false,
-                        description: Some("Manifest artifact projection".to_string()),
-                    }],
+                    "Build job manifest",
+                    "Builds a deterministic JobManifest from inline spec, progress, artifact, and metadata inputs.",
+                    serde_json::json!({"operationId": "demo.operation", "spec": {"id": "job-1", "name": "Demo job", "kind": "demo"}, "status": "succeeded", "progress": {"completed": 1, "total": 1, "unit": "steps"}, "artifacts": [{"id": "report", "kind": "json", "mediaType": "application/json", "uri": "memory://job-1/report.json"}], "metadata": {"source": "surface"}}),
+                    in_memory_plan(
+                        "jobs.manifest",
+                        Some("steps"),
+                        vec![SurfaceArtifactExpectation {
+                            id: "report".to_string(),
+                            kind: "json".to_string(),
+                            media_type: "application/json".to_string(),
+                            required: false,
+                            description: Some("Manifest artifact projection".to_string()),
+                        }],
+                    ),
                 ),
-            ),
                 SurfaceOperationCuration::workflow(20),
             ),
             curated(
                 surface_operation_with_execution_plan(
-                "jobs.events",
-                "Replay job events",
-                "Replays and filters a short inline lifecycle script into ordered job events.",
-                serde_json::json!({"spec": {"id": "job-1", "name": "Demo job"}, "script": ["running", "progress", "log", "artifact", "succeeded"], "filter": {"afterSequence": 2, "kind": "progress"}}),
-                in_memory_plan("jobs.events", Some("steps"), Vec::new()),
-            ),
+                    "jobs.events",
+                    "Replay job events",
+                    "Replays and filters a short inline lifecycle script into ordered job events.",
+                    serde_json::json!({"spec": {"id": "job-1", "name": "Demo job"}, "script": ["running", "progress", "log", "artifact", "succeeded"], "filter": {"afterSequence": 2, "kind": "progress"}}),
+                    in_memory_plan("jobs.events", Some("steps"), Vec::new()),
+                ),
                 SurfaceOperationCuration::debug(930),
             ),
             curated(
                 surface_operation_with_execution_plan(
-                "jobs.artifactValidate",
-                "Validate artifact metadata",
-                "Validates inline artifact media type, size, checksum, and metadata expectations without reading files.",
-                serde_json::json!({"artifact": {"id": "report", "kind": "json", "mediaType": "application/json", "uri": "memory://job-1/report.json", "sizeBytes": 2, "sha256": "abcd"}, "expectedMediaType": "application/json", "expectedSha256": "abcd", "requiredMetadata": {}}),
-                in_memory_plan("jobs.artifactValidate", None, Vec::new()),
-            ),
+                    "jobs.artifactValidate",
+                    "Validate artifact metadata",
+                    "Validates inline artifact media type, size, checksum, and metadata expectations without reading files.",
+                    serde_json::json!({"artifact": {"id": "report", "kind": "json", "mediaType": "application/json", "uri": "memory://job-1/report.json", "sizeBytes": 2, "sha256": "abcd"}, "expectedMediaType": "application/json", "expectedSha256": "abcd", "requiredMetadata": {}}),
+                    in_memory_plan("jobs.artifactValidate", None, Vec::new()),
+                ),
                 SurfaceOperationCuration::debug(940),
             ),
         ],
@@ -370,9 +370,7 @@ fn manifest_value(operation: &str, request: ManifestRequest) -> Result<serde_jso
             .map_err(|error| invalid_request(operation, error.to_string()))?;
     }
     let spec = build_spec(operation, request.spec)?;
-    let timestamp = chrono::DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z")
-        .expect("valid timestamp")
-        .with_timezone(&chrono::Utc);
+    let timestamp = chrono::DateTime::<chrono::Utc>::UNIX_EPOCH;
     let snapshot = JobSnapshot {
         metadata: spec.metadata.clone(),
         spec,
