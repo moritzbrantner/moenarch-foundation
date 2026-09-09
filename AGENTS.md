@@ -16,6 +16,14 @@ canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
 - During implementation, run the narrowest relevant package/test command first. Before ordinary PR handoff, run `bash scripts/check-fast.sh`.
 - `scripts/check-fast.sh` is an inner-loop gate, not merge or release evidence. The commands in `.agent-loop.toml` and the exhaustive workspace CI remain authoritative for final handoff and release-oriented work.
 
+## Coding-tooling remediation loop
+
+Use `python3 scripts/coding_tooling_loop.py` for bounded repository-local remediation driven by deterministic `coding-tooling` findings. The loop reads `coding-tooling remediation plan --json`, takes one highest-priority candidate at a time, applies declared deterministic scaffolds directly, and delegates implementation candidates to `codex exec` when Codex is available. Set `CODING_TOOLING_LOOP_AGENT_COMMAND` or pass `--agent-command` to use another non-interactive provider command; `{prompt}` may be used as the prompt placeholder.
+
+By default the loop considers only active new findings, processes at most five candidates, allows at most three repair attempts per candidate, runs each candidate's recorded verification, runs `scripts/check-fast.sh`, and finishes with the `coding-tooling` full tier. `--include-baseline` is an explicit debt-remediation opt-in; do not use it casually to reopen historical debt.
+
+The loop is a working-tree remediation layer only. It must not create or switch branches, commit, push, merge, publish, tag, baseline/suppress findings, or weaken validation. `.coding-tooling.json`, `.agent-loop.toml`, `scripts/check-fast.sh`, and the workspace CI workflow are protected from automatic edits unless the selected remediation candidate itself names the control file as related evidence. This loop does not replace issue-owned feature planning, final exact-head CI evidence, or release authorization.
+
 ## Boundaries
 
 - Keep foundation independent of every capability repository.
