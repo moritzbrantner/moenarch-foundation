@@ -104,6 +104,17 @@ class CodingToolingLoopTests(unittest.TestCase):
         self.assertEqual(len(failures), 1)
         self.assertEqual(mocked_run.call_count, 1)
 
+    def test_review_candidate_requires_explicit_review(self):
+        with self.assertRaisesRegex(loop.LoopError, "explicit review"):
+            loop.repair_candidate(
+                Path("."),
+                ["coding-tooling"],
+                ["codex", "exec", "{prompt}"],
+                {"id": "CT-RM-REVIEW", "kind": "review"},
+                artifact_dir=Path(".artifacts/coding-tooling/loop"),
+                max_repairs=3,
+            )
+
     def test_final_acceptance_does_not_run_full_tier_after_fast_failure(self):
         failure = Path(".artifacts/coding-tooling/loop/final-repository-fast.log")
         with patch.object(loop, "run_repository_gate", return_value=[failure]), patch.object(
