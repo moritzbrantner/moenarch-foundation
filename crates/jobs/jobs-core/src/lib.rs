@@ -324,7 +324,7 @@ pub struct OperationResult<T> {
     pub value: Option<T>,
     /// Diagnostics emitted during execution.
     pub diagnostics: Vec<Diagnostic>,
-    /// Artifacts produced during execution.
+    /// Artifacts produced by the operation.
     pub artifacts: Vec<ArtifactRef>,
 }
 
@@ -981,9 +981,7 @@ impl JobContext {
 
     /// Adds or replaces metadata.
     pub fn metadata(&self, key: impl Into<String>, value: impl Into<String>) -> Result<()> {
-        let mut metadata = BTreeMap::new();
-        insert_metadata(&mut metadata, key, value)?;
-        let (key, value) = metadata.into_iter().next().expect("metadata was inserted");
+        let (key, value) = validated_metadata_entry(key, value)?;
         self.tracker
             .emit(&self.id, JobEventKind::Metadata { key, value })
     }
@@ -1178,14 +1176,22 @@ fn insert_metadata(
     key: impl Into<String>,
     value: impl Into<String>,
 ) -> Result<()> {
+    let (key, value) = validated_metadata_entry(key, value)?;
+    metadata.insert(key, value);
+    Ok(())
+}
+
+fn validated_metadata_entry(
+    key: impl Into<String>,
+    value: impl Into<String>,
+) -> Result<(String, String)> {
     let key = key.into();
     if key.trim().is_empty() {
         return Err(JobError::InvalidArgument(
             "metadata key must not be empty".to_string(),
         ));
     }
-    metadata.insert(key, value.into());
-    Ok(())
+    Ok((key, value.into()))
 }
 
 impl JobError {
