@@ -377,6 +377,11 @@ def repair_candidate(
     max_repairs: int,
 ) -> None:
     candidate_id = str(candidate.get("id", "candidate"))
+    if candidate.get("kind") == "review":
+        raise LoopError(
+            f"{candidate_id} is an informational review candidate; explicit review is required"
+        )
+
     candidate_dir = artifact_dir / candidate_id
     candidate_dir.mkdir(parents=True, exist_ok=True)
     failure_logs: list[Path] = []
@@ -429,8 +434,10 @@ def repair_candidate(
         if failure_logs:
             continue
 
-        failure_logs = run_repository_gate(
+        failure_logs = run_coding_tooling_tier(
             root,
+            tooling,
+            "fast",
             artifact_dir=candidate_dir,
             label=f"attempt-{attempt}",
         )
