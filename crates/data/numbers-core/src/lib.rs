@@ -180,13 +180,17 @@ impl RunningStats {
 
     /// Adds one value with unit weight.
     pub fn push(&mut self, value: f64) {
-        self.push_weighted_internal(value, 1.0, false)
-            .expect("unit weight is valid");
+        self.push_valid_weight(value, 1.0);
     }
 
     /// Adds one value with a finite positive weight.
     pub fn push_weighted(&mut self, value: f64, weight: f64) -> Result<()> {
-        self.push_weighted_internal(value, weight, true)
+        if !weight.is_finite() || weight <= 0.0 {
+            return Err(invalid_argument("stat weight must be finite and positive"));
+        }
+
+        self.push_valid_weight(value, weight);
+        Ok(())
     }
 
     /// Adds values with unit weight.
@@ -242,24 +246,14 @@ impl RunningStats {
         }
     }
 
-    fn push_weighted_internal(
-        &mut self,
-        value: f64,
-        weight: f64,
-        validate_weight: bool,
-    ) -> Result<()> {
-        if validate_weight && (!weight.is_finite() || weight <= 0.0) {
-            return Err(invalid_argument("stat weight must be finite and positive"));
-        }
-
+    fn push_valid_weight(&mut self, value: f64, weight: f64) {
         self.count += 1;
         if !value.is_finite() {
             self.non_finite_count += 1;
-            return Ok(());
+            return;
         }
 
         self.record_finite_value(value, weight);
-        Ok(())
     }
 
     fn record_finite_value(&mut self, value: f64, weight: f64) {
@@ -329,7 +323,10 @@ pub fn histogram(values: &[f64], config: HistogramConfig) -> Result<Histogram> {
     config.validate()?;
 
     let finite = collect_finite_values(values, "histogram")?;
-    let range = config.range.unwrap_or(derive_range(&finite));
+    let range = match config.range {
+        Some(range) => range,
+        None => derive_range(&finite)?,
+    };
     let mut bins = build_histogram_bins(range, config.bins);
 
     for value in finite {
@@ -384,17 +381,25 @@ fn collect_finite_values(values: &[f64], operation: &str) -> Result<Vec<f64>> {
     Ok(finite)
 }
 
-fn derive_range(values: &[f64]) -> NumberRange {
-    NumberRange {
-        min: *values
-            .iter()
-            .min_by(|left, right| left.total_cmp(right))
-            .expect("finite values exist"),
-        max: *values
-            .iter()
-            .max_by(|left, right| left.total_cmp(right))
-            .expect("finite values exist"),
+fn derive_range(values: &[f64]) -> Result<NumberRange> {
+    let Some((&first, rest)) = values.split_first() else {
+        return Err(invalid_argument(
+            "histogram requires at least one finite numeric value",
+        ));
+    };
+
+    let mut min = first;
+    let mut max = first;
+    for &value in rest {
+        if value.total_cmp(&min).is_lt() {
+            min = value;
+        }
+        if value.total_cmp(&max).is_gt() {
+            max = value;
+        }
     }
+
+    Ok(NumberRange { min, max })
 }
 
 fn build_histogram_bins(range: NumberRange, bins: usize) -> Vec<HistogramBin> {
