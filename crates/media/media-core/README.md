@@ -40,6 +40,13 @@ A valid `Timebase` has a positive numerator and denominator. The unchecked
 new parsing, serialization, FFI, and other trust boundaries should prefer
 `Timebase::try_new`, `Timestamp::try_new`, and explicit `validate` calls.
 
+The canonical serialized rational-time shapes are `{ "num": 1, "den": 1000 }`
+for a timebase and `{ "pts": 125, "timebase": { "num": 1, "den": 1000 } }`
+for a timestamp. Serialization is lossless and does not add derived floating-
+point seconds. Deserialization validates the same positive-timebase invariant as
+the checked constructors. Existing domain-specific wire formats may retain
+their established field names and units through explicit boundary adapters.
+
 Chronological operations are exact. `Timestamp::chronological_cmp` compares
 instants using integer rational arithmetic across different timebases rather
 than converting through `f64`. `Timestamp::rescale_exact` succeeds only when
