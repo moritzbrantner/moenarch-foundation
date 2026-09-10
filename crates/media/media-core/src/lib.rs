@@ -131,12 +131,28 @@ impl From<std::io::Error> for DetectError {
 pub type Result<T> = std::result::Result<T, DetectError>;
 
 /// A rational number of seconds represented by one timestamp tick.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub struct Timebase {
     /// The numerator of seconds per tick.
     pub num: i32,
     /// The denominator of seconds per tick.
     pub den: i32,
+}
+
+#[derive(serde::Deserialize)]
+struct TimebaseWire {
+    num: i32,
+    den: i32,
+}
+
+impl<'de> serde::Deserialize<'de> for Timebase {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = <TimebaseWire as serde::Deserialize>::deserialize(deserializer)?;
+        Self::try_new(wire.num, wire.den).map_err(serde::de::Error::custom)
+    }
 }
 
 impl Timebase {
@@ -155,12 +171,28 @@ impl Timebase {
 }
 
 /// A presentation timestamp paired with its timebase.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub struct Timestamp {
     /// Presentation timestamp ticks.
     pub pts: i64,
     /// The timebase that gives each tick meaning.
     pub timebase: Timebase,
+}
+
+#[derive(serde::Deserialize)]
+struct TimestampWire {
+    pts: i64,
+    timebase: Timebase,
+}
+
+impl<'de> serde::Deserialize<'de> for Timestamp {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = <TimestampWire as serde::Deserialize>::deserialize(deserializer)?;
+        Self::try_new(wire.pts, wire.timebase).map_err(serde::de::Error::custom)
+    }
 }
 
 impl Timestamp {
@@ -223,6 +255,36 @@ mod tests {
     fn timestamp_uses_its_rational_timebase() {
         let timestamp = Timestamp::new(125, Timebase::new(1, 1_000));
         assert_eq!(timestamp.seconds(), 0.125);
+    }
+
+    #[test]
+    fn timestamp_wire_round_trip_is_lossless() {
+        let timestamp = Timestamp::try_new(125, Timebase::try_new(1, 1_000).unwrap()).unwrap();
+        let encoded = serde_json::to_value(timestamp).unwrap();
+
+        assert_eq!(
+            encoded,
+            serde_json::json!({
+                "pts": 125,
+                "timebase": { "num": 1, "den": 1_000 }
+            })
+        );
+        assert_eq!(serde_json::from_value::<Timestamp>(encoded).unwrap(), timestamp);
+    }
+
+    #[test]
+    fn timestamp_wire_rejects_invalid_timebases() {
+        let invalid = serde_json::json!({
+            "pts": 125,
+            "timebase": { "num": 1, "den": 0 }
+        });
+
+        assert!(serde_json::from_value::<Timestamp>(invalid).is_err());
+        assert!(serde_json::from_value::<Timebase>(serde_json::json!({
+            "num": -1,
+            "den": -1_000
+        }))
+        .is_err());
     }
 
     #[test]
