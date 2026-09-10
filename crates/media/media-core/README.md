@@ -5,11 +5,16 @@ consumers.
 
 The crate owns only:
 
-- `Timebase`, the rational duration of one timestamp tick;
-- `Timestamp`, presentation ticks paired with their timebase;
+- `Timebase`, the rational duration of one timestamp tick, with validated
+  positive semantics for new boundary code;
+- `Timestamp`, presentation ticks paired with their timebase, plus exact
+  chronological comparison, rescaling, and addition;
+- `MediaRange`, a validated exact half-open `[start, end)` range whose endpoints
+  may use different rational timebases;
 - `AnalysisEvent`, a domain-neutral labeled result with optional time and score;
 - `MediaSourceRef`, source identity/URI metadata without source implementation;
-- `MediaTimeRange`, a validated finite interval in media seconds;
+- `MediaTimeRange`, a validated finite interval in media seconds for DTOs whose
+  established public representation is seconds;
 - `TimedTextContract` and its segment/word/character DTOs for text located on a
   media timeline without NLP behavior;
 - deterministic SRT, WebVTT, plain-text, TSV, and Audacity-label parsing or
@@ -21,6 +26,33 @@ The crate owns only:
 
 `moenarch-video-analysis-core` re-exports the original neutral types to preserve
 its existing public API and type identity while consumers migrate.
+
+## Time semantics
+
+`media-core` is the authority for cross-domain media-time semantics. Domain
+packages may own scene spans, clips, beats, transcript segments, keyframes, or
+other time-bearing structures, but they should not independently define the
+rules for rational timestamp validity, comparison, exact rescaling, or exact
+addition.
+
+A valid `Timebase` has a positive numerator and denominator. The unchecked
+`Timebase::new` and `Timestamp::new` constructors remain for compatibility;
+new parsing, serialization, FFI, and other trust boundaries should prefer
+`Timebase::try_new`, `Timestamp::try_new`, and explicit `validate` calls.
+
+Chronological operations are exact. `Timestamp::chronological_cmp` compares
+instants using integer rational arithmetic across different timebases rather
+than converting through `f64`. `Timestamp::rescale_exact` succeeds only when
+the target timebase can represent the same instant with an integral PTS value.
+`Timestamp::checked_add_exact` preserves the left timebase when possible and
+otherwise returns an exactly reduced common timebase; it fails rather than
+rounding, wrapping, or silently losing precision.
+
+`MediaRange` uses half-open semantics: the start is included and the end is
+excluded. Its ordering, containment, and overlap operations use exact timestamp
+semantics. `MediaTimeRange` remains the narrower finite-seconds interchange DTO
+used by timed text and other established seconds-based wire contracts; it is
+not the authority for exact rational media arithmetic.
 
 ## Ownership boundary
 
@@ -62,7 +94,10 @@ remain the owned interchange data.
 The original issue #108 extraction did not invent a cross-family range or
 transcript contract. `MediaSourceRef`, `MediaTimeRange`, and the timed-text DTOs
 are destination-owned post-extraction architecture evolution documented by ADR
-0013. They do not change the clean-copy provenance of the original extraction.
+0013. `MediaRange` and the exact timestamp operations are likewise explicit
+post-extraction interoperability evolution: they centralize semantics without
+moving domain models into foundation. These changes do not alter the clean-copy
+provenance of the original extraction.
 
 ## Candidate consumer audit
 
