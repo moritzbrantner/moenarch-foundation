@@ -1,7 +1,9 @@
 #![doc = include_str!("../README.md")]
 
+mod time;
 pub mod timed_text;
 pub mod timed_text_format;
+pub use time::MediaRange;
 pub use timed_text::{
     MediaSourceRef, MediaTimeRange, TimedTextCharContract, TimedTextContract,
     TimedTextSegmentContract, TimedTextWordContract, TranscriptCharContract,
@@ -139,6 +141,9 @@ pub struct Timebase {
 
 impl Timebase {
     /// Creates a timebase from a seconds-per-tick numerator and denominator.
+    ///
+    /// This compatibility constructor does not validate its arguments. New
+    /// boundary code should prefer [`Self::try_new`].
     pub const fn new(num: i32, den: i32) -> Self {
         Self { num, den }
     }
@@ -160,6 +165,9 @@ pub struct Timestamp {
 
 impl Timestamp {
     /// Creates a timestamp.
+    ///
+    /// This compatibility constructor does not validate its timebase. New
+    /// boundary code should prefer [`Self::try_new`].
     pub const fn new(pts: i64, timebase: Timebase) -> Self {
         Self { pts, timebase }
     }
