@@ -269,7 +269,10 @@ mod tests {
                 "timebase": { "num": 1, "den": 1_000 }
             })
         );
-        assert_eq!(serde_json::from_value::<Timestamp>(encoded).unwrap(), timestamp);
+        assert_eq!(
+            serde_json::from_value::<Timestamp>(encoded).unwrap(),
+            timestamp
+        );
     }
 
     #[test]
