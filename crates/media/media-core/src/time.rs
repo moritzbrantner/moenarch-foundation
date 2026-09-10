@@ -55,12 +55,12 @@ impl Timestamp {
         other.validate()?;
 
         let left = i128::from(self.pts)
-            .checked_mul(i128::from(self.timebase.num))?
-            .checked_mul(i128::from(other.timebase.den))
+            .checked_mul(i128::from(self.timebase.num))
+            .and_then(|value| value.checked_mul(i128::from(other.timebase.den)))
             .ok_or_else(|| time_overflow("chronological comparison overflowed"))?;
         let right = i128::from(other.pts)
-            .checked_mul(i128::from(other.timebase.num))?
-            .checked_mul(i128::from(self.timebase.den))
+            .checked_mul(i128::from(other.timebase.num))
+            .and_then(|value| value.checked_mul(i128::from(self.timebase.den)))
             .ok_or_else(|| time_overflow("chronological comparison overflowed"))?;
 
         Ok(left.cmp(&right))
