@@ -199,8 +199,10 @@ impl MediaRange {
     pub fn contains(self, timestamp: Timestamp) -> Result<bool> {
         self.validate()?;
         timestamp.validate()?;
-        Ok(self.start.chronological_cmp(timestamp)? != Ordering::Greater
-            && timestamp.chronological_cmp(self.end)? == Ordering::Less)
+        Ok(
+            self.start.chronological_cmp(timestamp)? != Ordering::Greater
+                && timestamp.chronological_cmp(self.end)? == Ordering::Less,
+        )
     }
 
     /// Returns whether two half-open ranges overlap.
