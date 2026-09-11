@@ -3,6 +3,12 @@
 pub mod surface;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use graph_kernels::PageRankError;
+use graph_kernels::{
+    page_rank as kernel_page_rank, strongly_connected_components as kernel_strong_components,
+    topological_sort as kernel_topological_sort,
+};
+pub use graph_kernels::{PageRank, PageRankConfig};
 use media_core::{DetectError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -281,33 +287,70 @@ pub fn weakly_connected_components(graph: &Graph) -> Vec<GraphComponent> {
     component_search(graph, &nodes, &index_by_node, &adjacency)
 }
 
-/// Returns strongly connected components.
+/// Returns strongly connected components using the shared graph kernel.
 pub fn strongly_connected_components(graph: &Graph) -> Vec<GraphComponent> {
     let (nodes, index_by_node) = node_index(graph);
     let adjacency = build_adjacency(graph, &index_by_node, TraversalMode::Native);
-    let reverse = build_reverse_adjacency(graph, &index_by_node);
-    let mut visited = vec![false; nodes.len()];
-    let mut order = Vec::with_capacity(nodes.len());
-
-    for index in 0..nodes.len() {
-        if !visited[index] {
-            finish_order(index, &adjacency, &mut visited, &mut order);
-        }
-    }
-
-    let mut assigned = vec![false; nodes.len()];
-    let mut components = Vec::new();
-    while let Some(index) = order.pop() {
-        if assigned[index] {
-            continue;
-        }
-        let mut component = Vec::new();
-        collect_component(index, &reverse, &mut assigned, &mut component);
-        component.sort_unstable();
-        components.push(build_component(graph, &nodes, &index_by_node, component));
-    }
+    let mut components = kernel_strong_components(0..nodes.len(), |index| {
+        adjacency[*index]
+            .iter()
+            .map(|(neighbor, _)| *neighbor)
+            .collect::<Vec<_>>()
+    })
+    .into_iter()
+    .map(|component| build_component(graph, &nodes, &index_by_node, component))
+    .collect::<Vec<_>>();
     components.sort_by(|left, right| left.nodes.cmp(&right.nodes));
     components
+}
+
+/// Returns a deterministic topological ordering for a directed acyclic graph.
+pub fn topological_order(graph: &Graph) -> Result<Vec<String>> {
+    if graph.kind != GraphKind::Directed {
+        return Err(invalid_argument(
+            "topological ordering requires a directed graph",
+        ));
+    }
+    let (nodes, index_by_node) = node_index(graph);
+    let adjacency = build_adjacency(graph, &index_by_node, TraversalMode::Native);
+    let order = kernel_topological_sort(0..nodes.len(), |index| {
+        adjacency[*index]
+            .iter()
+            .map(|(neighbor, _)| *neighbor)
+            .collect::<Vec<_>>()
+    })
+    .map_err(|_| invalid_argument("topological ordering requires an acyclic graph"))?;
+    Ok(order
+        .into_iter()
+        .map(|index| nodes[index].clone())
+        .collect())
+}
+
+/// Computes PageRank using the shared deterministic graph kernel.
+pub fn page_rank(graph: &Graph, config: PageRankConfig) -> Result<PageRank<String>> {
+    let (nodes, index_by_node) = node_index(graph);
+    let adjacency = build_adjacency(graph, &index_by_node, TraversalMode::Native);
+    let report = kernel_page_rank(
+        0..nodes.len(),
+        |index| {
+            adjacency[*index]
+                .iter()
+                .map(|(neighbor, _)| *neighbor)
+                .collect::<Vec<_>>()
+        },
+        config,
+    )
+    .map_err(page_rank_error)?;
+    Ok(PageRank {
+        scores: report
+            .scores
+            .into_iter()
+            .map(|(index, score)| (nodes[index].clone(), score))
+            .collect(),
+        iterations: report.iterations,
+        residual: report.residual,
+        converged: report.converged,
+    })
 }
 
 /// Returns whether is connected.
@@ -603,30 +646,6 @@ fn build_adjacency(
     adjacency
 }
 
-fn build_reverse_adjacency(
-    graph: &Graph,
-    index_by_node: &BTreeMap<String, usize>,
-) -> Vec<Vec<(usize, f64)>> {
-    if graph.kind == GraphKind::Undirected {
-        return build_adjacency(graph, index_by_node, TraversalMode::Native);
-    }
-
-    let mut adjacency = vec![Vec::new(); index_by_node.len()];
-    for edge in &graph.edges {
-        let source = index_by_node[edge.source.as_str()];
-        let target = index_by_node[edge.target.as_str()];
-        adjacency[target].push((source, edge.weight));
-    }
-    for neighbors in &mut adjacency {
-        neighbors.sort_by(|left, right| {
-            left.0
-                .cmp(&right.0)
-                .then_with(|| left.1.partial_cmp(&right.1).unwrap())
-        });
-    }
-    adjacency
-}
-
 fn component_search(
     graph: &Graph,
     nodes: &[String],
@@ -684,36 +703,6 @@ fn build_component(
         nodes: component_nodes,
         edge_count,
         total_weight,
-    }
-}
-
-fn finish_order(
-    node: usize,
-    adjacency: &[Vec<(usize, f64)>],
-    visited: &mut [bool],
-    order: &mut Vec<usize>,
-) {
-    visited[node] = true;
-    for &(neighbor, _) in &adjacency[node] {
-        if !visited[neighbor] {
-            finish_order(neighbor, adjacency, visited, order);
-        }
-    }
-    order.push(node);
-}
-
-fn collect_component(
-    node: usize,
-    adjacency: &[Vec<(usize, f64)>],
-    visited: &mut [bool],
-    component: &mut Vec<usize>,
-) {
-    visited[node] = true;
-    component.push(node);
-    for &(neighbor, _) in &adjacency[node] {
-        if !visited[neighbor] {
-            collect_component(neighbor, adjacency, visited, component);
-        }
     }
 }
 
@@ -875,6 +864,15 @@ impl DisjointSet {
     }
 }
 
+fn page_rank_error(error: PageRankError) -> DetectError {
+    let message = match error {
+        PageRankError::InvalidDamping => "page-rank damping must be finite and between 0 and 1",
+        PageRankError::InvalidTolerance => "page-rank tolerance must be finite and non-negative",
+        PageRankError::ZeroIterations => "page-rank max iterations must be greater than zero",
+    };
+    invalid_argument(message)
+}
+
 fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())
 }
@@ -921,6 +919,58 @@ mod tests {
         assert!(is_weakly_connected(&graph));
         assert!(!is_strongly_connected(&graph));
         assert_eq!(strongly_connected_components(&graph).len(), 3);
+    }
+
+    #[test]
+    fn strong_component_members_preserve_lexicographic_order() {
+        let graph = Graph::from_edges(
+            GraphKind::Directed,
+            [
+                GraphEdge::new("b", "a").unwrap(),
+                GraphEdge::new("a", "b").unwrap(),
+            ],
+        )
+        .unwrap();
+
+        let components = strongly_connected_components(&graph);
+        assert_eq!(components.len(), 1);
+        assert_eq!(components[0].nodes, vec!["a".to_string(), "b".to_string()]);
+    }
+
+    #[test]
+    fn topological_order_is_deterministic_and_detects_cycles() {
+        let dag = Graph::from_edges(
+            GraphKind::Directed,
+            [
+                GraphEdge::new("a", "b").unwrap(),
+                GraphEdge::new("a", "c").unwrap(),
+                GraphEdge::new("b", "d").unwrap(),
+                GraphEdge::new("c", "d").unwrap(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(topological_order(&dag).unwrap(), vec!["a", "b", "c", "d"]);
+
+        let cycle = Graph::from_edges(
+            GraphKind::Directed,
+            [
+                GraphEdge::new("a", "b").unwrap(),
+                GraphEdge::new("b", "a").unwrap(),
+            ],
+        )
+        .unwrap();
+        assert!(topological_order(&cycle).is_err());
+    }
+
+    #[test]
+    fn page_rank_reports_stable_scores_and_convergence() {
+        let graph =
+            Graph::from_edges(GraphKind::Directed, [GraphEdge::new("a", "b").unwrap()]).unwrap();
+        let report = page_rank(&graph, PageRankConfig::default()).unwrap();
+        let total: f64 = report.scores.iter().map(|(_, score)| *score).sum();
+        assert!((total - 1.0).abs() < 1.0e-12);
+        assert!(report.converged);
+        assert!(report.scores[1].1 > report.scores[0].1);
     }
 
     #[test]

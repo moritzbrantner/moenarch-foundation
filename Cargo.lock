@@ -365,7 +365,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 [[package]]
 name = "collection-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=d7b6cab643573d3d47c899194cfda4718573ae5e#d7b6cab643573d3d47c899194cfda4718573ae5e"
+source = "git+https://github.com/moritzbrantner/rust-kernels?rev=9f552526eb52dade2a95d6c4d8b20ca9c84c66e9#9f552526eb52dade2a95d6c4d8b20ca9c84c66e9"
 
 [[package]]
 name = "colorchoice"
@@ -987,6 +987,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360bd2cd76e0cd9032d42cf2922155cecea2685b0cfa4630c3246df030bcfd6"
 
 [[package]]
+name = "graph-kernels"
+version = "0.1.0"
+source = "git+https://github.com/moritzbrantner/rust-kernels?rev=9f552526eb52dade2a95d6c4d8b20ca9c84c66e9#9f552526eb52dade2a95d6c4d8b20ca9c84c66e9"
+dependencies = [
+ "collection-kernels",
+]
+
+[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1492,6 +1500,7 @@ dependencies = [
 name = "moenarch-graph-analysis-core"
 version = "0.1.0"
 dependencies = [
+ "graph-kernels",
  "moenarch-media-core",
  "moenarch-runtime-core",
  "serde",
