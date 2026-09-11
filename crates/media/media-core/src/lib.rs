@@ -400,7 +400,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(encoded, legacy);
-        assert_eq!(bincode::deserialize::<Timestamp>(&encoded).unwrap(), timestamp);
+        assert_eq!(
+            bincode::deserialize::<Timestamp>(&encoded).unwrap(),
+            timestamp
+        );
     }
 
     #[test]
