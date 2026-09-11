@@ -8,13 +8,15 @@ use runtime_core::{
 use serde::Deserialize;
 
 use crate::{
-    apply_fir_mono, design_parametric_biquad, normalize_peak, resample_indices, signal_levels,
-    FirKernel1d, FrameStride, InterpolationMode, ParametricBiquadDesign, ResampleSpec, SampleRate,
+    apply_fir_mono, design_parametric_biquad, dynamic_time_warping, normalize_peak,
+    resample_indices, signal_levels, DtwConfig, FirKernel1d, FrameStride, InterpolationMode,
+    ParametricBiquadDesign, ResampleSpec, SampleRate,
 };
 
 const DEFAULT_PREVIEW: usize = 16;
 const MAX_PREVIEW: usize = 256;
 const MAX_VALUES: usize = 100_000;
+const MAX_DTW_CELLS: usize = 5_000_000;
 
 /// Returns the package surface exposed by every transport wrapper.
 pub fn package_surface() -> PackageSurface {
@@ -34,6 +36,12 @@ pub fn package_surface() -> PackageSurface {
                 "Signal frames",
                 "Computes frame count and preview mean/RMS summaries for a finite mono sample buffer.",
                 serde_json::json!({"samples": [0.0, 1.0, 0.0, -1.0], "frameSize": 2, "hopSize": 1}),
+            ),
+            operation(
+                "signal.align",
+                "Align signals",
+                "Computes bounded-memory dynamic-time-warping distance with an optional Sakoe-Chiba window.",
+                serde_json::json!({"left": [0.0, 1.0, 2.0], "right": [0.0, 2.0], "window": 1}),
             ),
             operation(
                 "signal.resamplePlan",
@@ -88,6 +96,10 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
             operation.as_str(),
             parse_surface_input(Some(operation.as_str()), request.input)?,
         )?,
+        "signal.align" => align_value(
+            operation.as_str(),
+            parse_surface_input(Some(operation.as_str()), request.input)?,
+        )?,
         "signal.resamplePlan" => resample_plan_value(
             operation.as_str(),
             parse_surface_input(Some(operation.as_str()), request.input)?,
@@ -126,6 +138,15 @@ struct FramesRequest {
     hop_size: usize,
     #[serde(default = "default_preview")]
     preview_frames: usize,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AlignRequest {
+    left: Vec<f32>,
+    right: Vec<f32>,
+    #[serde(default)]
+    window: Option<usize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -200,6 +221,50 @@ fn frames_value(operation: &str, request: FramesRequest) -> Result<serde_json::V
         "frameCount": frame_count,
         "frames": frames
     }))
+}
+
+fn align_value(operation: &str, request: AlignRequest) -> Result<serde_json::Value, String> {
+    validate_values(operation, "left", &request.left)?;
+    validate_values(operation, "right", &request.right)?;
+    let estimated_cells =
+        estimate_dtw_cells(request.left.len(), request.right.len(), request.window);
+    if estimated_cells > MAX_DTW_CELLS {
+        return Err(invalid_request(
+            operation,
+            format!(
+                "DTW request exceeds the {MAX_DTW_CELLS}-cell surface budget; use a narrower window or shorter inputs"
+            ),
+        ));
+    }
+    let report = dynamic_time_warping(
+        &request.left,
+        &request.right,
+        DtwConfig {
+            window: request.window,
+        },
+    )
+    .map_err(|error| invalid_request(operation, error.to_string()))?;
+    Ok(serde_json::json!({
+        "leftLength": request.left.len(),
+        "rightLength": request.right.len(),
+        "distance": report.distance,
+        "normalizedDistance": report.normalized_distance,
+        "pathLength": report.path_length,
+        "cellsEvaluated": report.cells_evaluated,
+        "workingSetCells": report.working_set_cells,
+        "effectiveWindow": report.effective_window
+    }))
+}
+
+fn estimate_dtw_cells(left_len: usize, right_len: usize, window: Option<usize>) -> usize {
+    let matrix_cells = left_len.saturating_mul(right_len);
+    match window {
+        Some(window) => left_len
+            .max(right_len)
+            .saturating_mul(window.saturating_mul(2).saturating_add(1))
+            .min(matrix_cells),
+        None => matrix_cells,
+    }
 }
 
 fn resample_plan_value(
@@ -404,6 +469,30 @@ fn default_resample_mode() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn align_returns_dtw_evidence() {
+        let response = run_surface_operation(SurfaceRequest {
+            operation: OperationId::new("signal.align"),
+            input: serde_json::json!({
+                "left": [0.0, 1.0, 2.0],
+                "right": [0.0, 2.0],
+                "window": 1
+            }),
+        })
+        .expect("align operation");
+
+        assert_eq!(response.value["distance"], 1.0);
+        assert!(response.value["cellsEvaluated"].as_u64().unwrap() > 0);
+        assert!(response.value["workingSetCells"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    fn dtw_budget_never_exceeds_the_full_matrix() {
+        assert_eq!(estimate_dtw_cells(100_000, 1, Some(99_999)), 100_000);
+        assert_eq!(estimate_dtw_cells(4, 3, Some(2)), 12);
+        assert_eq!(estimate_dtw_cells(4, 3, None), 12);
+    }
 
     #[test]
     fn frames_return_preview_stats() {

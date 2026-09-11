@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
 
+mod dtw;
 pub mod surface;
+pub use dtw::{dynamic_time_warping, DtwConfig, DtwReport};
 use media_core::{DetectError, Result};
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {
