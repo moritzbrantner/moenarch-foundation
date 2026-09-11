@@ -355,7 +355,9 @@ mod tests {
             "timebase": { "num": 1, "den": 1_000 }
         });
         assert_eq!(
-            serde_json::from_value::<Timestamp>(unsafe_string).unwrap().pts,
+            serde_json::from_value::<Timestamp>(unsafe_string)
+                .unwrap()
+                .pts,
             9_007_199_254_740_992
         );
     }
