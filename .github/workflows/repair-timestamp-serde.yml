@@ -1,0 +1,129 @@
+name: Repair timestamp Serde compatibility
+
+on:
+  push:
+    branches:
+      - fix/lossless-timestamp-json
+    paths:
+      - .github/workflows/repair-timestamp-serde.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/lossless-timestamp-json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Apply binary compatibility repair
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one match, found {count}")
+              return text.replace(old, new, 1)
+
+          manifest = Path("crates/media/media-core/Cargo.toml")
+          text = manifest.read_text()
+          text = replace_once(
+              text,
+              "[dev-dependencies]\nserde_json.workspace = true",
+              "[dev-dependencies]\nbincode = \"1.3.3\"\nserde_json.workspace = true",
+              "media-core dev dependency",
+          )
+          manifest.write_text(text)
+
+          lib = Path("crates/media/media-core/src/lib.rs")
+          text = lib.read_text()
+          marker = "#[derive(serde::Deserialize)]\n#[serde(untagged)]\nenum TimestampPtsWire {"
+          binary_wire = (
+              "#[derive(serde::Serialize, serde::Deserialize)]\n"
+              "struct TimestampBinaryWire {\n"
+              "    pts: i64,\n"
+              "    timebase: Timebase,\n"
+              "}\n\n"
+          )
+          text = replace_once(text, marker, binary_wire + marker, "binary timestamp wire")
+
+          old_serialize = '''        use serde::ser::SerializeStruct;
+
+        let mut wire = serializer.serialize_struct("Timestamp", 2)?;
+        wire.serialize_field("pts", &self.pts.to_string())?;
+        wire.serialize_field("timebase", &self.timebase)?;
+        wire.end()'''
+          new_serialize = '''        if !serializer.is_human_readable() {
+            return serde::Serialize::serialize(
+                &TimestampBinaryWire {
+                    pts: self.pts,
+                    timebase: self.timebase,
+                },
+                serializer,
+            );
+        }
+
+        use serde::ser::SerializeStruct;
+
+        let mut wire = serializer.serialize_struct("Timestamp", 2)?;
+        wire.serialize_field("pts", &self.pts.to_string())?;
+        wire.serialize_field("timebase", &self.timebase)?;
+        wire.end()'''
+          text = replace_once(text, old_serialize, new_serialize, "timestamp serializer")
+
+          old_deserialize = '''        let wire = <TimestampWire as serde::Deserialize>::deserialize(deserializer)?;
+        let pts = wire.pts.into_i64::<D::Error>()?;
+        Self::try_new(pts, wire.timebase).map_err(serde::de::Error::custom)'''
+          new_deserialize = '''        if !deserializer.is_human_readable() {
+            let wire = <TimestampBinaryWire as serde::Deserialize>::deserialize(deserializer)?;
+            return Self::try_new(wire.pts, wire.timebase).map_err(serde::de::Error::custom);
+        }
+
+        let wire = <TimestampWire as serde::Deserialize>::deserialize(deserializer)?;
+        let pts = wire.pts.into_i64::<D::Error>()?;
+        Self::try_new(pts, wire.timebase).map_err(serde::de::Error::custom)'''
+          text = replace_once(text, old_deserialize, new_deserialize, "timestamp deserializer")
+
+          test_marker = '''    #[test]
+    fn timestamp_wire_rejects_invalid_timebases() {'''
+          binary_test = '''    #[test]
+    fn timestamp_binary_wire_preserves_legacy_i64_shape() {
+        #[derive(serde::Serialize)]
+        struct LegacyTimestamp {
+            pts: i64,
+            timebase: Timebase,
+        }
+
+        let timestamp = Timestamp::try_new(i64::MIN, Timebase::try_new(1, 1_000).unwrap()).unwrap();
+        let encoded = bincode::serialize(&timestamp).unwrap();
+        let legacy = bincode::serialize(&LegacyTimestamp {
+            pts: timestamp.pts,
+            timebase: timestamp.timebase,
+        })
+        .unwrap();
+
+        assert_eq!(encoded, legacy);
+        assert_eq!(bincode::deserialize::<Timestamp>(&encoded).unwrap(), timestamp);
+    }
+
+'''
+          text = replace_once(text, test_marker, binary_test + test_marker, "binary round-trip test")
+          lib.write_text(text)
+          PY
+      - name: Refresh lock and validate
+        run: |
+          cargo metadata --format-version 1 >/dev/null
+          cargo fmt --all
+          cargo test -p moenarch-media-core --all-features
+          cargo clippy -p moenarch-media-core --all-targets --all-features -- -D warnings
+      - name: Commit repaired contract
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock crates/media/media-core/Cargo.toml crates/media/media-core/src/lib.rs
+          git commit -m "fix(media): preserve binary timestamp Serde wire"
+          git push origin HEAD:fix/lossless-timestamp-json
