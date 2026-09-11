@@ -1,0 +1,32 @@
+name: Format timestamp fix
+
+on:
+  push:
+    branches:
+      - fix/lossless-timestamp-json
+    paths:
+      - .github/workflows/format-timestamp-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/lossless-timestamp-json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Format
+        run: cargo fmt --all
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/media/media-core/src/lib.rs
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "style(media): apply rustfmt"
+          git push origin HEAD:fix/lossless-timestamp-json
