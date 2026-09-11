@@ -40,12 +40,19 @@ A valid `Timebase` has a positive numerator and denominator. The unchecked
 new parsing, serialization, FFI, and other trust boundaries should prefer
 `Timebase::try_new`, `Timestamp::try_new`, and explicit `validate` calls.
 
-The canonical serialized rational-time shapes are `{ "num": 1, "den": 1000 }`
-for a timebase and `{ "pts": 125, "timebase": { "num": 1, "den": 1000 } }`
-for a timestamp. Serialization is lossless and does not add derived floating-
-point seconds. Deserialization validates the same positive-timebase invariant as
-the checked constructors. Existing domain-specific wire formats may retain
-their established field names and units through explicit boundary adapters.
+The canonical human-readable rational-time shapes are `{ "num": 1, "den": 1000 }`
+for a timebase and `{ "pts": "125", "timebase": { "num": 1, "den": 1000 } }`
+for a timestamp. `pts` is a base-10 integer string so every `i64` value remains
+lossless across JavaScript/TypeScript boundaries. Human-readable deserialization
+also accepts a legacy JSON integer only inside the JavaScript safe-integer range;
+larger numeric input fails rather than accepting a value that a JavaScript
+producer may already have rounded. Non-human-readable Serde formats retain the
+legacy structural wire with `pts` encoded directly as `i64`, so binary formats
+such as bincode remain compatible and do not depend on `deserialize_any`.
+Serialization does not add derived floating-point seconds. Deserialization
+validates the same positive-timebase invariant as the checked constructors.
+Existing domain-specific wire formats may retain their established field names
+and units through explicit boundary adapters.
 
 Chronological operations are exact. `Timestamp::chronological_cmp` compares
 instants using integer rational arithmetic across different timebases rather

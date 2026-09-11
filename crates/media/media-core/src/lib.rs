@@ -14,6 +14,8 @@ pub use timed_text_format::{
     parse_plain_text, parse_srt, parse_webvtt,
 };
 
+const JAVASCRIPT_MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
+
 /// A compact identifier for the pixel layout of a video frame.
 ///
 /// This is neutral stream-format metadata. Pixel buffers and video frames
@@ -171,7 +173,7 @@ impl Timebase {
 }
 
 /// A presentation timestamp paired with its timebase.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Timestamp {
     /// Presentation timestamp ticks.
     pub pts: i64,
@@ -179,10 +181,66 @@ pub struct Timestamp {
     pub timebase: Timebase,
 }
 
-#[derive(serde::Deserialize)]
-struct TimestampWire {
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TimestampBinaryWire {
     pts: i64,
     timebase: Timebase,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum TimestampPtsWire {
+    Decimal(String),
+    SafeInteger(i64),
+}
+
+impl TimestampPtsWire {
+    fn into_i64<E>(self) -> std::result::Result<i64, E>
+    where
+        E: serde::de::Error,
+    {
+        match self {
+            Self::Decimal(value) => value.parse::<i64>().map_err(E::custom),
+            Self::SafeInteger(value)
+                if (-JAVASCRIPT_MAX_SAFE_INTEGER..=JAVASCRIPT_MAX_SAFE_INTEGER).contains(&value) =>
+            {
+                Ok(value)
+            }
+            Self::SafeInteger(_) => Err(E::custom(
+                "numeric timestamp pts exceeds the JavaScript safe-integer range; use a decimal string",
+            )),
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct TimestampWire {
+    pts: TimestampPtsWire,
+    timebase: Timebase,
+}
+
+impl serde::Serialize for Timestamp {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        if !serializer.is_human_readable() {
+            return serde::Serialize::serialize(
+                &TimestampBinaryWire {
+                    pts: self.pts,
+                    timebase: self.timebase,
+                },
+                serializer,
+            );
+        }
+
+        use serde::ser::SerializeStruct;
+
+        let mut wire = serializer.serialize_struct("Timestamp", 2)?;
+        wire.serialize_field("pts", &self.pts.to_string())?;
+        wire.serialize_field("timebase", &self.timebase)?;
+        wire.end()
+    }
 }
 
 impl<'de> serde::Deserialize<'de> for Timestamp {
@@ -190,8 +248,14 @@ impl<'de> serde::Deserialize<'de> for Timestamp {
     where
         D: serde::Deserializer<'de>,
     {
+        if !deserializer.is_human_readable() {
+            let wire = <TimestampBinaryWire as serde::Deserialize>::deserialize(deserializer)?;
+            return Self::try_new(wire.pts, wire.timebase).map_err(serde::de::Error::custom);
+        }
+
         let wire = <TimestampWire as serde::Deserialize>::deserialize(deserializer)?;
-        Self::try_new(wire.pts, wire.timebase).map_err(serde::de::Error::custom)
+        let pts = wire.pts.into_i64::<D::Error>()?;
+        Self::try_new(pts, wire.timebase).map_err(serde::de::Error::custom)
     }
 }
 
@@ -265,7 +329,7 @@ mod tests {
         assert_eq!(
             encoded,
             serde_json::json!({
-                "pts": 125,
+                "pts": "125",
                 "timebase": { "num": 1, "den": 1_000 }
             })
         );
@@ -276,9 +340,76 @@ mod tests {
     }
 
     #[test]
+    fn timestamp_wire_round_trips_full_i64_range() {
+        let timebase = Timebase::try_new(1, 1_000).unwrap();
+        for pts in [i64::MIN, i64::MAX] {
+            let timestamp = Timestamp::try_new(pts, timebase).unwrap();
+            let encoded = serde_json::to_value(timestamp).unwrap();
+
+            assert_eq!(encoded["pts"], pts.to_string());
+            assert_eq!(
+                serde_json::from_value::<Timestamp>(encoded).unwrap(),
+                timestamp
+            );
+        }
+    }
+
+    #[test]
+    fn timestamp_wire_accepts_only_safe_legacy_numeric_pts() {
+        let safe = serde_json::json!({
+            "pts": 9_007_199_254_740_991_i64,
+            "timebase": { "num": 1, "den": 1_000 }
+        });
+        assert_eq!(
+            serde_json::from_value::<Timestamp>(safe).unwrap().pts,
+            9_007_199_254_740_991
+        );
+
+        let unsafe_numeric = serde_json::json!({
+            "pts": 9_007_199_254_740_992_i64,
+            "timebase": { "num": 1, "den": 1_000 }
+        });
+        assert!(serde_json::from_value::<Timestamp>(unsafe_numeric).is_err());
+
+        let unsafe_string = serde_json::json!({
+            "pts": "9007199254740992",
+            "timebase": { "num": 1, "den": 1_000 }
+        });
+        assert_eq!(
+            serde_json::from_value::<Timestamp>(unsafe_string)
+                .unwrap()
+                .pts,
+            9_007_199_254_740_992
+        );
+    }
+
+    #[test]
+    fn timestamp_binary_wire_preserves_legacy_i64_shape() {
+        #[derive(serde::Serialize)]
+        struct LegacyTimestamp {
+            pts: i64,
+            timebase: Timebase,
+        }
+
+        let timestamp = Timestamp::try_new(i64::MIN, Timebase::try_new(1, 1_000).unwrap()).unwrap();
+        let encoded = bincode::serialize(&timestamp).unwrap();
+        let legacy = bincode::serialize(&LegacyTimestamp {
+            pts: timestamp.pts,
+            timebase: timestamp.timebase,
+        })
+        .unwrap();
+
+        assert_eq!(encoded, legacy);
+        assert_eq!(
+            bincode::deserialize::<Timestamp>(&encoded).unwrap(),
+            timestamp
+        );
+    }
+
+    #[test]
     fn timestamp_wire_rejects_invalid_timebases() {
         let invalid = serde_json::json!({
-            "pts": 125,
+            "pts": "125",
             "timebase": { "num": 1, "den": 0 }
         });
 
