@@ -195,7 +195,11 @@ impl TimestampPtsWire {
     {
         match self {
             Self::Decimal(value) => value.parse::<i64>().map_err(E::custom),
-            Self::SafeInteger(value) if value.abs() <= JAVASCRIPT_MAX_SAFE_INTEGER => Ok(value),
+            Self::SafeInteger(value)
+                if (-JAVASCRIPT_MAX_SAFE_INTEGER..=JAVASCRIPT_MAX_SAFE_INTEGER).contains(&value) =>
+            {
+                Ok(value)
+            }
             Self::SafeInteger(_) => Err(E::custom(
                 "numeric timestamp pts exceeds the JavaScript safe-integer range; use a decimal string",
             )),
