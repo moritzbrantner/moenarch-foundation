@@ -1,0 +1,45 @@
+name: Rebase signal DTW
+
+on:
+  push:
+    branches:
+      - rebase/signal-dtw-align
+    paths:
+      - .github/workflows/rebase-signal-dtw.yml
+
+permissions:
+  contents: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: rebase/signal-dtw-align
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Replay reviewed DTW files
+        run: |
+          git fetch origin feat/signal-dtw-align
+          for path in \
+            crates/math/math-signal-core/README.md \
+            crates/math/math-signal-core/src/lib.rs \
+            crates/math/math-signal-core/src/surface.rs
+          do
+            git show origin/feat/signal-dtw-align:"$path" > "$path"
+          done
+          git show origin/feat/signal-dtw-align:crates/math/math-signal-core/src/dtw.rs > crates/math/math-signal-core/src/dtw.rs
+          cargo fmt --all
+      - name: Validate signal package
+        run: |
+          cargo test -p moenarch-math-signal-core --all-features
+          cargo clippy -p moenarch-math-signal-core --all-targets --all-features -- -D warnings
+      - name: Commit rebased slice
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/rebase-signal-dtw.yml
+          git add crates/math/math-signal-core
+          git commit -m "feat(signal): replay DTW slice on current main"
+          git push origin HEAD:rebase/signal-dtw-align
