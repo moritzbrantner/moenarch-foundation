@@ -73,6 +73,55 @@ class RepositoryBoundaryTests(unittest.TestCase):
         adapter["wrapped_library"] = "missing-library"
         self.assertTrue(any("invalid wrapped_library" in e for e in validate(self.metadata, ownership)))
 
+    def test_adapter_must_depend_on_declared_wrapped_library(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        adapter_record = next(
+            r for r in self.ownership["packages"] if r["package_kind"] == "CLI"
+        )
+        adapter = next(
+            p
+            for p in metadata["packages"]
+            if p["name"] == adapter_record["current_package_name"]
+        )
+        wrapped = adapter_record["wrapped_library"]
+        matching_dependencies = [
+            dependency
+            for dependency in adapter["dependencies"]
+            if dependency.get("name") == wrapped
+        ]
+        self.assertTrue(matching_dependencies)
+        adapter["dependencies"] = [
+            dependency
+            for dependency in adapter["dependencies"]
+            if dependency.get("name") != wrapped
+        ]
+
+        errors = validate(metadata, self.ownership)
+        self.assertTrue(any("is not a normal dependency" in e for e in errors), errors)
+
+    def test_dev_only_dependency_does_not_satisfy_wrapper_contract(self) -> None:
+        metadata = copy.deepcopy(self.metadata)
+        adapter_record = next(
+            r for r in self.ownership["packages"] if r["package_kind"] == "CLI"
+        )
+        adapter = next(
+            p
+            for p in metadata["packages"]
+            if p["name"] == adapter_record["current_package_name"]
+        )
+        wrapped = adapter_record["wrapped_library"]
+        matching_dependencies = [
+            dependency
+            for dependency in adapter["dependencies"]
+            if dependency.get("name") == wrapped
+        ]
+        self.assertTrue(matching_dependencies)
+        for dependency in matching_dependencies:
+            dependency["kind"] = "dev"
+
+        errors = validate(metadata, self.ownership)
+        self.assertTrue(any("is not a normal dependency" in e for e in errors), errors)
+
     def test_synthetic_path_escape_fails(self) -> None:
         metadata = copy.deepcopy(self.metadata)
         metadata["packages"][0]["dependencies"].append({"name": "outside", "path": "/tmp/outside"})

@@ -58,6 +58,19 @@ def immutable_git_source(source: str) -> bool:
     return parsed.fragment == revision
 
 
+def normal_dependency_names(package: dict) -> set[str]:
+    """Return packages linked through Cargo's normal/runtime dependency kind."""
+
+    names: set[str] = set()
+    for dependency in package.get("dependencies", []):
+        if dependency.get("kind") not in {None, "normal"}:
+            continue
+        dependency_name = dependency.get("name")
+        if isinstance(dependency_name, str):
+            names.add(dependency_name)
+    return names
+
+
 def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
     errors: list[str] = []
     expected_header = {
@@ -127,6 +140,12 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
             wrapped = record.get("wrapped_library")
             if wrapped not in cargo_packages:
                 errors.append(f"{name}: invalid wrapped_library {wrapped!r}")
+            else:
+                package = cargo_packages.get(name)
+                if package is not None and wrapped not in normal_dependency_names(package):
+                    errors.append(
+                        f"{name}: wrapped_library {wrapped!r} is not a normal dependency"
+                    )
     for package in cargo_packages.values():
         for dependency in package.get("dependencies", []):
             dependency_name = dependency.get("name")
@@ -172,7 +191,10 @@ def main() -> int:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
-    print("repository boundaries pass: 65 uniquely owned foundation packages; no path escapes or moving Git dependencies")
+    print(
+        "repository boundaries pass: 65 uniquely owned foundation packages; "
+        "wrappers depend on their declared libraries; no path escapes or moving Git dependencies"
+    )
     return 0
 
 
