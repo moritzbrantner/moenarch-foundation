@@ -25,11 +25,18 @@ jobs:
           from pathlib import Path
           path = Path('crates/data/graph-analysis-core/src/lib.rs')
           text = path.read_text()
+
           old_neighbors = "adjacency[*index]\n            .iter()\n            .map(|(neighbor, _)| *neighbor)\n            .collect::<Vec<_>>()"
           new_neighbors = "adjacency[*index]\n            .iter()\n            .map(|(neighbor, _)| *neighbor)"
-          if text.count(old_neighbors) != 3:
-              raise SystemExit(f'expected 3 graph neighbor materializations, found {text.count(old_neighbors)}')
+          if text.count(old_neighbors) != 2:
+              raise SystemExit(f'expected 2 direct graph neighbor materializations, found {text.count(old_neighbors)}')
           text = text.replace(old_neighbors, new_neighbors)
+
+          old_page_rank = "adjacency[*index]\n                .iter()\n                .map(|(neighbor, _)| *neighbor)\n                .collect::<Vec<_>>()"
+          new_page_rank = "adjacency[*index]\n                .iter()\n                .map(|(neighbor, _)| *neighbor)"
+          if text.count(old_page_rank) != 1:
+              raise SystemExit(f'expected 1 PageRank neighbor materialization, found {text.count(old_page_rank)}')
+          text = text.replace(old_page_rank, new_page_rank)
 
           old_edges = "    let mut edges = graph.edges.clone();\n"
           new_edges = "    let mut edges = graph.edges.iter().collect::<Vec<_>>();\n"
