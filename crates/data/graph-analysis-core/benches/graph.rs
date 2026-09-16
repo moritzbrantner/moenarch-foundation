@@ -1,5 +1,5 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use graph_analysis_core::{Graph, PageRankConfig, minimum_spanning_tree, page_rank};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use graph_analysis_core::{minimum_spanning_tree, page_rank, Graph, PageRankConfig};
 
 const NODES: usize = 2_048;
 

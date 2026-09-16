@@ -292,10 +292,7 @@ pub fn strongly_connected_components(graph: &Graph) -> Vec<GraphComponent> {
     let (nodes, index_by_node) = node_index(graph);
     let adjacency = build_adjacency(graph, &index_by_node, TraversalMode::Native);
     let mut components = kernel_strong_components(0..nodes.len(), |index| {
-        adjacency[*index]
-            .iter()
-            .map(|(neighbor, _)| *neighbor)
-            .collect::<Vec<_>>()
+        adjacency[*index].iter().map(|(neighbor, _)| *neighbor)
     })
     .into_iter()
     .map(|component| build_component(graph, &nodes, &index_by_node, component))
@@ -314,10 +311,7 @@ pub fn topological_order(graph: &Graph) -> Result<Vec<String>> {
     let (nodes, index_by_node) = node_index(graph);
     let adjacency = build_adjacency(graph, &index_by_node, TraversalMode::Native);
     let order = kernel_topological_sort(0..nodes.len(), |index| {
-        adjacency[*index]
-            .iter()
-            .map(|(neighbor, _)| *neighbor)
-            .collect::<Vec<_>>()
+        adjacency[*index].iter().map(|(neighbor, _)| *neighbor)
     })
     .map_err(|_| invalid_argument("topological ordering requires an acyclic graph"))?;
     Ok(order
@@ -332,12 +326,7 @@ pub fn page_rank(graph: &Graph, config: PageRankConfig) -> Result<PageRank<Strin
     let adjacency = build_adjacency(graph, &index_by_node, TraversalMode::Native);
     let report = kernel_page_rank(
         0..nodes.len(),
-        |index| {
-            adjacency[*index]
-                .iter()
-                .map(|(neighbor, _)| *neighbor)
-                .collect::<Vec<_>>()
-        },
+        |index| adjacency[*index].iter().map(|(neighbor, _)| *neighbor),
         config,
     )
     .map_err(page_rank_error)?;
@@ -463,7 +452,7 @@ pub fn minimum_spanning_forest(graph: &Graph) -> Result<SpanningForest> {
     }
 
     let (nodes, index_by_node) = node_index(graph);
-    let mut edges = graph.edges.clone();
+    let mut edges = graph.edges.iter().collect::<Vec<_>>();
     edges.sort_by(|left, right| {
         left.weight
             .partial_cmp(&right.weight)
@@ -480,7 +469,7 @@ pub fn minimum_spanning_forest(graph: &Graph) -> Result<SpanningForest> {
         let target = index_by_node[edge.target.as_str()];
         if disjoint.union(source, target) {
             total_weight += edge.weight;
-            selected.push(edge);
+            selected.push((*edge).clone());
         }
     }
 

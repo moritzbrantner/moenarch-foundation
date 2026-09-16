@@ -1500,6 +1500,7 @@ dependencies = [
 name = "moenarch-graph-analysis-core"
 version = "0.1.0"
 dependencies = [
+ "criterion",
  "graph-kernels",
  "moenarch-media-core",
  "moenarch-runtime-core",
