@@ -16,8 +16,15 @@ categories.workspace = true
 name = "graph_analysis_core"
 
 [dependencies]
-graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "c21b8306fb5d156efbff396f2c79a00167886566" }
+graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "76b8dad6b1925c9fe78c4dfd130b6c45800ffcab" }
 media-core.workspace = true
 runtime-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "graph"
+harness = false
