@@ -1,0 +1,51 @@
+name: Refresh rust-kernels 76b8
+
+on:
+  push:
+    branches: [perf/graph-adapter-allocation]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: perf/graph-adapter-allocation
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95.0"
+          components: rustfmt, clippy
+      - name: Refresh exact rust-kernels revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          old='c21b8306fb5d156efbff396f2c79a00167886566'
+          new='76b8dad6b1925c9fe78c4dfd130b6c45800ffcab'
+          for file in Cargo.toml crates/data/graph-analysis-core/Cargo.toml crates/algorithms/priority-queue/Cargo.toml; do
+            count="$(grep -o "$old" "$file" | wc -l)"
+            if [[ "$count" != "1" ]]; then
+              echo "expected one old rust-kernels revision in $file, found $count" >&2
+              exit 1
+            fi
+            sed -i "s/$old/$new/" "$file"
+          done
+          cargo update -p graph-kernels -p collection-kernels
+          cargo metadata --locked --format-version 1 --no-deps >/dev/null
+      - name: Revalidate graph package
+        run: |
+          cargo test --locked -p moenarch-graph-analysis-core
+          cargo clippy --locked -p moenarch-graph-analysis-core --all-targets -- -D warnings
+          cargo bench --locked -p moenarch-graph-analysis-core --bench graph --no-run
+      - name: Commit refresh and remove helper
+        shell: bash
+        run: |
+          rm .github/workflows/refresh-rust-kernels-76b8.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Cargo.toml Cargo.lock crates/data/graph-analysis-core/Cargo.toml crates/algorithms/priority-queue/Cargo.toml .github/workflows/refresh-rust-kernels-76b8.yml
+          git commit -m "deps: refresh rust-kernels graph revision"
+          git push origin HEAD:perf/graph-adapter-allocation
