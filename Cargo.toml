@@ -85,7 +85,7 @@ clap = { version = "4.5.51", features = ["derive"] }
 criterion = "0.5.1"
 iai-callgrind = "0.16.1"
 faer = { version = "0.24.0", default-features = false, features = ["std", "linalg"] }
-graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "c21b8306fb5d156efbff396f2c79a00167886566" }
+graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "76b8dad6b1925c9fe78c4dfd130b6c45800ffcab" }
 hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
 nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }
 ndarray = "0.17.2"
