@@ -4,8 +4,7 @@ use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use crate::{ModelRuntimeError, Result};
-use jobs_core::{ArtifactKind, ArtifactRef};
+use crate::{ModelArtifactKind, ModelArtifactRef, ModelRuntimeError, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -300,14 +299,14 @@ impl ModelBundle {
             .map(|file| self.root.join(&file.local_path))
     }
 
-    /// Returns generic job artifact references for the files in this model bundle.
-    pub fn artifact_refs(&self) -> Vec<ArtifactRef> {
+    /// Returns model-owned artifact references for the files in this bundle.
+    pub fn artifacts(&self) -> Vec<ModelArtifactRef> {
         self.manifest
             .files
             .iter()
             .map(|(remote_path, file)| {
                 let local_path = self.root.join(&file.local_path);
-                let mut artifact = ArtifactRef::new(
+                let mut artifact = ModelArtifactRef::new(
                     format!("model:{}", remote_path.replace(['/', '\\'], "_")),
                     model_file_kind(remote_path),
                     model_file_media_type(remote_path),
@@ -451,11 +450,11 @@ fn file_uri(path: &Path) -> String {
     format!("file://{}", path.to_string_lossy())
 }
 
-fn model_file_kind(remote_path: &str) -> ArtifactKind {
+fn model_file_kind(remote_path: &str) -> ModelArtifactKind {
     match model_file_role(remote_path) {
-        "config" | "tokenizer" => ArtifactKind::Json,
-        "vocabulary" => ArtifactKind::Text,
-        _ => ArtifactKind::Binary,
+        "config" | "tokenizer" => ModelArtifactKind::Json,
+        "vocabulary" => ModelArtifactKind::Text,
+        _ => ModelArtifactKind::Binary,
     }
 }
 
