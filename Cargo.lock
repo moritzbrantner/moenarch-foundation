@@ -1853,9 +1853,7 @@ dependencies = [
 name = "moenarch-model-runtime"
 version = "0.1.1"
 dependencies = [
- "chrono",
  "hf-hub",
- "moenarch-jobs-core",
  "moenarch-runtime-core",
  "serde",
  "serde_json",
