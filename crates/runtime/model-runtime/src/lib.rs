@@ -1,23 +1,23 @@
 #![doc = include_str!("../README.md")]
 #![allow(deprecated)]
 
+mod access;
 #[cfg(not(target_arch = "wasm32"))]
 mod bundles;
 mod conformance;
 #[cfg(not(target_arch = "wasm32"))]
 mod download;
-mod access;
 mod predictions;
 mod presets;
 mod spec;
 pub mod surface;
 
+pub use access::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use bundles::*;
 pub use conformance::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use download::*;
-pub use access::*;
 pub use predictions::*;
 pub use presets::*;
 pub use spec::*;
