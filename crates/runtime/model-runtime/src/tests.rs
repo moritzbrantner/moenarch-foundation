@@ -296,9 +296,8 @@ fn resolver_fake_downloader_materializes_expected_manifest() {
         .exists());
 }
 
-#[cfg(feature = "jobs")]
 #[test]
-fn model_bundle_exports_generic_artifact_metadata() {
+fn model_bundle_exports_model_artifact_metadata() {
     let temp = tempdir().unwrap();
     let source = temp.path().join("tokenizer.json");
     std::fs::write(&source, br#"{"tokenizer":"fixture"}"#).unwrap();
@@ -314,7 +313,7 @@ fn model_bundle_exports_generic_artifact_metadata() {
     let bundle = ModelBundleStore::new(temp.path().join("bundles"))
         .materialize(&downloaded)
         .unwrap();
-    let artifacts = bundle.artifact_refs();
+    let artifacts = bundle.artifacts();
 
     assert_eq!(artifacts.len(), 1);
     assert_eq!(artifacts[0].metadata["model.repoId"], "owner/model");
@@ -342,46 +341,42 @@ fn blue_green_prediction_check_remains_generic() {
     assert!(ModelRuntimeBackend::Onnx.as_str().contains("onnx"));
 }
 
-#[cfg(feature = "jobs")]
 #[test]
-fn model_job_spec_records_standard_metadata() {
-    let spec = ModelSpec::new("owner/model", ModelTask::TextClassification).revision("v1");
-    let job = crate::jobs::model_job_spec(
-        "job-1",
-        crate::jobs::ModelJobKind::Download,
-        &spec,
-        ModelRuntimeBackend::Onnx,
-    )
-    .unwrap();
-
-    assert_eq!(job.kind.as_deref(), Some("model-download"));
-    assert_eq!(job.metadata["model.name"], "owner/model");
-    assert_eq!(job.metadata["model.task"], "text_classification");
-    assert_eq!(job.metadata["model.runtime"], "onnx");
-    assert_eq!(job.metadata["model.revision"], "v1");
-    assert_eq!(job.metadata["model.repoId"], "owner/model");
-}
-
-#[cfg(feature = "jobs")]
-#[test]
-fn model_access_job_request_records_standard_metadata() {
-    use crate::jobs::{run_model_job_inline_for_tests, ModelAccessJobRequest, ModelJobKind};
-
-    let request = ModelAccessJobRequest {
-        id: Some("inline-model-job".to_string()),
-        kind: ModelJobKind::Inference,
+fn model_access_plan_keeps_model_metadata_without_job_state() {
+    let request = crate::ModelAccessRequest {
+        kind: crate::ModelAccessKind::Inference,
         spec: ModelSpec::new("owner/model", ModelTask::TextClassification).revision("v1"),
         backend: ModelRuntimeBackend::Heuristic,
-        inputs: vec![crate::jobs::ModelJobInput::Json(
+        inputs: vec![crate::ModelAccessInput::Json(
             serde_json::json!({"text": "hello"}),
         )],
         output_artifact_prefix: Some("prediction".to_string()),
         metadata: BTreeMap::from([("caller".to_string(), "test".to_string())]),
     };
 
-    let result = run_model_job_inline_for_tests(request).unwrap();
-    assert_eq!(result.job_id.as_str(), "inline-model-job");
-    assert_eq!(result.kind, ModelJobKind::Inference);
-    assert_eq!(result.backend, ModelRuntimeBackend::Heuristic);
-    assert_eq!(result.output.unwrap()["inline"], true);
+    let plan = crate::plan_model_access(&request).unwrap();
+    assert_eq!(plan.kind, crate::ModelAccessKind::Inference);
+    assert_eq!(plan.backend, ModelRuntimeBackend::Heuristic);
+    assert_eq!(plan.metadata["caller"], "test");
+    assert_eq!(plan.expected_artifacts.len(), 1);
+    assert_eq!(plan.expected_artifacts[0].id.as_str(), "prediction:output");
+}
+
+#[test]
+fn cancelled_model_download_stops_before_work_starts() {
+    let temp = tempdir().unwrap();
+    let spec = ModelSpec::new("owner/model", ModelTask::TextEmbedding)
+        .revision("v1")
+        .file("config.json");
+    let store = ModelBundleStore::new(temp.path().join("bundles")).model_downloader(
+        FakeDownloader {
+            root: temp.path().join("cache"),
+        },
+    );
+    let cancellation = runtime_core::CancellationToken::new();
+    cancellation.cancel();
+
+    let error = crate::download_model_bundle(&spec, &store, Some(&cancellation))
+        .expect_err("cancelled before download");
+    assert!(matches!(error, crate::ModelRuntimeError::Cancelled));
 }
