@@ -350,16 +350,18 @@ fn execution_mode_for_request(request: &ModelAccessRequest) -> SurfaceExecutionM
 
 fn side_effects_for_request(request: &ModelAccessRequest) -> Vec<SurfaceSideEffect> {
     match request.kind {
-        ModelAccessKind::Download => vec![SurfaceSideEffect::Network, SurfaceSideEffect::WritesFiles],
+        ModelAccessKind::Download => {
+            vec![SurfaceSideEffect::Network, SurfaceSideEffect::WritesFiles]
+        }
         ModelAccessKind::MaterializeBundle => vec![
             SurfaceSideEffect::ReadsFiles,
             SurfaceSideEffect::WritesFiles,
         ],
         ModelAccessKind::ValidateBundle => vec![SurfaceSideEffect::ReadsFiles],
         ModelAccessKind::ExternalCommand => vec![SurfaceSideEffect::ExternalProcess],
-        ModelAccessKind::Warmup
-        | ModelAccessKind::Inference
-        | ModelAccessKind::BatchInference => vec![SurfaceSideEffect::None],
+        ModelAccessKind::Warmup | ModelAccessKind::Inference | ModelAccessKind::BatchInference => {
+            vec![SurfaceSideEffect::None]
+        }
     }
 }
 
