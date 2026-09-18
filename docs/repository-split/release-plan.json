@@ -407,7 +407,6 @@
       "intended_next_release_owner": "moritzbrantner/moenarch-foundation",
       "publish": false,
       "release_dependencies": [
-        "moenarch-jobs-core",
         "moenarch-runtime-core"
       ]
     },
