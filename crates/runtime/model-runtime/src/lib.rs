@@ -6,7 +6,7 @@ mod bundles;
 mod conformance;
 #[cfg(not(target_arch = "wasm32"))]
 mod download;
-pub mod jobs;
+mod access;
 mod predictions;
 mod presets;
 mod spec;
@@ -17,10 +17,7 @@ pub use bundles::*;
 pub use conformance::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use download::*;
-pub use jobs::{
-    plan_model_access, plan_model_bundle, ModelAccessJobRequest, ModelAccessPlan, ModelBundlePlan,
-    ModelBundlePlanFile, ModelJobInput, ModelJobKind,
-};
+pub use access::*;
 pub use predictions::*;
 pub use presets::*;
 pub use spec::*;
@@ -39,6 +36,8 @@ pub enum ModelRuntimeError {
     Source(String),
     /// A filesystem operation failed.
     Io(std::io::Error),
+    /// Cooperative cancellation was requested.
+    Cancelled,
 }
 
 impl fmt::Display for ModelRuntimeError {
@@ -47,6 +46,7 @@ impl fmt::Display for ModelRuntimeError {
             Self::InvalidArgument(message) => write!(formatter, "invalid argument: {message}"),
             Self::Source(message) => write!(formatter, "model source error: {message}"),
             Self::Io(error) => write!(formatter, "{error}"),
+            Self::Cancelled => write!(formatter, "model operation cancelled"),
         }
     }
 }
