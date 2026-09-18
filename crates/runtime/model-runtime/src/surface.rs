@@ -107,7 +107,6 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
             operation.as_str(),
             parse_surface_input(Some(operation.as_str()), request.input)?,
         )?,
-        )?,
         "model.presets" => presets_value(),
         "model.spec" => spec_value(
             operation.as_str(),
