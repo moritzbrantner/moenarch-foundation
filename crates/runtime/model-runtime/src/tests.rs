@@ -368,11 +368,10 @@ fn cancelled_model_download_stops_before_work_starts() {
     let spec = ModelSpec::new("owner/model", ModelTask::TextEmbedding)
         .revision("v1")
         .file("config.json");
-    let store = ModelBundleStore::new(temp.path().join("bundles")).model_downloader(
-        FakeDownloader {
+    let store =
+        ModelBundleStore::new(temp.path().join("bundles")).model_downloader(FakeDownloader {
             root: temp.path().join("cache"),
-        },
-    );
+        });
     let cancellation = runtime_core::CancellationToken::new();
     cancellation.cancel();
 
