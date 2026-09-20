@@ -160,7 +160,7 @@ fn matrix_inversion_is_independent_of_coordinate_scale() {
 #[test]
 fn axis_angle_export_preserves_small_rotations_and_quaternion_signs() {
     for axis in [Vector3d::X, Vector3d::Y, Vector3d::Z] {
-        for angle in [1e-200, 1e-14, 1e-8, -1e-8, 1e-6] {
+        for angle in [1e-200, -1e-200, 1e-14, -1e-14, 1e-8, -1e-8, 1e-6] {
             let source = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
             let (recovered_axis, recovered_angle) = source.to_axis_angle().unwrap();
             assert_approx_eq_f64(
@@ -173,11 +173,25 @@ fn axis_angle_export_preserves_small_rotations_and_quaternion_signs() {
                 .unwrap()
                 .normalized()
                 .unwrap();
-            for (axis, angle) in [
+            for (axis, exported_angle) in [
                 (recovered_axis, recovered_angle),
                 negated.to_axis_angle().unwrap(),
             ] {
-                let recovered = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
+                assert_approx_eq_f64(
+                    exported_angle,
+                    angle.abs(),
+                    ApproxTolerance::new(0.0, 1e-12).unwrap(),
+                );
+                let recovered = UnitQuaterniond::from_axis_angle(axis, exported_angle).unwrap();
+                for (expected, actual) in
+                    source.components().into_iter().zip(recovered.components())
+                {
+                    assert_approx_eq_f64(
+                        expected,
+                        actual,
+                        ApproxTolerance::new(0.0, 1e-12).unwrap(),
+                    );
+                }
                 for vector in [Vector3d::X, Vector3d::Y, Vector3d::Z] {
                     assert_vector_close(
                         source.rotate_vector(vector).unwrap(),

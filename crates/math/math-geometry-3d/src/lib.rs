@@ -572,7 +572,7 @@ impl UnitQuaterniond {
             ],
         ])
     }
-    /// Returns the axis and non-negative radian angle represented by this rotation.
+    /// Returns an axis and shortest non-negative angle in radians (`0..=pi`).
     pub fn to_axis_angle(self) -> Result<(Vector3d, f64)> {
         // The vector part retains small angles even when w rounds to +/-1.
         // hypot also avoids underflow from squaring its tiny components.
@@ -580,9 +580,16 @@ impl UnitQuaterniond {
         if sin_half == 0.0 {
             return Ok((Vector3d::X, 0.0));
         }
+        // q and -q represent the same rotation. Choose a non-negative scalar
+        // part so tiny rotations never round to a full turn during export.
+        let sign = if self.w < 0.0 { -1.0 } else { 1.0 };
         Ok((
-            Vector3d::new(self.x / sin_half, self.y / sin_half, self.z / sin_half)?,
-            2.0 * sin_half.atan2(self.w),
+            Vector3d::new(
+                sign * (self.x / sin_half),
+                sign * (self.y / sin_half),
+                sign * (self.z / sin_half),
+            )?,
+            2.0 * sin_half.atan2(self.w.abs()),
         ))
     }
     /// Converts to explicit Euler angles in the requested order. At gimbal lock,

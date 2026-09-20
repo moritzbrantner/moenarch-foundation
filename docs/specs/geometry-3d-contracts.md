@@ -51,9 +51,11 @@ axis dot product, and determinant differ from the ideal by no more than
 `1e-10`. The paired f32 import uses `8 * f32::EPSILON` to allow representation
 rounding without accepting scale, shear, or reflection. Matrix inversion checks
 the determinant against `f64::EPSILON` after row equilibration, independently of
-coordinate scale. Axis-angle export preserves tiny rotations through the vector
-norm and `atan2`, and regression checks compare transformed vectors as well as
-quaternion similarity. These are verification and input-validity contracts, not a hidden
+coordinate scale. Axis-angle export canonicalizes the quaternion sign and returns
+the shortest angle in `0..=pi`, preserving tiny rotations through the vector norm
+and `atan2`. Tiny-angle regression checks use relative-only tolerances on the
+angle and quaternion components for both equivalent quaternion signs, in addition
+to transformed-vector comparisons. These are verification and input-validity contracts, not a hidden
 global tolerance for callers' application algorithms.
 
 Raw-quaternion deserialization validates finite components. Unit-quaternion

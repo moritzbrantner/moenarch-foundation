@@ -1,11 +1,19 @@
 use iai_callgrind::{
     library_benchmark, library_benchmark_group, main, Callgrind, EventKind, LibraryBenchmarkConfig,
 };
-use math_geometry_3d::{Matrix3, Matrix3d, UnitQuaternion, UnitQuaterniond, Vector3d};
+use math_geometry_3d::{Matrix3, Matrix3d, Quaterniond, UnitQuaternion, UnitQuaterniond, Vector3d};
 use std::hint::black_box;
 
 fn rotation(angle: f64) -> UnitQuaterniond {
     UnitQuaterniond::from_axis_angle(Vector3d::Z, angle).expect("finite benchmark rotation")
+}
+
+fn negated_rotation(angle: f64) -> UnitQuaterniond {
+    let [x, y, z, w] = rotation(angle).components();
+    Quaterniond::new(-x, -y, -z, -w)
+        .expect("finite quaternion")
+        .normalized()
+        .expect("unit quaternion")
 }
 
 fn narrowed_rotation() -> Matrix3 {
@@ -45,6 +53,7 @@ fn matrix_inverse(matrix: Matrix3d) -> Matrix3d {
 #[library_benchmark]
 #[bench::ordinary(rotation(0.5))]
 #[bench::tiny(rotation(1e-8))]
+#[bench::tiny_negated(negated_rotation(1e-200))]
 fn axis_angle(rotation: UnitQuaterniond) -> (Vector3d, f64) {
     black_box(
         black_box(rotation)

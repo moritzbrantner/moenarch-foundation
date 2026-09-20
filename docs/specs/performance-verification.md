@@ -8,7 +8,7 @@ Performance evidence complements correctness verification; it does not replace i
 - Performance-sensitive leaves may expose a deliberately small Iai-Callgrind suite through the `benchmark:smoke` semantic capability.
 - The first sentinel is `moenarch-vector-analysis-core`: dot product at 768 dimensions, cosine similarity at 768 dimensions, and mean-vector aggregation over 256 vectors of 128 dimensions.
 - `moenarch-numbers-core` covers ordinary and opposite-sign extreme relative comparisons, valid/reversed range clamping, and valid/reversed JSON deserialization.
-- `moenarch-math-geometry-3d` covers rounded f32 rotation import, dense matrix inversion at scales `1`, `1e-200`, and `1e200`, and ordinary/tiny axis-angle export. Fixtures are prepared outside the measured region; inputs and outputs pass through `black_box`.
+- `moenarch-math-geometry-3d` covers rounded f32 rotation import, dense matrix inversion at scales `1`, `1e-200`, and `1e200`, and ordinary/tiny axis-angle export, including a negated tiny-rotation quaternion. Fixtures are prepared outside the measured region; inputs and outputs pass through `black_box`.
 - Callgrind instruction reads are treated as a deterministic regression proxy, not as equivalent to latency.
 
 ## Regression boundary
