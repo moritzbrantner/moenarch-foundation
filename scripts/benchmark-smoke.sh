@@ -6,6 +6,8 @@ cd "$root"
 
 artifact_dir="$root/.artifacts/performance-smoke"
 target_dir="$root/target/performance-smoke"
+candidate_target_dir="$target_dir/candidate-$(git rev-parse HEAD)"
+measurement_dir="$target_dir/measurements"
 mkdir -p "$artifact_dir" "$target_dir"
 
 {
@@ -14,6 +16,8 @@ mkdir -p "$artifact_dir" "$target_dir"
   printf 'baseline=%s\n' "${PERF_BASE_SHA:-none}"
   printf 'rustflags=%s\n' "${RUSTFLAGS:-}"
   printf 'cargo_target_dir=%s\n' "$target_dir"
+  printf 'candidate_target_dir=%s\n' "$candidate_target_dir"
+  printf 'iai_callgrind_home=%s\n' "$measurement_dir"
   printf 'cargo_lock_sha256=%s\n' "$(sha256sum Cargo.lock | cut -d' ' -f1)"
   printf 'profile=bench (Cargo optimized benchmark profile)\n'
   rustc -vV
@@ -34,6 +38,8 @@ base_sha="${PERF_BASE_SHA:-}"
 baseline_dir=""
 if [[ -n "$base_sha" ]]; then
   base_sha="$(git rev-parse --verify "$base_sha^{commit}")"
+  baseline_target_dir="$target_dir/baseline-$base_sha"
+  printf 'baseline_target_dir=%s\n' "$baseline_target_dir" >> "$artifact_dir/fingerprint.txt"
   worktree_parent="$(mktemp -d)"
   baseline_dir="$worktree_parent/base"
   cleanup() {
@@ -64,7 +70,9 @@ for index in "${!packages[@]}"; do
     fi
     (
       cd "$baseline_dir"
-      CARGO_TARGET_DIR="$target_dir" \
+      # Cargo artifacts must never cross source worktrees: checkout timestamps
+      # can otherwise make a candidate reuse compiled baseline dependencies.
+      CARGO_TARGET_DIR="$baseline_target_dir" IAI_CALLGRIND_HOME="$measurement_dir" \
         cargo bench --locked -p "$package" --bench performance_smoke -- --save-baseline=pr_base
     ) 2>&1 | tee "$suite_artifacts/baseline.log"
     baseline_args=(--baseline=pr_base)
@@ -73,7 +81,7 @@ for index in "${!packages[@]}"; do
       | tee "$suite_artifacts/baseline.log"
     baseline_args=(--save-baseline=seed)
   fi
-  CARGO_TARGET_DIR="$target_dir" \
+  CARGO_TARGET_DIR="$candidate_target_dir" IAI_CALLGRIND_HOME="$measurement_dir" \
     cargo bench --locked -p "$package" --bench performance_smoke -- "${baseline_args[@]}" \
     2>&1 | tee "$suite_artifacts/candidate.log"
 done

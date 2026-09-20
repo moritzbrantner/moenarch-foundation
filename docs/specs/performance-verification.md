@@ -54,4 +54,8 @@ fingerprint in the uploaded CI artifact. The measured unit is Callgrind `Ir`
 (instruction reads), lower is better, and each fixed scenario is measured once
 under the same instrumentation for the baseline and candidate.
 
+Baseline and candidate compilation use separate Cargo target directories keyed
+by source revision. Only Callgrind measurements are shared between them, avoiding
+stale dependency reuse when Git worktree timestamps differ from source history.
+
 Reference or benchmark-only dependencies stay outside public APIs and production runtime selection.

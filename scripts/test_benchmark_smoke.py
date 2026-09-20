@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -34,12 +35,14 @@ class BenchmarkSmokeTests(unittest.TestCase):
         shutil.copy2(ROOT / "scripts/benchmark-smoke.sh", self.root / "scripts")
         cargo = self.bin / "cargo"
         cargo.write_text("""#!/usr/bin/env python3
-import os, sys
+import json, os, sys
 if sys.argv[1:] == ['-V']:
     print('cargo fixture')
     sys.exit(0)
 with open(os.environ['BENCH_CALLS'], 'a') as stream:
     stream.write(' '.join(sys.argv[1:]) + '\\n')
+with open(os.environ['BENCH_CALLS'] + '.env', 'a') as stream:
+    stream.write(json.dumps({key: os.environ.get(key) for key in ['CARGO_TARGET_DIR', 'IAI_CALLGRIND_HOME']}) + '\\n')
 if os.environ.get('BENCH_FAIL', '') in sys.argv and os.environ.get('BENCH_FAIL'):
     print('simulated instruction-count regression', file=sys.stderr)
     sys.exit(17)
@@ -83,6 +86,17 @@ if os.environ.get('BENCH_FAIL', '') in sys.argv and os.environ.get('BENCH_FAIL')
         calls = self.calls.read_text().splitlines()
         self.assertEqual(len(calls), 3)
         self.assertTrue(all("--save-baseline=seed" in call for call in calls))
+
+    def test_builds_are_isolated_while_measurements_are_shared(self) -> None:
+        result = self.run_gate(self.base)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        environments = [json.loads(line) for line in Path(f"{self.calls}.env").read_text().splitlines()]
+        for baseline, candidate in zip(environments[::2], environments[1::2]):
+            self.assertNotEqual(baseline["CARGO_TARGET_DIR"], candidate["CARGO_TARGET_DIR"])
+            self.assertIn(f"baseline-{self.base}", baseline["CARGO_TARGET_DIR"])
+            self.assertIn(f"candidate-{self.base}", candidate["CARGO_TARGET_DIR"])
+            self.assertTrue(baseline["IAI_CALLGRIND_HOME"])
+            self.assertEqual(baseline["IAI_CALLGRIND_HOME"], candidate["IAI_CALLGRIND_HOME"])
 
     def test_candidate_regression_is_blocking(self) -> None:
         result = self.run_gate(self.base, "--baseline=pr_base")
