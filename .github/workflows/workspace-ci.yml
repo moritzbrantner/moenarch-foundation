@@ -44,6 +44,15 @@ jobs:
       - name: Package all crates without publishing
         run: python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
 
+      - name: Diagnose exact environment after verification failure
+        if: ${{ failure() }}
+        continue-on-error: true
+        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        with:
+          operation: environment-verify
+          report-path: .artifacts/environment/verify.json
+          install-mode: none
+
   wasm-bindings:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -74,6 +83,15 @@ jobs:
           for package in "${packages[@]}"; do
             cargo check --locked --target wasm32-unknown-unknown --all-features -p "$package"
           done
+
+      - name: Diagnose exact environment after WASM verification failure
+        if: ${{ failure() }}
+        continue-on-error: true
+        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        with:
+          operation: environment-verify
+          report-path: .artifacts/environment/wasm.json
+          install-mode: none
 
   performance-smoke:
     runs-on: ubuntu-24.04
@@ -113,3 +131,12 @@ jobs:
           name: performance-smoke-${{ github.sha }}
           path: .artifacts/performance-smoke/
           if-no-files-found: warn
+
+      - name: Diagnose exact environment after performance-smoke failure
+        if: ${{ failure() }}
+        continue-on-error: true
+        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        with:
+          operation: environment-verify
+          report-path: .artifacts/environment/performance.json
+          install-mode: none
