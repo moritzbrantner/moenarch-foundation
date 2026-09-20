@@ -20,4 +20,5 @@ name = "media_core"
 serde.workspace = true
 
 [dev-dependencies]
+bincode = "1.3.3"
 serde_json.workspace = true

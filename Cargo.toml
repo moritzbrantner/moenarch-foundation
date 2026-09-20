@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/algorithms/priority-queue",
     "crates/audio/audio-contracts",
     "crates/bindings/data-inversion-core-wasm",
     "crates/bindings/dense-data-wasm",
@@ -15,6 +16,7 @@ members = [
     "crates/bindings/tensor-data-wasm",
     "crates/bindings/vector-analysis-core-wasm",
     "crates/bindings/vector-analysis-index-wasm",
+    "crates/corpus/corpus-core",
     "crates/data/data-inversion-core",
     "crates/data/data-inversion-core-cli",
     "crates/data/data-inversion-core-server",
@@ -40,6 +42,7 @@ members = [
     "crates/math/math-linear",
     "crates/math/math-linear-cli",
     "crates/math/math-linear-server",
+    "crates/math/math-probability",
     "crates/math/math-signal-core",
     "crates/math/math-signal-core-cli",
     "crates/math/math-signal-core-server",
@@ -55,6 +58,7 @@ members = [
     "crates/runtime/model-runtime-server",
     "crates/runtime/runtime-core",
     "crates/runtime/runtime-onnx",
+    "crates/semantic/semantic-core",
     "crates/vector/vector-analysis-core",
     "crates/vector/vector-analysis-core-cli",
     "crates/vector/vector-analysis-core-server",
@@ -79,7 +83,9 @@ categories = ["science", "algorithms", "multimedia"]
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "serde"] }
 clap = { version = "4.5.51", features = ["derive"] }
 criterion = "0.5.1"
+iai-callgrind = "0.16.1"
 faer = { version = "0.24.0", default-features = false, features = ["std", "linalg"] }
+graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "76b8dad6b1925c9fe78c4dfd130b6c45800ffcab" }
 hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
 nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }
 ndarray = "0.17.2"
@@ -93,6 +99,7 @@ tempfile = "3.23.0"
 thiserror = "2.0.17"
 
 audio-contracts = { package = "moenarch-audio-contracts", version = "=0.1.0", path = "crates/audio/audio-contracts" }
+corpus-core = { package = "moenarch-corpus-core", version = "=0.1.0", path = "crates/corpus/corpus-core" }
 data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1", path = "crates/data/data-inversion-core" }
 dense-data = { package = "moenarch-dense-data", version = "=0.1.0", path = "crates/data/dense-data" }
 graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "=0.1.0", path = "crates/data/graph-analysis-core" }
@@ -100,13 +107,16 @@ jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2", path = "crates
 math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "=0.1.1", path = "crates/math/math-geometry-2d" }
 math-geometry-3d = { package = "moenarch-math-geometry-3d", version = "=0.1.0", path = "crates/math/math-geometry-3d" }
 math-linear = { package = "moenarch-math-linear", version = "=0.1.1", path = "crates/math/math-linear" }
+math-probability = { package = "moenarch-math-probability", version = "=0.1.0", path = "crates/math/math-probability" }
 math-signal-core = { package = "moenarch-math-signal-core", version = "=0.1.1", path = "crates/math/math-signal-core" }
 math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1", path = "crates/math/math-sparse-data" }
 math-statistics = { package = "moenarch-math-statistics", version = "=0.1.0", path = "crates/math/math-statistics" }
 media-core = { package = "moenarch-media-core", version = "=0.1.0", path = "crates/media/media-core" }
 model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1", path = "crates/runtime/model-runtime" }
 numbers-core = { package = "moenarch-numbers-core", version = "=0.1.1", path = "crates/data/numbers-core" }
+priority-queue = { package = "moenarch-priority-queue", version = "=0.1.0", path = "crates/algorithms/priority-queue" }
 runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1", path = "crates/runtime/runtime-core" }
+semantic-core = { package = "moenarch-semantic-core", version = "=0.1.0", path = "crates/semantic/semantic-core" }
 tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
 vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
 vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1", path = "crates/vector/vector-analysis-index" }

@@ -18,10 +18,12 @@ name = "model_runtime"
 [dependencies]
 runtime-core.workspace = true
 chrono.workspace = true
-hf-hub.workspace = true
 jobs-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+hf-hub.workspace = true
 
 [features]
 default = []

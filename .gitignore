@@ -12,6 +12,7 @@ test-corpora/
 .model-runtime/
 .agent-loop/
 /.agent-loop/verification/
+/.artifacts/
 .env
 .env.*
 !.env.example

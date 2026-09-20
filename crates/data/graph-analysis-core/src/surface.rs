@@ -7,8 +7,8 @@ use runtime_core::{
 use serde::Deserialize;
 
 use crate::{
-    analyze_tree, connected_components, shortest_path, strongly_connected_components,
-    weakly_connected_components, Graph, GraphEdge, GraphKind,
+    analyze_tree, connected_components, page_rank, shortest_path, strongly_connected_components,
+    topological_order, weakly_connected_components, Graph, GraphEdge, GraphKind, PageRankConfig,
 };
 
 /// Returns the package surface exposed by every transport wrapper.
@@ -43,6 +43,34 @@ pub fn package_surface() -> PackageSurface {
                     "edges": [{"source": "a", "target": "b", "weight": 2.0}],
                     "source": "a",
                     "target": "b"
+                }),
+            ),
+            operation(
+                "graph.topologicalSort",
+                "Topological sort",
+                "Returns a deterministic topological ordering for a directed acyclic graph.",
+                serde_json::json!({
+                    "kind": "directed",
+                    "edges": [
+                        {"source": "build", "target": "test"},
+                        {"source": "test", "target": "deploy"}
+                    ]
+                }),
+            ),
+            operation(
+                "graph.rank",
+                "PageRank",
+                "Computes deterministic PageRank scores with explicit convergence policy and evidence.",
+                serde_json::json!({
+                    "kind": "directed",
+                    "edges": [
+                        {"source": "a", "target": "b"},
+                        {"source": "b", "target": "a"},
+                        {"source": "b", "target": "c"}
+                    ],
+                    "damping": 0.85,
+                    "tolerance": 1.0e-10,
+                    "maxIterations": 100
                 }),
             ),
             operation(
@@ -85,6 +113,8 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
         "describe" => describe_value(request.input),
         "graph.components" => components_value(parse_input(request.input)?)?,
         "graph.shortestPath" => shortest_path_value(parse_input(request.input)?)?,
+        "graph.topologicalSort" => topological_sort_value(parse_input(request.input)?)?,
+        "graph.rank" => page_rank_value(parse_input(request.input)?)?,
         "graph.validateTree" => validate_tree_value(parse_input(request.input)?)?,
         operation => {
             return Err(format!(
@@ -140,6 +170,21 @@ struct ShortestPathRequest {
     edges: Vec<EdgeRequest>,
     source: String,
     target: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PageRankRequest {
+    kind: String,
+    #[serde(default)]
+    nodes: Vec<String>,
+    edges: Vec<EdgeRequest>,
+    #[serde(default = "default_page_rank_damping")]
+    damping: f64,
+    #[serde(default = "default_page_rank_tolerance")]
+    tolerance: f64,
+    #[serde(default = "default_page_rank_iterations")]
+    max_iterations: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -201,6 +246,44 @@ fn shortest_path_value(request: ShortestPathRequest) -> Result<serde_json::Value
         value["totalWeight"] = serde_json::json!(path.total_weight);
     }
     Ok(value)
+}
+
+fn topological_sort_value(request: GraphRequest) -> Result<serde_json::Value, String> {
+    let kind = parse_kind(&request.kind)?;
+    let graph = graph_from_parts(kind, request.nodes, request.edges)?;
+    let order = topological_order(&graph).map_err(|error| error.to_string())?;
+    Ok(serde_json::json!({
+        "kind": kind_name(kind),
+        "nodeCount": order.len(),
+        "order": order
+    }))
+}
+
+fn page_rank_value(request: PageRankRequest) -> Result<serde_json::Value, String> {
+    let kind = parse_kind(&request.kind)?;
+    let graph = graph_from_parts(kind, request.nodes, request.edges)?;
+    let report = page_rank(
+        &graph,
+        PageRankConfig {
+            damping: request.damping,
+            tolerance: request.tolerance,
+            max_iterations: request.max_iterations,
+        },
+    )
+    .map_err(|error| error.to_string())?;
+    Ok(serde_json::json!({
+        "kind": kind_name(kind),
+        "damping": request.damping,
+        "tolerance": request.tolerance,
+        "maxIterations": request.max_iterations,
+        "iterations": report.iterations,
+        "residual": report.residual,
+        "converged": report.converged,
+        "scores": report.scores.into_iter().map(|(node, score)| serde_json::json!({
+            "node": node,
+            "score": score
+        })).collect::<Vec<_>>()
+    }))
 }
 
 fn validate_tree_value(request: TreeRequest) -> Result<serde_json::Value, String> {
@@ -268,6 +351,18 @@ fn default_component_mode(kind: GraphKind) -> &'static str {
     }
 }
 
+fn default_page_rank_damping() -> f64 {
+    PageRankConfig::default().damping
+}
+
+fn default_page_rank_tolerance() -> f64 {
+    PageRankConfig::default().tolerance
+}
+
+fn default_page_rank_iterations() -> usize {
+    PageRankConfig::default().max_iterations
+}
+
 fn parse_input<T: for<'de> Deserialize<'de>>(input: serde_json::Value) -> Result<T, String> {
     serde_json::from_value(input).map_err(|error| format!("invalid request: {error}"))
 }
@@ -286,6 +381,8 @@ mod tests {
 
         assert!(ids.contains(&"graph.components".to_string()));
         assert!(ids.contains(&"graph.shortestPath".to_string()));
+        assert!(ids.contains(&"graph.topologicalSort".to_string()));
+        assert!(ids.contains(&"graph.rank".to_string()));
         assert!(ids.contains(&"graph.validateTree".to_string()));
     }
 
@@ -305,6 +402,42 @@ mod tests {
 
         assert_eq!(response.value["mode"], "connected");
         assert_eq!(response.value["componentCount"], 2);
+    }
+
+    #[test]
+    fn topological_sort_returns_dependency_order() {
+        let response = run_surface_operation(SurfaceRequest {
+            operation: OperationId::new("graph.topologicalSort"),
+            input: serde_json::json!({
+                "kind": "directed",
+                "edges": [
+                    {"source": "build", "target": "test"},
+                    {"source": "test", "target": "deploy"}
+                ]
+            }),
+        })
+        .expect("topological sort operation");
+
+        assert_eq!(
+            response.value["order"],
+            serde_json::json!(["build", "test", "deploy"])
+        );
+    }
+
+    #[test]
+    fn page_rank_exposes_convergence_evidence() {
+        let response = run_surface_operation(SurfaceRequest {
+            operation: OperationId::new("graph.rank"),
+            input: serde_json::json!({
+                "kind": "directed",
+                "edges": [{"source": "a", "target": "b"}]
+            }),
+        })
+        .expect("page rank operation");
+
+        assert_eq!(response.value["converged"], true);
+        assert!(response.value["iterations"].as_u64().unwrap() > 0);
+        assert_eq!(response.value["scores"].as_array().unwrap().len(), 2);
     }
 
     #[test]

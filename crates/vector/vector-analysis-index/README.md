@@ -1,22 +1,54 @@
 # vector-analysis-index
 
-Exact in-memory vector search for `moritzbrantner-video-analysis`.
+Exact and deterministic approximate in-memory vector search for `moritzbrantner-video-analysis`.
+
+The exact `VectorSearchIndex` remains the reference implementation for arbitrary supported metrics. `approximate::CosineLshIndex` adds bounded candidate selection for cosine search using deterministic seeded random-hyperplane LSH; candidates are still ranked with exact cosine similarity.
 
 ## Feature flags
 
 - No optional feature flags today.
 
-## Example
+## Exact search
+
+```rust,ignore
+use vector_analysis_core::{DenseVector, VectorMetric};
+use vector_analysis_index::{SearchConfig, VectorRecord, VectorSearchIndex};
+
+let index = VectorSearchIndex::from_records([
+    VectorRecord::new("a", DenseVector::new(vec![1.0, 0.0, 0.0])?),
+])?;
+let results = index.search(
+    &DenseVector::new(vec![0.9, 0.1, 0.0])?,
+    SearchConfig { metric: VectorMetric::Cosine, limit: 5 },
+)?;
+```
+
+## Approximate cosine search
 
 ```rust,ignore
 use vector_analysis_core::DenseVector;
-use vector_analysis_index::VectorIndex;
+use vector_analysis_index::{
+    approximate::{CosineLshConfig, CosineLshIndex, CosineLshSearchConfig},
+    VectorRecord,
+};
 
-let mut index = VectorIndex::new(3)?;
-index.insert("a", DenseVector::new(vec![1.0, 0.0, 0.0])?)?;
+let index = CosineLshIndex::from_records(
+    CosineLshConfig::default(),
+    [VectorRecord::new("a", DenseVector::new(vec![1.0, 0.0, 0.0])?)],
+)?;
+let report = index.search(
+    &DenseVector::new(vec![0.9, 0.1, 0.0])?,
+    CosineLshSearchConfig {
+        limit: 5,
+        probe_radius: 1,
+        max_candidates: 256,
+    },
+)?;
 
-let _ = index.search(DenseVector::new(vec![0.9, 0.1, 0.0])?.as_slice(), 5)?;
+assert!(report.candidate_count <= 256);
 ```
+
+`hash_bits` controls bucket width. `probe_radius` controls how many nearby signatures are visited, while `max_candidates` is a hard bound on the number of vectors scored exactly. Search reports expose both candidate and bucket counts so approximation effort is evidence rather than hidden policy.
 
 ## Package surface
 
@@ -24,14 +56,16 @@ Primary workflow: `vector.index.search`.
 
 Workflow operations:
 
-- `vector.index.search`: Builds an in-memory index and returns nearest records for a dense query vector.
+- `vector.index.search`: Builds the exact in-memory index and returns nearest records for a dense query vector.
 - `vector.index.centroids`: Assigns each dense vector to the nearest centroid using the selected metric.
+
+The first LSH slice is library-first; package-surface exposure can be added after the API is calibrated against exact search.
 
 Debug operations:
 
 - `describe`: inspect package metadata and runtime support.
 
-Runtime support: library, CLI, server, and WASM wrappers expose these operations.
+Runtime support: library, CLI, server, and WASM wrappers expose the existing exact operations.
 
 Run the primary workflow through the CLI:
 

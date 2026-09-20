@@ -32,19 +32,43 @@ FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 def immutable_git_source(source: str) -> bool:
-    """Accept only an exact requested revision plus Cargo's resolved commit."""
+    """Accept only Git dependencies requested at an exact commit revision.
+
+    Cargo metadata reports a manifest `rev = "<sha>"` dependency as
+    `...?rev=<sha>` while lockfile-derived source identifiers may additionally
+    contain `#<resolved-sha>`. A full requested SHA is already immutable; when a
+    resolved fragment is present, require it to name that same commit.
+    """
 
     if not source.startswith("git+"):
         return True
     parsed = urlsplit(source[4:])
     query = parse_qs(parsed.query, keep_blank_values=True)
     revisions = query.get("rev", [])
-    return (
-        set(query) == {"rev"}
-        and len(revisions) == 1
-        and FULL_SHA_RE.fullmatch(revisions[0]) is not None
-        and FULL_SHA_RE.fullmatch(parsed.fragment) is not None
-    )
+    if set(query) != {"rev"} or len(revisions) != 1:
+        return False
+
+    revision = revisions[0]
+    if FULL_SHA_RE.fullmatch(revision) is None:
+        return False
+
+    if not parsed.fragment:
+        return True
+
+    return parsed.fragment == revision
+
+
+def normal_dependency_names(package: dict) -> set[str]:
+    """Return packages linked through Cargo's normal/runtime dependency kind."""
+
+    names: set[str] = set()
+    for dependency in package.get("dependencies", []):
+        if dependency.get("kind") not in {None, "normal"}:
+            continue
+        dependency_name = dependency.get("name")
+        if isinstance(dependency_name, str):
+            names.add(dependency_name)
+    return names
 
 
 def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
@@ -89,8 +113,8 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
         errors.append("unclassified Cargo packages: " + ", ".join(missing))
     if extra:
         errors.append("ownership entries absent from cargo metadata: " + ", ".join(extra))
-    if len(records) != 61:
-        errors.append(f"ownership must contain exactly 61 packages, found {len(records)}")
+    if len(records) != 65:
+        errors.append(f"ownership must contain exactly 65 packages, found {len(records)}")
     source_document = {"packages": records_except_named(ownership, POST_EXTRACTION_PACKAGE_NAMES)}
     if ownership_records_sha256(source_document) != SOURCE_OWNERSHIP_RECORDS_SHA256:
         errors.append("source ownership records differ from the extraction inventory")
@@ -116,6 +140,12 @@ def validate(metadata: dict, ownership: dict, root: Path = ROOT) -> list[str]:
             wrapped = record.get("wrapped_library")
             if wrapped not in cargo_packages:
                 errors.append(f"{name}: invalid wrapped_library {wrapped!r}")
+            else:
+                package = cargo_packages.get(name)
+                if package is not None and wrapped not in normal_dependency_names(package):
+                    errors.append(
+                        f"{name}: wrapped_library {wrapped!r} is not a normal dependency"
+                    )
     for package in cargo_packages.values():
         for dependency in package.get("dependencies", []):
             dependency_name = dependency.get("name")
@@ -161,7 +191,10 @@ def main() -> int:
         for error in errors:
             print(f"error: {error}", file=sys.stderr)
         return 1
-    print("repository boundaries pass: 61 uniquely owned foundation packages; no path escapes or moving Git dependencies")
+    print(
+        "repository boundaries pass: 65 uniquely owned foundation packages; "
+        "wrappers depend on their declared libraries; no path escapes or moving Git dependencies"
+    )
     return 0
 
 

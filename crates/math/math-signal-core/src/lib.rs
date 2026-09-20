@@ -567,6 +567,7 @@ pub fn resample_interleaved(
             channels,
         });
     }
+    ResampleRatio::new(input_rate, output_rate)?;
     if !samples.len().is_multiple_of(channels as usize) {
         return Err(invalid_argument(
             "interleaved sample length must be divisible by channel count",
@@ -575,6 +576,7 @@ pub fn resample_interleaved(
     if samples.is_empty() {
         return Ok(Vec::new());
     }
+    validate_samples(samples, "samples")?;
     if input_rate == output_rate {
         return Ok(samples.to_vec());
     }
@@ -834,6 +836,43 @@ mod tests {
         assert_eq!(interleaved.len(), 8);
         assert!((db_to_linear(6.020_600_3).unwrap() - 2.0).abs() < 1.0e-5);
         assert!(linear_to_db(2.0).unwrap() > 6.0);
+    }
+
+    #[test]
+    fn interleaved_resampling_rejects_non_finite_samples() {
+        let rate = SampleRate::new(48_000).unwrap();
+        assert!(
+            resample_interleaved(&[f32::NAN, 0.0], 2, rate, rate, InterpolationMode::Linear,)
+                .is_err()
+        );
+        assert!(resample_interleaved(
+            &[0.0, f32::INFINITY],
+            2,
+            rate,
+            SampleRate::new(96_000).unwrap(),
+            InterpolationMode::Linear,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn interleaved_resampling_validates_rates_before_fast_paths() {
+        assert!(resample_interleaved(
+            &[0.0, 0.0],
+            2,
+            SampleRate(0),
+            SampleRate(0),
+            InterpolationMode::Linear,
+        )
+        .is_err());
+        assert!(resample_interleaved(
+            &[],
+            2,
+            SampleRate(0),
+            SampleRate(48_000),
+            InterpolationMode::Linear,
+        )
+        .is_err());
     }
 
     #[test]

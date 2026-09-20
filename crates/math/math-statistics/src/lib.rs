@@ -1,9 +1,14 @@
 #![doc = include_str!("../README.md")]
 
 pub mod surface;
+pub mod time_series;
 use math_linear::{F32Matrix, F32MatrixView, F64Matrix, MatrixShape, PseudoinverseOptions};
 use media_core::{DetectError, Result};
 use numbers_core::{checked_f64_to_f32, quantile, quartiles, NumberRange, RunningStats};
+pub use time_series::{
+    autocorrelation, autocorrelation_series, autocovariance, autocovariance_series,
+    cross_correlation, cross_correlation_series, cross_covariance, cross_covariance_series,
+};
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())

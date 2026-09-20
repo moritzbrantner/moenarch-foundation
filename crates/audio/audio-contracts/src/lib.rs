@@ -69,6 +69,7 @@ impl<'a> AudioFrame<'a> {
                 channels,
             });
         }
+        timestamp.validate()?;
         Ok(Self {
             timestamp,
             sample_rate,
@@ -336,6 +337,21 @@ mod tests {
                 channels: 1
             }
         ));
+    }
+
+    #[test]
+    fn audio_frame_rejects_an_invalid_timestamp_timebase() {
+        let buffer = AudioBuffer::I16(vec![0, 1]);
+        let invalid_timestamp = Timestamp::new(0, Timebase::new(1, 0));
+
+        let error = AudioFrame::new(invalid_timestamp, 48_000, 1, &buffer).unwrap_err();
+
+        assert!(matches!(
+            error,
+            DetectError::InvalidArgument(message)
+                if message.contains("timebase numerator and denominator must be positive")
+        ));
+        assert!(OwnedAudioFrame::new(invalid_timestamp, 48_000, 1, buffer).is_err());
     }
 
     #[test]

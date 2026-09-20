@@ -1,8 +1,10 @@
 #![doc = include_str!("../README.md")]
 
+pub mod sparse_product;
 pub mod surface;
 use math_linear::{F32Matrix, F32MatrixView, MatrixShape};
 use media_core::{DetectError, Result};
+pub use sparse_product::SparseProductStats;
 use vector_analysis_core::DenseVector;
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {

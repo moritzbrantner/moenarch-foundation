@@ -24,7 +24,12 @@ serde_json.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+iai-callgrind.workspace = true
 
 [[bench]]
 name = "metrics"
+harness = false
+
+[[bench]]
+name = "performance_smoke"
 harness = false
