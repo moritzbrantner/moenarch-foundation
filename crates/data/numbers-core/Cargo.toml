@@ -24,9 +24,14 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+iai-callgrind.workspace = true
 criterion.workspace = true
 proptest.workspace = true
 
 [[bench]]
 name = "stats"
+harness = false
+
+[[bench]]
+name = "performance_smoke"
 harness = false

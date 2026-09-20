@@ -45,6 +45,8 @@ jobs:
         run: cargo doc --locked --workspace --no-deps
       - name: Package all crates without publishing
         run: python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
+      - name: Test independently extracted numerical archives
+        run: python3 scripts/check_numerical_package_tests.py
 
   wasm-bindings:
     runs-on: ubuntu-latest

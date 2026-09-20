@@ -1633,6 +1633,7 @@ dependencies = [
 name = "moenarch-math-geometry-3d"
 version = "0.1.0"
 dependencies = [
+ "iai-callgrind",
  "moenarch-numbers-core",
  "nalgebra",
  "proptest",
@@ -1900,6 +1901,7 @@ name = "moenarch-numbers-core"
 version = "0.1.1"
 dependencies = [
  "criterion",
+ "iai-callgrind",
  "moenarch-media-core",
  "moenarch-runtime-core",
  "proptest",
