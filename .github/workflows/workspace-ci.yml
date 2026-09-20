@@ -17,6 +17,8 @@ jobs:
         with:
           toolchain: "1.95.0"
       - uses: Swatinem/rust-cache@v2
+      - name: Fetch locked dependencies
+        run: cargo fetch --locked
       - name: Ownership and release validators
         run: |
           cargo metadata --format-version 1 --no-deps

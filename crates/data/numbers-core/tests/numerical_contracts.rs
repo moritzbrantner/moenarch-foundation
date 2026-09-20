@@ -1,8 +1,31 @@
-#[path = "../../../test-support/numerical.rs"]
+#[path = "support/numerical.rs"]
 mod numerical;
 
 use numbers_core::{checked_f64_to_f32, ApproxTolerance};
 use proptest::prelude::*;
+
+#[test]
+fn relative_comparison_handles_opposite_sign_finite_extremes() {
+    for (left, right, limit) in [
+        (f64::MAX, -f64::MAX, 2.0),
+        (f64::MAX, -f64::MAX / 2.0, 1.5),
+        (-f64::MAX, f64::MAX / 2.0, 1.5),
+    ] {
+        let inclusive = ApproxTolerance::new(0.0, limit).unwrap();
+        let too_small = ApproxTolerance::new(0.0, limit - 0.01).unwrap();
+        assert!(inclusive.allows_f64(left, right));
+        assert!(inclusive.allows_f64(right, left));
+        assert!(!too_small.allows_f64(left, right));
+    }
+    let exact = ApproxTolerance::new(0.0, 0.0).unwrap();
+    assert!(exact.allows_f64(f64::MAX, f64::MAX));
+    assert!(!exact.allows_f64(f64::MAX, f64::MAX.next_down()));
+    assert!(!exact.allows_f64(f64::from_bits(1), 0.0));
+    assert!(exact.allows_f64(0.0, -0.0));
+    assert!(!ApproxTolerance::new(f64::MAX, f64::MAX)
+        .unwrap()
+        .allows_f64(f64::INFINITY, 0.0));
+}
 
 proptest! {
     #![proptest_config(numerical::deterministic_config())]

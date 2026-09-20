@@ -3,8 +3,9 @@
 //! This is intentionally a source module rather than a workspace crate. The
 //! repository ownership audit and boundary checker require every workspace
 //! package to be represented in the canonical ownership inventory. Integration
-//! tests include this module with `#[path]` so test-only support remains
-//! reusable without changing production package ownership.
+//! tests include crate-local `tests/support/numerical.rs` links with `#[path]`.
+//! All links target this repository-owned file; Cargo embeds their contents as
+//! ordinary files in crate archives, so packaged tests are self-contained.
 
 #![allow(dead_code)]
 

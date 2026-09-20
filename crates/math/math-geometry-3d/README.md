@@ -24,13 +24,21 @@ nalgebra type is part of this crate's canonical contract.
 ## Numerical verification
 
 Rotation matrices are accepted only when column lengths, mutual orthogonality,
-and determinant are within `1e-10` of a proper rotation. Euler extraction uses
+and determinant are within `1e-10` (f64) or `8 * f32::EPSILON` (f32) of a
+proper rotation. Both precisions share validation and quaternion extraction,
+with the tolerance selected at the input boundary. Euler extraction uses
 an absolute `1e-12` cosine threshold for its documented singular branch and
 returns one equivalent rotation with the least-significant angle set to zero.
 Generated f64 rotation/transform laws use `1e-10` absolute and relative
 tolerances; paired f32 laws use `2e-5`. These tolerances cover composition,
 inverse, matrix and axis-angle edge branches, and nalgebra differential tests;
 they are not application-scale distance tolerances.
+
+Matrix inversion equilibrates rows before checking the determinant against
+`f64::EPSILON`, so uniform coordinate scaling does not make an otherwise
+well-conditioned matrix singular. Non-finite inverse entries remain errors.
+Axis-angle export uses the quaternion vector norm and `atan2` to preserve small
+rotations even when the scalar component rounds to one.
 
 ## Example
 

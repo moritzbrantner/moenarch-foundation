@@ -475,6 +475,11 @@ impl UnitQuaterniond {
     /// Builds a rotation from a validated row-major rotation matrix.
     pub fn from_matrix3(matrix: Matrix3d) -> Result<Self> {
         matrix.validate_rotation()?;
+        Self::from_validated_matrix3(matrix)
+    }
+
+    // Both precisions validate at their own boundary before sharing extraction.
+    fn from_validated_matrix3(matrix: Matrix3d) -> Result<Self> {
         let rows = matrix.rows;
         let trace = rows[0][0] + rows[1][1] + rows[2][2];
         let quaternion = if trace > 0.0 {
@@ -569,14 +574,15 @@ impl UnitQuaterniond {
     }
     /// Returns the axis and non-negative radian angle represented by this rotation.
     pub fn to_axis_angle(self) -> Result<(Vector3d, f64)> {
-        let angle = 2.0 * self.w.clamp(-1.0, 1.0).acos();
-        let sin_half = (1.0 - self.w * self.w).max(0.0).sqrt();
-        if sin_half <= f64::EPSILON {
+        // The vector part retains small angles even when w rounds to +/-1.
+        // hypot also avoids underflow from squaring its tiny components.
+        let sin_half = self.x.hypot(self.y).hypot(self.z);
+        if sin_half == 0.0 {
             return Ok((Vector3d::X, 0.0));
         }
         Ok((
-            Vector3d::new(self.x / sin_half, self.y / sin_half, self.z / sin_half)?.normalized()?,
-            angle,
+            Vector3d::new(self.x / sin_half, self.y / sin_half, self.z / sin_half)?,
+            2.0 * sin_half.atan2(self.w),
         ))
     }
     /// Converts to explicit Euler angles in the requested order. At gimbal lock,
@@ -743,7 +749,8 @@ impl UnitQuaternion {
     }
     /// Builds a rotation from a validated row-major rotation matrix.
     pub fn from_matrix3(matrix: Matrix3) -> Result<Self> {
-        UnitQuaterniond::from_matrix3(matrix.to_f64())?.to_f32_checked()
+        matrix.validate_rotation()?;
+        UnitQuaterniond::from_validated_matrix3(matrix.to_f64())?.to_f32_checked()
     }
     /// Rotation composition: the returned rotation applies `rhs` first, then `self`.
     pub fn compose(self, rhs: Self) -> Result<Self> {
@@ -818,19 +825,22 @@ impl Matrix3d {
     }
     /// Validates that this matrix is a proper orthonormal rotation matrix.
     pub fn validate_rotation(self) -> Result<()> {
-        const TOLERANCE: f64 = 1.0e-10;
+        self.validate_rotation_with_tolerance(1.0e-10)
+    }
+
+    fn validate_rotation_with_tolerance(self, tolerance: f64) -> Result<()> {
         let x = Vector3d::new(self.rows[0][0], self.rows[1][0], self.rows[2][0])?;
         let y = Vector3d::new(self.rows[0][1], self.rows[1][1], self.rows[2][1])?;
         let z = Vector3d::new(self.rows[0][2], self.rows[1][2], self.rows[2][2])?;
         for axis in [x, y, z] {
-            if (axis.magnitude()? - 1.0).abs() > TOLERANCE {
+            if (axis.magnitude()? - 1.0).abs() > tolerance {
                 return Err(Geometry3dError::Degenerate("rotation matrix axis"));
             }
         }
-        if x.dot(y)?.abs() > TOLERANCE
-            || x.dot(z)?.abs() > TOLERANCE
-            || y.dot(z)?.abs() > TOLERANCE
-            || (self.determinant()? - 1.0).abs() > TOLERANCE
+        if x.dot(y)?.abs() > tolerance
+            || x.dot(z)?.abs() > tolerance
+            || y.dot(z)?.abs() > tolerance
+            || (self.determinant()? - 1.0).abs() > tolerance
         {
             return Err(Geometry3dError::Degenerate("rotation matrix"));
         }
@@ -881,12 +891,22 @@ impl Matrix3d {
     }
     /// Inverse, rejecting singular matrices.
     pub fn inverse(self) -> Result<Self> {
-        let d = self.determinant()?;
+        // Equilibrate rows before taking cofactors: raw determinants scale
+        // cubically and can underflow or overflow even for a scaled identity.
+        let scales = self
+            .rows
+            .map(|row| row.into_iter().map(f64::abs).fold(0.0, f64::max));
+        if scales.contains(&0.0) {
+            return Err(Geometry3dError::SingularMatrix);
+        }
+        let m = std::array::from_fn(|row| self.rows[row].map(|value| value / scales[row]));
+        let d = Self::new(m)?.determinant()?;
+        // Apply the degeneracy threshold only after equilibration, also
+        // rejecting roundoff left by linearly dependent normalized rows.
         if d.abs() <= f64::EPSILON {
             return Err(Geometry3dError::SingularMatrix);
         }
-        let m = self.rows;
-        Self::new([
+        let mut inverse = [
             [
                 (m[1][1] * m[2][2] - m[1][2] * m[2][1]) / d,
                 (m[0][2] * m[2][1] - m[0][1] * m[2][2]) / d,
@@ -902,7 +922,15 @@ impl Matrix3d {
                 (m[0][1] * m[2][0] - m[0][0] * m[2][1]) / d,
                 (m[0][0] * m[1][1] - m[0][1] * m[1][0]) / d,
             ],
-        ])
+        ];
+        // A = D * M, so A^-1 = M^-1 * D^-1: undo row scaling
+        // on the inverse's columns, without forming a scale-cubed product.
+        for row in &mut inverse {
+            for (value, scale) in row.iter_mut().zip(scales) {
+                *value /= scale;
+            }
+        }
+        Self::new(inverse)
     }
     /// Checked conversion to f32.
     pub fn to_f32_checked(self) -> Result<Matrix3> {
@@ -942,7 +970,8 @@ impl Matrix3 {
     }
     /// Validates that this matrix is a proper orthonormal rotation matrix.
     pub fn validate_rotation(self) -> Result<()> {
-        self.to_f64().validate_rotation()
+        self.to_f64()
+            .validate_rotation_with_tolerance(8.0 * f64::from(f32::EPSILON))
     }
     /// Converts to f64 without loss.
     pub fn to_f64(self) -> Matrix3d {

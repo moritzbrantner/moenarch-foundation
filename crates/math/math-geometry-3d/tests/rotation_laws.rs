@@ -1,4 +1,4 @@
-#[path = "../../../test-support/numerical.rs"]
+#[path = "support/numerical.rs"]
 mod numerical;
 
 use math_geometry_3d::{
@@ -39,6 +39,166 @@ fn quaternion_dot(left: UnitQuaterniond, right: UnitQuaterniond) -> f64 {
         .zip(right.components())
         .map(|(left, right)| left * right)
         .sum()
+}
+
+#[test]
+fn f32_rotation_matrices_accept_narrowing_error_but_reject_distortion() {
+    for axis in [
+        Vector3d::X,
+        Vector3d::Y,
+        Vector3d::Z,
+        Vector3d::new(1.0, 2.0, 3.0).unwrap(),
+    ] {
+        for angle in [0.5, -0.7, std::f64::consts::FRAC_PI_2, std::f64::consts::PI] {
+            let source = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
+            let matrix = source.to_matrix3().unwrap().to_f32_checked().unwrap();
+            matrix.validate_rotation().unwrap();
+            let recovered = UnitQuaternion::from_matrix3(matrix).unwrap();
+            for vector in [Vector3::X, Vector3::Y, Vector3::Z] {
+                assert_vector3_close(
+                    recovered.rotate_vector(vector).unwrap(),
+                    source
+                        .rotate_vector(vector.into())
+                        .unwrap()
+                        .to_f32_checked()
+                        .unwrap(),
+                );
+            }
+        }
+    }
+    for rows in [
+        [[1.001, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        [[1.0, 0.001, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+        [[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+    ] {
+        let matrix = Matrix3d::new(rows).unwrap().to_f32_checked().unwrap();
+        assert!(matrix.validate_rotation().is_err());
+        assert!(UnitQuaternion::from_matrix3(matrix).is_err());
+    }
+    let distorted =
+        Matrix3d::new([[1.0 + 1e-8, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]).unwrap();
+    assert!(distorted.validate_rotation().is_err());
+    assert!(UnitQuaterniond::from_matrix3(distorted).is_err());
+}
+
+#[test]
+fn matrix_inversion_is_independent_of_coordinate_scale() {
+    for scale in [1e-200, 1e-6, 1.0, 1e6, 1e200] {
+        for rows in [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[2.0, 1.0, 0.0], [0.0, 3.0, 1.0], [1.0, 0.0, 4.0]],
+        ] {
+            let matrix = Matrix3d::new(rows.map(|row| row.map(|x| x * scale))).unwrap();
+            let inverse = matrix.inverse().unwrap();
+            for product in [
+                matrix.compose(inverse).unwrap(),
+                inverse.compose(matrix).unwrap(),
+            ] {
+                for (actual, expected) in product
+                    .rows()
+                    .into_iter()
+                    .flatten()
+                    .zip(Matrix3d::IDENTITY.rows().into_iter().flatten())
+                {
+                    assert_approx_eq_f64(actual, expected, tolerance());
+                }
+            }
+            let transform = AffineTransform3d::new(matrix, Vector3d::ZERO).unwrap();
+            let point = Point3d::new(1.0, -2.0, 0.5).unwrap();
+            assert_point_close(
+                transform
+                    .inverse()
+                    .unwrap()
+                    .apply_point(transform.apply_point(point).unwrap())
+                    .unwrap(),
+                point,
+            );
+        }
+    }
+    let mixed = Matrix3d::new([[1e200, 0.0, 0.0], [0.0, 1e-200, 0.0], [0.0, 0.0, 1.0]]).unwrap();
+    let expected = [[1e-200, 0.0, 0.0], [0.0, 1e200, 0.0], [0.0, 0.0, 1.0]];
+    for (actual, expected) in mixed
+        .inverse()
+        .unwrap()
+        .rows()
+        .into_iter()
+        .flatten()
+        .zip(expected.into_iter().flatten())
+    {
+        assert_approx_eq_f64(actual, expected, ApproxTolerance::new(0.0, 1e-12).unwrap());
+    }
+    let small_f32 = Matrix3d::new([[1e-6, 0.0, 0.0], [0.0, 1e-6, 0.0], [0.0, 0.0, 1e-6]])
+        .unwrap()
+        .to_f32_checked()
+        .unwrap();
+    assert_vector3_close(
+        small_f32
+            .inverse()
+            .unwrap()
+            .apply_vector(small_f32.apply_vector(Vector3::X).unwrap())
+            .unwrap(),
+        Vector3::X,
+    );
+    for rows in [
+        [[0.0; 3]; 3],
+        [[1e-6, 2e-6, 3e-6], [1e-6, 2e-6, 3e-6], [0.0, 0.0, 1e-6]],
+        [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+    ] {
+        assert_eq!(
+            Matrix3d::new(rows).unwrap().inverse(),
+            Err(Geometry3dError::SingularMatrix)
+        );
+    }
+    assert!(
+        Matrix3d::new([[1e-320, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+            .unwrap()
+            .inverse()
+            .is_err()
+    );
+}
+
+#[test]
+fn axis_angle_export_preserves_small_rotations_and_quaternion_signs() {
+    for axis in [Vector3d::X, Vector3d::Y, Vector3d::Z] {
+        for angle in [1e-200, 1e-14, 1e-8, -1e-8, 1e-6] {
+            let source = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
+            let (recovered_axis, recovered_angle) = source.to_axis_angle().unwrap();
+            assert_approx_eq_f64(
+                recovered_angle,
+                angle.abs(),
+                ApproxTolerance::new(0.0, 1e-12).unwrap(),
+            );
+            let [x, y, z, w] = source.components();
+            let negated = Quaterniond::new(-x, -y, -z, -w)
+                .unwrap()
+                .normalized()
+                .unwrap();
+            for (axis, angle) in [
+                (recovered_axis, recovered_angle),
+                negated.to_axis_angle().unwrap(),
+            ] {
+                let recovered = UnitQuaterniond::from_axis_angle(axis, angle).unwrap();
+                for vector in [Vector3d::X, Vector3d::Y, Vector3d::Z] {
+                    assert_vector_close(
+                        source.rotate_vector(vector).unwrap(),
+                        recovered.rotate_vector(vector).unwrap(),
+                    );
+                }
+            }
+        }
+    }
+    assert_eq!(
+        UnitQuaterniond::IDENTITY.to_axis_angle().unwrap(),
+        (Vector3d::X, 0.0)
+    );
+    let negative_identity = Quaterniond::new(0.0, 0.0, 0.0, -1.0)
+        .unwrap()
+        .normalized()
+        .unwrap();
+    assert_eq!(
+        negative_identity.to_axis_angle().unwrap(),
+        (Vector3d::X, 0.0)
+    );
 }
 
 fn arbitrary_rotation() -> impl Strategy<Value = (Vector3d, f64)> {

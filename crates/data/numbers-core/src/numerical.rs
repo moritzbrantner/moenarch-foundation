@@ -34,6 +34,11 @@ impl ApproxTolerance {
         let scale = left.abs().max(right.abs());
         let relative_error = if scale == 0.0 {
             0.0
+        } else if absolute_error.is_infinite() {
+            // Finite operands can overflow their difference only with opposite
+            // signs. Normalize first in that case; retain subtraction precision
+            // for nearby values and subnormals on the ordinary path.
+            (left / scale - right / scale).abs()
         } else {
             absolute_error / scale
         };

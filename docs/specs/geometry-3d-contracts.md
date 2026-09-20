@@ -48,7 +48,12 @@ unit-length preservation, and invalid interpolation factors in both precision
 families.
 Matrix import accepts a proper f64 rotation matrix only when each axis norm,
 axis dot product, and determinant differ from the ideal by no more than
-`1e-10`. These are verification and input-validity contracts, not a hidden
+`1e-10`. The paired f32 import uses `8 * f32::EPSILON` to allow representation
+rounding without accepting scale, shear, or reflection. Matrix inversion checks
+the determinant against `f64::EPSILON` after row equilibration, independently of
+coordinate scale. Axis-angle export preserves tiny rotations through the vector
+norm and `atan2`, and regression checks compare transformed vectors as well as
+quaternion similarity. These are verification and input-validity contracts, not a hidden
 global tolerance for callers' application algorithms.
 
 Raw-quaternion deserialization validates finite components. Unit-quaternion

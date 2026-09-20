@@ -14,6 +14,16 @@ production `numbers_core::ApproxTolerance` contract.
 It is intentionally not a Cargo package. The repository's ownership audit and
 boundary check require every workspace package to be represented in the
 canonical ownership inventory, so callers include the module with `#[path]`.
+Each consuming crate has a `tests/support/numerical.rs` symlink targeting that
+shared file within the repository. Tests refer only to the crate-local path;
+Cargo embeds the linked contents as an ordinary file in each archive. Source
+checkouts must preserve Git symlinks. The Python package-file-list regression
+check rejects explicit test modules missing from an archive; packaging changes
+also require running tests from extracted archives with the exact local source
+dependency graph.
+The file-list check runs Cargo offline against the committed lockfile. Restore
+dependencies with `cargo fetch --locked` before running repository script tests
+from a cold cache; CI performs this acquisition before its validators.
 This keeps test-only machinery outside every production crate's public
 interface and avoids creating a package boundary solely for one initial
 consumer. The module becomes more valuable as F3 and F5 add their independent
