@@ -23,6 +23,8 @@ jobs:
           toolchain: "1.95.0"
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Fetch locked dependencies
+        run: cargo fetch --locked
       - name: Ownership and release validators
         run: |
           cargo metadata --locked --format-version 1 --no-deps
@@ -43,6 +45,8 @@ jobs:
         run: cargo doc --locked --workspace --no-deps
       - name: Package all crates without publishing
         run: python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json
+      - name: Test independently extracted numerical archives
+        run: python3 scripts/check_numerical_package_tests.py
 
   wasm-bindings:
     runs-on: ubuntu-latest

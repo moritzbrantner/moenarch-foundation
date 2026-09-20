@@ -1,4 +1,4 @@
-#[path = "../../../test-support/numerical.rs"]
+#[path = "support/numerical.rs"]
 mod numerical;
 
 use math_linear::{F64Matrix, MatrixShape};

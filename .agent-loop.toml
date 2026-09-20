@@ -17,6 +17,7 @@ commands = [
   "cargo test --locked --workspace --no-default-features",
   "cargo doc --locked --workspace --no-deps",
   "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+  "python3 scripts/check_numerical_package_tests.py",
 ]
 
 [publication]
