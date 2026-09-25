@@ -4,6 +4,10 @@ Exact and deterministic approximate in-memory vector search for `moritzbrantner-
 
 The exact `VectorSearchIndex` remains the reference implementation for arbitrary supported metrics. `approximate::CosineLshIndex` adds bounded candidate selection for cosine search using deterministic seeded random-hyperplane LSH; candidates are still ranked with exact cosine similarity.
 
+## Ownership boundary
+
+This crate owns vector records, metric/filter semantics, exact and approximate index policy, result types, and deterministic ID tie-breaking. Generic bounded top-k retention is delegated to `search-kernels` in `moritzbrantner/rust-kernels`; that kernel does not own vector scoring or filtering semantics.
+
 ## Feature flags
 
 - No optional feature flags today.
