@@ -18,6 +18,7 @@ name = "vector_analysis_index"
 [dependencies]
 media-core.workspace = true
 runtime-core.workspace = true
+search-kernels.workspace = true
 serde_json.workspace = true
 serde.workspace = true
 vector-analysis-core.workspace = true
