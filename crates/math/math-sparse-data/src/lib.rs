@@ -4,6 +4,7 @@ pub mod sparse_product;
 pub mod surface;
 use math_linear::{F32Matrix, F32MatrixView, MatrixShape};
 use media_core::{DetectError, Result};
+use search_kernels::top_k_by;
 pub use sparse_product::SparseProductStats;
 use vector_analysis_core::DenseVector;
 
@@ -316,21 +317,18 @@ impl SparseVector {
     /// Returns the top `k` entries sorted by descending absolute value, then index.
     pub fn top_k_by_abs(&self, k: usize) -> Result<Vec<(usize, f32)>> {
         let canonical = self.canonicalized()?;
-        let mut pairs = canonical
-            .indices
-            .into_iter()
-            .zip(canonical.values)
-            .collect::<Vec<_>>();
-        pairs.sort_by(|left, right| {
-            right
-                .1
-                .abs()
-                .partial_cmp(&left.1.abs())
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| left.0.cmp(&right.0))
-        });
-        pairs.truncate(k);
-        Ok(pairs)
+        Ok(top_k_by(
+            canonical.indices.into_iter().zip(canonical.values),
+            k,
+            |left, right| {
+                right
+                    .1
+                    .abs()
+                    .partial_cmp(&left.1.abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| left.0.cmp(&right.0))
+            },
+        ))
     }
 
     /// Returns normalize l2.
@@ -901,6 +899,18 @@ mod tests {
             transposed.transpose().unwrap().to_coo().unwrap().entries(),
             matrix.to_coo().unwrap().entries()
         );
+    }
+
+    #[test]
+    fn sparse_top_k_preserves_absolute_value_and_index_ordering() {
+        let vector =
+            SparseVector::new(6, vec![4, 1, 3, 0], vec![-5.0, 5.0, 2.0, -5.0]).unwrap();
+
+        assert_eq!(
+            vector.top_k_by_abs(3).unwrap(),
+            vec![(0, -5.0), (1, 5.0), (4, -5.0)]
+        );
+        assert!(vector.top_k_by_abs(0).unwrap().is_empty());
     }
 
     #[test]
