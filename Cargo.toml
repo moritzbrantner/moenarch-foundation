@@ -82,12 +82,10 @@ categories = ["science", "algorithms", "multimedia"]
 [workspace.dependencies]
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "serde"] }
 clap = { version = "4.5.51", features = ["derive"] }
-collection-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }
 criterion = "0.5.1"
 iai-callgrind = "0.16.1"
 faer = { version = "0.24.0", default-features = false, features = ["std", "linalg"] }
 graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }
-search-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }
 hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
 nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }
 ndarray = "0.17.2"
