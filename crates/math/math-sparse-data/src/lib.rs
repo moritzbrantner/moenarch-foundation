@@ -903,8 +903,7 @@ mod tests {
 
     #[test]
     fn sparse_top_k_preserves_absolute_value_and_index_ordering() {
-        let vector =
-            SparseVector::new(6, vec![4, 1, 3, 0], vec![-5.0, 5.0, 2.0, -5.0]).unwrap();
+        let vector = SparseVector::new(6, vec![4, 1, 3, 0], vec![-5.0, 5.0, 2.0, -5.0]).unwrap();
 
         assert_eq!(
             vector.top_k_by_abs(3).unwrap(),
