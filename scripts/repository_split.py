@@ -31,7 +31,7 @@ POST_EXTRACTION_PACKAGE_NAMES = frozenset(
     {"moenarch-corpus-core", "moenarch-math-geometry-3d", "moenarch-math-probability", "moenarch-priority-queue", "moenarch-semantic-core"}
 )
 POST_EXTRACTION_RECORDS_SHA256 = (
-    "51601607987f43fa74e889cb998193d36cfbc5fc5ebc856e65123d4c8febb598"
+    "c39633641933c07dc710d8823c7f0704c1f9e6bfac2f45b613752e05915154c3"
 )
 
 
