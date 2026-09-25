@@ -120,3 +120,6 @@ semantic-core = { package = "moenarch-semantic-core", version = "=0.1.0", path =
 tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
 vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
 vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1", path = "crates/vector/vector-analysis-index" }
+
+[patch.crates-io]
+search-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }
