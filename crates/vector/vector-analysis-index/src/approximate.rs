@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use media_core::Result;
 use vector_analysis_core::{cosine_similarity, DenseVector};
 
-use super::{invalid_argument, SearchResult, VectorRecord};
+use super::{invalid_argument, top_k_fallible, SearchResult, VectorRecord};
 
 const DEFAULT_SEED: u64 = 0x6a09_e667_f3bc_c909;
 
@@ -188,22 +188,23 @@ impl CosineLshIndex {
             }
         }
 
-        let mut results = Vec::with_capacity(candidate_indices.len());
-        for record_index in candidate_indices.iter().copied() {
-            let record = &self.records[record_index];
-            let score = cosine_similarity(query.as_slice(), record.vector.as_slice())?;
-            results.push(SearchResult {
-                id: record.id.clone(),
-                distance: 1.0 - score,
-                score,
-            });
-        }
-        results.sort_by(|left, right| {
-            left.distance
-                .total_cmp(&right.distance)
-                .then_with(|| left.id.cmp(&right.id))
-        });
-        results.truncate(config.limit);
+        let results = top_k_fallible(
+            candidate_indices.iter().copied().map(|record_index| {
+                let record = &self.records[record_index];
+                let score = cosine_similarity(query.as_slice(), record.vector.as_slice())?;
+                Ok(SearchResult {
+                    id: record.id.clone(),
+                    distance: 1.0 - score,
+                    score,
+                })
+            }),
+            config.limit,
+            |left, right| {
+                left.distance
+                    .total_cmp(&right.distance)
+                    .then_with(|| left.id.cmp(&right.id))
+            },
+        )?;
 
         Ok(CosineLshSearchReport {
             results,
