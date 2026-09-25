@@ -18,7 +18,7 @@ name = "vector_analysis_index"
 [dependencies]
 media-core.workspace = true
 runtime-core.workspace = true
-search-kernels.workspace = true
+search-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }
 serde_json.workspace = true
 serde.workspace = true
 vector-analysis-core.workspace = true
