@@ -16,7 +16,7 @@ categories.workspace = true
 name = "graph_analysis_core"
 
 [dependencies]
-graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "76b8dad6b1925c9fe78c4dfd130b6c45800ffcab" }
+graph-kernels.workspace = true
 media-core.workspace = true
 runtime-core.workspace = true
 serde.workspace = true
