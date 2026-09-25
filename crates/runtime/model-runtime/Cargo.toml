@@ -4,7 +4,7 @@ version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Generic model specs, bundles, downloads, and job helpers for multimodal runtimes."
+description = "Generic model specs, bundles, downloads, and runtime access for multimodal runtimes."
 readme = "README.md"
 repository.workspace = true
 homepage.workspace = true
@@ -17,17 +17,12 @@ name = "model_runtime"
 
 [dependencies]
 runtime-core.workspace = true
-chrono.workspace = true
-jobs-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 hf-hub.workspace = true
 
-[features]
-default = []
-jobs = []
 
 [dev-dependencies]
 tempfile.workspace = true
