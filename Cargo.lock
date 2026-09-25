@@ -1758,6 +1758,7 @@ dependencies = [
  "moenarch-numbers-core",
  "moenarch-runtime-core",
  "moenarch-vector-analysis-core",
+ "search-kernels",
  "serde",
  "serde_json",
 ]
