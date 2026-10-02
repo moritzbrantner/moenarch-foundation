@@ -4,11 +4,6 @@
 
 This repository was bootstrapped as a clean copy from `moritzbrantner/rust-packages`; see [docs/PROVENANCE.md](docs/PROVENANCE.md). For the Rust packages assigned to `moenarch-foundation`, this repository is now the canonical source, test, issue, version, and release authority. Historical copies in `rust-packages` are compatibility/provenance material, not a competing implementation or release source.
 
-GitHub Issues are the durable agent queue; see
-[the issue-tracker contract](docs/agents/issue-tracker.md) and
-[planning workflow](docs/agents/planning-workflow.md). Repository-local Agent
-Loop policy lives in `.agent-loop.toml`.
-
 ## Source development
 
 Normal implementation work may be validated by downstream repositories against an exact foundation source revision before a crates.io release exists. Consumers keep registry coordinates in their manifests and use the managed source-development configuration provided by `coding-tooling`; publishing remains a separate release task.
