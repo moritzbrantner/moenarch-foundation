@@ -2,11 +2,6 @@
 
 This repository contains 60 domain-neutral Rust packages. Read `CONTEXT.md`, `docs/PROVENANCE.md`, the ADR, ownership map, and release plan before changing package boundaries or release metadata.
 
-GitHub Issues are the durable planning and execution queue. Read
-`docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`,
-`docs/agents/domain.md`, and `docs/agents/planning-workflow.md`. PRD slices use
-canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
-
 ## Agent startup and local loop
 
 - On a fresh machine or after the declared toolchain/environment contract changes, run `bash scripts/codex-environment.sh setup`. Use `maintenance` for an existing environment when dependency state changes.
