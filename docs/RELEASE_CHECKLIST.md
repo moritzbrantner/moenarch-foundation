@@ -26,9 +26,9 @@ For a future authorized release:
    publication; the publisher never passes those patches to `cargo publish`.
 5. Run every manifest-declared candidate consumer check before publication.
    An explicitly empty list means no consumer result is required or claimed.
-6. Let only the receipt-gated Agent Loop master invoke
-   `python3 scripts/agent_loop_local_verification.py publish`; do not call Cargo
-   publication or the repository hook by hand.
+6. Publish only through
+   `python3 scripts/publish_release.py --issue <N> --head <SHA>` from a clean
+   checkout of the exact verified head; do not call Cargo publication by hand.
 7. Confirm the hook pins Cargo to `crates-io`, publishes topologically, verifies
    each packaged checksum against the immutable registry version, creates each
    manifest-declared tag explicitly at `source_sha`, verifies that exact remote

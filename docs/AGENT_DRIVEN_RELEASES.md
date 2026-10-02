@@ -41,11 +41,11 @@ an exact 40-character source commit. The issue body must contain
 Both lines are revalidated before every release effect. An issue in
 `rust-packages` or another repository cannot authorize this publisher.
 
-The Agent Loop first verifies the exact head using the ordered commands in
-`release-gate.toml`. Its receipt-gated master publication action then invokes
-`python3 scripts/publish_release.py` with `AGENT_LOOP_REPOSITORY`,
-`AGENT_LOOP_ISSUE`, and `AGENT_LOOP_HEAD_SHA`. Calling the hook without all
-three bindings fails before external access.
+Publication first verifies the exact head using the ordered commands in
+`release-gate.toml` (CI runs the same gate). Once CI is green, the owner or the
+coding agent runs `python3 scripts/publish_release.py --issue <N> --head <SHA>`
+from a clean checkout of that exact head. Calling the publisher without the
+issue and head bindings fails before external access.
 
 ## Exact manifest
 
@@ -113,8 +113,8 @@ documentation, build, or all-package evidence. The publisher retains the
 clean-head, destination-local authority, exact dependency, immutable registry,
 idempotent resume, checksum, and source-tag safeguards described below.
 That reviewed preparation gate remains pinned to issue #17; it is not the
-recurring Agent Loop gate for ordinary source work. Any later publication also
-requires a receipt for the current repository-wide recurring gate.
+recurring verification gate for ordinary source work. Any later publication also
+requires the current repository-wide recurring gate to pass on the exact head.
 
 This preparation is ordered after foundation wave 2 issue #13. The audio
 contracts PR may be reviewed while wave 2 is pending, but it must not merge or
@@ -126,7 +126,7 @@ ordering requirement and the shared crates.io-capacity constraint are clear.
 The source and manifest use two commits to avoid a self-referential commit
 hash: first commit the exact release source, then add only the release manifest
 in a second commit. `source_sha` names the first commit. Publication runs from
-the second commit's exact Agent Loop head, and the hook requires the only path
+the second commit's exact verified head, and the hook requires the only path
 changed between those commits to be the selected manifest. It therefore proves
 the package source is exactly `source_sha` while the manifest is itself checked
 at the exact publication head. Identical manifest bytes on another control
