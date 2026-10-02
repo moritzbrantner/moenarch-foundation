@@ -85,7 +85,7 @@ clap = { version = "4.5.51", features = ["derive"] }
 criterion = "0.5.1"
 iai-callgrind = "0.16.1"
 faer = { version = "0.24.0", default-features = false, features = ["std", "linalg"] }
-graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "76b8dad6b1925c9fe78c4dfd130b6c45800ffcab" }
+graph-kernels = { version = "0.1.0", git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }
 hf-hub = { version = "0.5.0", default-features = false, features = ["ureq"] }
 nalgebra = { version = "0.35.0", default-features = false, features = ["std"] }
 ndarray = "0.17.2"
@@ -120,3 +120,6 @@ semantic-core = { package = "moenarch-semantic-core", version = "=0.1.0", path =
 tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
 vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
 vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1", path = "crates/vector/vector-analysis-index" }
+
+[patch.crates-io]
+search-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }

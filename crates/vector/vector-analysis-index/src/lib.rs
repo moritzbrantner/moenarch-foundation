@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use media_core::{DetectError, Result};
+use search_kernels::top_k_by;
 use serde::{Deserialize, Serialize};
 use vector_analysis_core::{metric_distance, DenseVector, VectorMetric};
 
@@ -260,23 +261,23 @@ impl VectorSearchIndex {
                 return Err(invalid_argument("query dimensions must match the index"));
             }
         }
-        let mut results = Vec::with_capacity(self.records.len());
-        for record in &self.records {
-            let distance =
-                metric_distance(config.metric, query.as_slice(), record.vector.as_slice())?;
-            results.push(SearchResult {
-                id: record.id.clone(),
-                distance,
-                score: score_from_distance(config.metric, distance),
-            });
-        }
-        results.sort_by(|left, right| {
-            left.distance
-                .total_cmp(&right.distance)
-                .then_with(|| left.id.cmp(&right.id))
-        });
-        results.truncate(config.limit);
-        Ok(results)
+        top_k_fallible(
+            self.records.iter().map(|record| {
+                let distance =
+                    metric_distance(config.metric, query.as_slice(), record.vector.as_slice())?;
+                Ok(SearchResult {
+                    id: record.id.clone(),
+                    distance,
+                    score: score_from_distance(config.metric, distance),
+                })
+            }),
+            config.limit,
+            |left, right| {
+                left.distance
+                    .total_cmp(&right.distance)
+                    .then_with(|| left.id.cmp(&right.id))
+            },
+        )
     }
 
     /// Returns search filtered.
@@ -296,27 +297,28 @@ impl VectorSearchIndex {
             }
         }
 
-        let mut results = Vec::with_capacity(self.records.len());
-        for record in &self.records {
-            if let Some(filter) = filter {
-                if !matches_filter(&record.payload, filter) {
-                    continue;
+        top_k_fallible(
+            self.records.iter().filter_map(|record| {
+                if filter.is_some_and(|filter| !matches_filter(&record.payload, filter)) {
+                    return None;
                 }
-            }
-            let distance = metric_distance(VectorMetric::Cosine, query, record.vector.as_slice())?;
-            results.push(VectorHit {
-                id: record.record_id(),
-                distance,
-                score: score_from_distance(VectorMetric::Cosine, distance),
-            });
-        }
-        results.sort_by(|left, right| {
-            left.distance
-                .total_cmp(&right.distance)
-                .then_with(|| left.id.cmp(&right.id))
-        });
-        results.truncate(top_k);
-        Ok(results)
+                Some((|| {
+                    let distance =
+                        metric_distance(VectorMetric::Cosine, query, record.vector.as_slice())?;
+                    Ok(VectorHit {
+                        id: record.record_id(),
+                        distance,
+                        score: score_from_distance(VectorMetric::Cosine, distance),
+                    })
+                })())
+            }),
+            top_k,
+            |left, right| {
+                left.distance
+                    .total_cmp(&right.distance)
+                    .then_with(|| left.id.cmp(&right.id))
+            },
+        )
     }
 }
 
@@ -343,6 +345,21 @@ pub fn assign_nearest_centroids(
         assignments.push(best_index);
     }
     Ok(assignments)
+}
+
+fn top_k_fallible<T>(
+    values: impl IntoIterator<Item = Result<T>>,
+    limit: usize,
+    mut compare: impl FnMut(&T, &T) -> std::cmp::Ordering,
+) -> Result<Vec<T>> {
+    top_k_by(values, limit, |left, right| match (left, right) {
+        (Ok(left), Ok(right)) => compare(left, right),
+        (Err(_), Err(_)) => std::cmp::Ordering::Equal,
+        (Err(_), Ok(_)) => std::cmp::Ordering::Less,
+        (Ok(_), Err(_)) => std::cmp::Ordering::Greater,
+    })
+    .into_iter()
+    .collect()
 }
 
 fn score_from_distance(metric: VectorMetric, distance: f32) -> f32 {
@@ -404,6 +421,51 @@ mod tests {
             )
             .unwrap();
         assert_eq!(results[0].id, "x");
+    }
+
+    #[test]
+    fn bounded_search_preserves_id_tie_breaking() {
+        let index = VectorSearchIndex::from_records([
+            VectorRecord::new("z", DenseVector::new([1.0, 0.0]).unwrap()),
+            VectorRecord::new("a", DenseVector::new([1.0, 0.0]).unwrap()),
+        ])
+        .unwrap();
+        let query = DenseVector::new([1.0, 0.0]).unwrap();
+
+        let exact = index
+            .search(
+                &query,
+                SearchConfig {
+                    metric: VectorMetric::Cosine,
+                    limit: 1,
+                },
+            )
+            .unwrap();
+        let filtered = index.search_filtered(query.as_slice(), 1, None).unwrap();
+
+        assert_eq!(exact[0].id, "a");
+        assert_eq!(filtered[0].id.as_str(), "a");
+    }
+
+    #[test]
+    fn bounded_search_does_not_hide_late_metric_errors() {
+        let index = VectorSearchIndex::from_records([
+            VectorRecord::new("good", DenseVector::new([1.0, 0.0]).unwrap()),
+            VectorRecord::new("zero", DenseVector::new([0.0, 0.0]).unwrap()),
+        ])
+        .unwrap();
+        let query = DenseVector::new([1.0, 0.0]).unwrap();
+
+        assert!(index
+            .search(
+                &query,
+                SearchConfig {
+                    metric: VectorMetric::Cosine,
+                    limit: 1,
+                },
+            )
+            .is_err());
+        assert!(index.search_filtered(query.as_slice(), 1, None).is_err());
     }
 
     #[test]

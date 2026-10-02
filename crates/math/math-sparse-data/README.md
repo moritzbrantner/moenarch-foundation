@@ -14,6 +14,10 @@ This crate is part of the Analytical Math Crates family.
 - Canonical CSR×CSR multiplication and sparse row/column Gram composition
 - Dense and sparse conversion bridges
 
+## Ownership boundary
+
+This crate owns sparse representation, canonicalization, numerical validation, and the ordering contract for sparse values. Generic bounded top-k retention is delegated to `search-kernels` in `moritzbrantner/rust-kernels`; sparse value semantics remain local.
+
 ## Example
 
 ```rust,no_run

@@ -365,7 +365,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 [[package]]
 name = "collection-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=76b8dad6b1925c9fe78c4dfd130b6c45800ffcab#76b8dad6b1925c9fe78c4dfd130b6c45800ffcab"
+source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
 
 [[package]]
 name = "colorchoice"
@@ -989,7 +989,7 @@ checksum = "7360bd2cd76e0cd9032d42cf2922155cecea2685b0cfa4630c3246df030bcfd6"
 [[package]]
 name = "graph-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=76b8dad6b1925c9fe78c4dfd130b6c45800ffcab#76b8dad6b1925c9fe78c4dfd130b6c45800ffcab"
+source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
 dependencies = [
  "collection-kernels",
 ]
@@ -1758,6 +1758,7 @@ dependencies = [
  "moenarch-numbers-core",
  "moenarch-runtime-core",
  "moenarch-vector-analysis-core",
+ "search-kernels",
  "serde",
  "serde_json",
 ]
@@ -2077,6 +2078,7 @@ dependencies = [
  "moenarch-media-core",
  "moenarch-runtime-core",
  "moenarch-vector-analysis-core",
+ "search-kernels",
  "serde",
  "serde_json",
 ]
@@ -2887,6 +2889,14 @@ name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
+
+[[package]]
+name = "search-kernels"
+version = "0.1.0"
+source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+dependencies = [
+ "collection-kernels",
+]
 
 [[package]]
 name = "semver"

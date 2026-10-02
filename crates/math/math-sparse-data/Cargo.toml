@@ -19,6 +19,7 @@ name = "math_sparse_data"
 math-linear.workspace = true
 media-core.workspace = true
 runtime-core.workspace = true
+search-kernels = "0.1.0"
 serde.workspace = true
 serde_json.workspace = true
 numbers-core.workspace = true
