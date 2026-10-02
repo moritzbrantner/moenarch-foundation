@@ -30,9 +30,9 @@ CONFIG_COMMANDS = tomllib.loads(
     (SCRIPT.parents[1] / "release-gate.toml").read_text(encoding="utf-8")
 )["verification"]["commands"]
 ENVIRONMENT = {
-    "AGENT_LOOP_REPOSITORY": REPOSITORY,
-    "AGENT_LOOP_ISSUE": "7",
-    "AGENT_LOOP_HEAD_SHA": HEAD,
+    "repository": REPOSITORY,
+    "issue": "7",
+    "head": HEAD,
 }
 
 
@@ -356,7 +356,7 @@ class PublishReleaseTests(unittest.TestCase):
             )
             effects.issue_payload["number"] = 17
             effects.issue_payload["url"] = f"https://github.com/{REPOSITORY}/issues/17"
-            environment = {**ENVIRONMENT, "AGENT_LOOP_ISSUE": "17"}
+            environment = {**ENVIRONMENT, "issue": "17"}
             write_manifest(
                 root / "releases/release.toml",
                 packages,
@@ -375,12 +375,12 @@ class PublishReleaseTests(unittest.TestCase):
             ):
                 publish_release.run_release(root, environment, effects)
 
-    def test_missing_agent_loop_binding_refuses_before_external_access(self) -> None:
+    def test_missing_release_binding_refuses_before_external_access(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             effects = ForbiddenEffects()
             with self.assertRaisesRegex(
                 publish_release.ReleaseError,
-                "AGENT_LOOP_REPOSITORY, AGENT_LOOP_ISSUE, and AGENT_LOOP_HEAD_SHA",
+                "--repository, --issue, and --head are required",
             ):
                 publish_release.run_release(Path(temp), {}, effects)
             self.assertEqual(effects.calls, [])
@@ -409,7 +409,7 @@ class PublishReleaseTests(unittest.TestCase):
 
             effects.repo = REPOSITORY
             effects.sha = "b" * 40
-            with self.assertRaisesRegex(publish_release.ReleaseError, "HEAD_SHA"):
+            with self.assertRaisesRegex(publish_release.ReleaseError, "--head"):
                 publish_release.run_release(root, ENVIRONMENT, effects)
 
             effects.sha = HEAD
@@ -450,7 +450,7 @@ class PublishReleaseTests(unittest.TestCase):
             _, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
             other_head = "d" * 40
             effects.sha = other_head
-            environment = {**ENVIRONMENT, "AGENT_LOOP_HEAD_SHA": other_head}
+            environment = {**ENVIRONMENT, "head": other_head}
 
             with self.assertRaisesRegex(
                 publish_release.ReleaseError, "exact release control head"
