@@ -9,7 +9,7 @@ This repository contains 60 domain-neutral Rust packages. Read `CONTEXT.md`, `do
 - The default free-space floor is 8 GiB. `AGENT_MIN_FREE_GIB` may be raised for a larger workload or lowered only for a deliberately constrained environment; do not lower it to mask an exhausted build filesystem.
 - Preserve the cache paths declared in `.repository-environment.toml` across agent runs. Do not put the Cargo target directory on a disposable or quota-constrained filesystem when a persistent workspace is available.
 - During implementation, run the narrowest relevant package/test command first. Before ordinary PR handoff, run `bash scripts/check-fast.sh`.
-- `scripts/check-fast.sh` is an inner-loop gate, not merge or release evidence. The commands in `.agent-loop.toml` and the exhaustive workspace CI remain authoritative for final handoff and release-oriented work.
+- `scripts/check-fast.sh` is an inner-loop gate, not merge or release evidence. The commands in `release-gate.toml` and the exhaustive workspace CI remain authoritative for final handoff and release-oriented work.
 
 ## Boundaries
 

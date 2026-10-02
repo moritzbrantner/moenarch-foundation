@@ -16,7 +16,7 @@
 - Requirement: The checked manifest binds destination issue #17, the exact source commit, only `moenarch-audio-contracts` at 0.1.0, its registry prerequisite, and the restructuring-first command set.
 - Forbidden behavior: extra packages, another issue or repository, a mutable or unrelated source, behavioral gate claims, or source/control drift outside the manifest.
 - Authority/source: issue:#16
-- Affected surfaces: .agent-loop.toml, releases/foundation-audio-contracts.toml, scripts/check_release_plan.py, scripts/publish_release.py
+- Affected surfaces: release-gate.toml, releases/foundation-audio-contracts.toml, scripts/check_release_plan.py, scripts/publish_release.py
 - Compatibility promise: Existing release manifests retain their historical gates; wave 2 issue #13 must publish before this PR can merge or issue #17 can publish.
 - Required evidence: contract
 - Sensitivity: optional
@@ -27,7 +27,7 @@
 - Requirement: The structural archive gate runs `cargo package --locked --registry crates-io` for only `moenarch-audio-contracts`, using its reviewed candidate closure as a temporary local patch.
 - Forbidden behavior: packaging every workspace crate, selecting another registry, passing local patches to publication, or claiming consumer or behavioral evidence.
 - Authority/source: issue:#17
-- Affected surfaces: .agent-loop.toml, releases/foundation-audio-contracts.toml, scripts/check_release_plan.py
+- Affected surfaces: release-gate.toml, releases/foundation-audio-contracts.toml, scripts/check_release_plan.py
 - Compatibility promise: Archive preparation remains side-effect free for crates.io and changes only ignored build output.
 - Required evidence: integration
 - Sensitivity: optional

@@ -1,9 +1,8 @@
 schema_version = 1
-max_workers = 2
 
 [verification]
 # The draft Harness structural audit is a one-time bootstrap check against the
-# independently reviewed base, not recurring authoritative Agent Loop evidence.
+# independently reviewed base, not recurring authoritative release evidence.
 # Release-specific gates remain preserved by issue in the release publisher;
 # these commands are the stable recurring handoff gate for every exact head.
 commands = [
