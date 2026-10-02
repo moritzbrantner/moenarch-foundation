@@ -2,11 +2,6 @@
 
 This repository contains 60 domain-neutral Rust packages. Read `CONTEXT.md`, `docs/PROVENANCE.md`, the ADR, ownership map, and release plan before changing package boundaries or release metadata.
 
-GitHub Issues are the durable planning and execution queue. Read
-`docs/agents/issue-tracker.md`, `docs/agents/triage-labels.md`,
-`docs/agents/domain.md`, and `docs/agents/planning-workflow.md`. PRD slices use
-canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
-
 ## Agent startup and local loop
 
 - On a fresh machine or after the declared toolchain/environment contract changes, run `bash scripts/codex-environment.sh setup`. Use `maintenance` for an existing environment when dependency state changes.
@@ -14,7 +9,7 @@ canonical `parent`, `blocked_by`, and `scope` YAML frontmatter.
 - The default free-space floor is 8 GiB. `AGENT_MIN_FREE_GIB` may be raised for a larger workload or lowered only for a deliberately constrained environment; do not lower it to mask an exhausted build filesystem.
 - Preserve the cache paths declared in `.repository-environment.toml` across agent runs. Do not put the Cargo target directory on a disposable or quota-constrained filesystem when a persistent workspace is available.
 - During implementation, run the narrowest relevant package/test command first. Before ordinary PR handoff, run `bash scripts/check-fast.sh`.
-- `scripts/check-fast.sh` is an inner-loop gate, not merge or release evidence. The commands in `.agent-loop.toml` and the exhaustive workspace CI remain authoritative for final handoff and release-oriented work.
+- `scripts/check-fast.sh` is an inner-loop gate, not merge or release evidence. The commands in `release-gate.toml` and the exhaustive workspace CI remain authoritative for final handoff and release-oriented work.
 
 ## Boundaries
 

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Publish the one checked release manifest bound to this Agent Loop invocation.
+"""Publish the one checked release manifest bound to a release issue and exact head.
 
 All validation completes before the first publication, tag, or GitHub Release
-side effect. The public interface is the no-argument CLI configured in
-``.agent-loop.toml``; ``run_release`` accepts an effects adapter so tests can
+side effect. The public interface is the CLI
+``publish_release.py --issue N --head SHA``; its verification gate lives in
+``release-gate.toml``. ``run_release`` accepts an effects adapter so tests can
 replace only network and process boundaries.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -502,7 +504,7 @@ def validate_manifest(
         raise ReleaseError(
             "release manifest repair_source_sha must be a distinct full lowercase commit SHA"
         )
-    config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
+    config = tomllib.loads((root / "release-gate.toml").read_text(encoding="utf-8"))
     configured_checks = config.get("verification", {}).get("commands")
     expected_checks = HISTORICAL_REQUIRED_CHECKS_BY_ISSUE.get(issue, configured_checks)
     if manifest.get("required_checks") != expected_checks:
@@ -862,29 +864,26 @@ def _release_state(
 
 
 def run_release(
-    root: Path, environment: Mapping[str, str], effects: Effects
+    root: Path, request: Mapping[str, str], effects: Effects
 ) -> dict[str, Any]:
     root = root.resolve()
-    required = ("AGENT_LOOP_REPOSITORY", "AGENT_LOOP_ISSUE", "AGENT_LOOP_HEAD_SHA")
-    if any(not environment.get(name, "").strip() for name in required):
-        raise ReleaseError(
-            "AGENT_LOOP_REPOSITORY, AGENT_LOOP_ISSUE, and "
-            "AGENT_LOOP_HEAD_SHA are required"
-        )
-    repository = environment["AGENT_LOOP_REPOSITORY"].strip()
-    head = environment["AGENT_LOOP_HEAD_SHA"].strip()
+    required = ("repository", "issue", "head")
+    if any(not str(request.get(name, "")).strip() for name in required):
+        raise ReleaseError("--repository, --issue, and --head are required")
+    repository = request["repository"].strip()
+    head = request["head"].strip()
     try:
-        issue_number = int(environment["AGENT_LOOP_ISSUE"])
+        issue_number = int(request["issue"])
     except ValueError as error:
-        raise ReleaseError("AGENT_LOOP_ISSUE must be a positive integer") from error
+        raise ReleaseError("--issue must be a positive integer") from error
     if issue_number < 1:
-        raise ReleaseError("AGENT_LOOP_ISSUE must be a positive integer")
+        raise ReleaseError("--issue must be a positive integer")
     if re.fullmatch(r"[0-9a-f]{40}", head) is None:
-        raise ReleaseError("AGENT_LOOP_HEAD_SHA must be a full lowercase commit SHA")
+        raise ReleaseError("--head must be a full lowercase commit SHA")
     if repository != EXPECTED_REPOSITORY or effects.repository() != repository:
         raise ReleaseError("publication repository is not the owned destination repository")
     if effects.head() != head:
-        raise ReleaseError("publication checkout does not match AGENT_LOOP_HEAD_SHA")
+        raise ReleaseError("publication checkout does not match --head")
     if not effects.clean():
         raise ReleaseError("publication checkout must be clean")
 
@@ -1358,10 +1357,16 @@ def run_release(
     }
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--issue", required=True, help="release issue number")
+    parser.add_argument("--head", required=True, help="exact full commit SHA to publish")
+    parser.add_argument("--repository", default=EXPECTED_REPOSITORY)
+    args = parser.parse_args(argv)
     root = Path(__file__).resolve().parents[1]
+    request = {"repository": args.repository, "issue": args.issue, "head": args.head}
     try:
-        payload = run_release(root, os.environ, CommandEffects(root))
+        payload = run_release(root, request, CommandEffects(root))
     except ReleaseError as error:
         print(f"release refused: {error}", file=sys.stderr)
         return 1

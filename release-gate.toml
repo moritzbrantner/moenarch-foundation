@@ -1,9 +1,8 @@
 schema_version = 1
-max_workers = 2
 
 [verification]
 # The draft Harness structural audit is a one-time bootstrap check against the
-# independently reviewed base, not recurring authoritative Agent Loop evidence.
+# independently reviewed base, not recurring authoritative release evidence.
 # Release-specific gates remain preserved by issue in the release publisher;
 # these commands are the stable recurring handoff gate for every exact head.
 commands = [
@@ -19,7 +18,3 @@ commands = [
   "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
   "python3 scripts/check_numerical_package_tests.py",
 ]
-
-[publication]
-command = "python3 scripts/publish_release.py"
-authorization_label = "release:approved"

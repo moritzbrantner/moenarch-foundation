@@ -18,7 +18,7 @@ For a future authorized release:
    publication, preserve both commits and authorize the exact post-merge head;
    do not squash or rebase away the `source_sha` ancestry and manifest-only diff.
 4. Require a clean exact commit and run the ordered repository-wide
-   `.agent-loop.toml` verification. Release issues #13 and #17 retain the exact
+   `release-gate.toml` verification. Release issues #13 and #17 retain the exact
    reduced preparation gates recorded in their manifests, but those historical
    issue contracts do not replace the recurring exact-head gate for ordinary
    work or a later publication receipt. The structural package gate and
@@ -26,9 +26,9 @@ For a future authorized release:
    publication; the publisher never passes those patches to `cargo publish`.
 5. Run every manifest-declared candidate consumer check before publication.
    An explicitly empty list means no consumer result is required or claimed.
-6. Let only the receipt-gated Agent Loop master invoke
-   `python3 scripts/agent_loop_local_verification.py publish`; do not call Cargo
-   publication or the repository hook by hand.
+6. Publish only through
+   `python3 scripts/publish_release.py --issue <N> --head <SHA>` from a clean
+   checkout of the exact verified head; do not call Cargo publication by hand.
 7. Confirm the hook pins Cargo to `crates-io`, publishes topologically, verifies
    each packaged checksum against the immutable registry version, creates each
    manifest-declared tag explicitly at `source_sha`, verifies that exact remote

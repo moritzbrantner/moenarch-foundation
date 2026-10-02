@@ -22,7 +22,7 @@ independence_group = "cargo-metadata"
 [[checks]]
 id = "audio-contracts-manifest"
 command = ["python3", "scripts/check_release_plan.py", "--check", "releases/foundation-audio-contracts.toml"]
-scope = [".agent-loop.toml", "Cargo.toml", "Cargo.lock", "crates/audio/audio-contracts/Cargo.toml", "releases/foundation-audio-contracts.toml", "scripts/check_release_plan.py", "scripts/publish_release.py"]
+scope = ["release-gate.toml", "Cargo.toml", "Cargo.lock", "crates/audio/audio-contracts/Cargo.toml", "releases/foundation-audio-contracts.toml", "scripts/check_release_plan.py", "scripts/publish_release.py"]
 tier = "full"
 blocking = true
 evidence_classes = ["contract"]
@@ -41,7 +41,7 @@ independence_group = "release-manifest-validator"
 [[checks]]
 id = "audio-contracts-archive"
 command = ["python3", "scripts/check_release_plan.py", "--package-release", "releases/foundation-audio-contracts.toml"]
-scope = [".agent-loop.toml", "Cargo.toml", "Cargo.lock", "crates/audio/audio-contracts/**", "releases/foundation-audio-contracts.toml", "scripts/check_release_plan.py"]
+scope = ["release-gate.toml", "Cargo.toml", "Cargo.lock", "crates/audio/audio-contracts/**", "releases/foundation-audio-contracts.toml", "scripts/check_release_plan.py"]
 tier = "full"
 blocking = true
 evidence_classes = ["integration"]
