@@ -61,6 +61,28 @@ class ExactExternalGitPatchesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "exact 40-character rev"):
                 exact_external_git_patches(ownership, root)
 
+    def test_workspace_crates_io_git_patch_is_preserved_for_package_verification(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ownership = self.write_manifest(root, 'search-kernels = "0.1.0"')
+            (root / "Cargo.toml").write_text(
+                "[workspace]\n"
+                'members = ["crates/facade"]\n'
+                "\n[patch.crates-io]\n"
+                'search-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }\n',
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                exact_external_git_patches(ownership, root),
+                {
+                    "search-kernels": (
+                        "https://github.com/moritzbrantner/rust-kernels",
+                        "51ef7878165b83db0d10ad7420fee6b4aba97099",
+                    )
+                },
+            )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

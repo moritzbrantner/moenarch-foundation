@@ -131,6 +131,12 @@ def exact_external_git_patches(
                     continue
                 for table in ("dependencies", "dev-dependencies", "build-dependencies"):
                     inspect_dependencies(target.get(table), manifest_path)
+    workspace_manifest = root / "Cargo.toml"
+    if workspace_manifest.is_file():
+        workspace = tomllib.loads(workspace_manifest.read_text(encoding="utf-8"))
+        # Registry-safe member dependencies may be source-overridden at the
+        # workspace root; packaging must verify against that same exact source.
+        inspect_dependencies(workspace.get("patch", {}).get("crates-io"), "Cargo.toml")
     return patches
 
 
