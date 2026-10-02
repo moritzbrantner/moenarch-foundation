@@ -26,7 +26,7 @@ python3 scripts/repository_split.py --harness-audit \
 
 Record the exact candidate head and valid audit result on the pull request.
 This structural result is non-authoritative and does not replace the recurring
-`.agent-loop.toml` checks. Because the profile remains draft and the reviewed
+`release-gate.toml` checks. Because the profile remains draft and the reviewed
 base is bootstrap-specific, the command is deliberately not a recurring Agent
 Loop or CI gate; do not substitute `origin/main` or a moving placeholder.
 
@@ -42,7 +42,7 @@ Both lines are revalidated before every release effect. An issue in
 `rust-packages` or another repository cannot authorize this publisher.
 
 The Agent Loop first verifies the exact head using the ordered commands in
-`.agent-loop.toml`. Its receipt-gated master publication action then invokes
+`release-gate.toml`. Its receipt-gated master publication action then invokes
 `python3 scripts/publish_release.py` with `AGENT_LOOP_REPOSITORY`,
 `AGENT_LOOP_ISSUE`, and `AGENT_LOOP_HEAD_SHA`. Calling the hook without all
 three bindings fails before external access.
@@ -81,7 +81,7 @@ notes = "Reviewed release notes."
 with Cargo metadata. `expected_tags` must exactly match package tags, and tags
 use `<package>-v<version>`. `github_releases` is optional; every declared
 release must refer to a unique declared tag. New manifests bind the exact
-`.agent-loop.toml` gate. Issue-specific historical manifests retain the gate
+`release-gate.toml` gate. Issue-specific historical manifests retain the gate
 reviewed for that issue even after the recurring repository gate changes.
 `required_consumer_checks` may be empty when the destination release issue
 explicitly removes consumer verification. Declared consumer commands run again

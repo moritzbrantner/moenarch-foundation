@@ -18,7 +18,7 @@ For a future authorized release:
    publication, preserve both commits and authorize the exact post-merge head;
    do not squash or rebase away the `source_sha` ancestry and manifest-only diff.
 4. Require a clean exact commit and run the ordered repository-wide
-   `.agent-loop.toml` verification. Release issues #13 and #17 retain the exact
+   `release-gate.toml` verification. Release issues #13 and #17 retain the exact
    reduced preparation gates recorded in their manifests, but those historical
    issue contracts do not replace the recurring exact-head gate for ordinary
    work or a later publication receipt. The structural package gate and

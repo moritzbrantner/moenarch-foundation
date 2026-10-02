@@ -3,7 +3,7 @@
 
 All validation completes before the first publication, tag, or GitHub Release
 side effect. The public interface is the no-argument CLI configured in
-``.agent-loop.toml``; ``run_release`` accepts an effects adapter so tests can
+``release-gate.toml``; ``run_release`` accepts an effects adapter so tests can
 replace only network and process boundaries.
 """
 
@@ -502,7 +502,7 @@ def validate_manifest(
         raise ReleaseError(
             "release manifest repair_source_sha must be a distinct full lowercase commit SHA"
         )
-    config = tomllib.loads((root / ".agent-loop.toml").read_text(encoding="utf-8"))
+    config = tomllib.loads((root / "release-gate.toml").read_text(encoding="utf-8"))
     configured_checks = config.get("verification", {}).get("commands")
     expected_checks = HISTORICAL_REQUIRED_CHECKS_BY_ISSUE.get(issue, configured_checks)
     if manifest.get("required_checks") != expected_checks:
