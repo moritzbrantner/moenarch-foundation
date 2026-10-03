@@ -10,7 +10,7 @@ use runtime_core::{
 use serde::Deserialize;
 
 use crate::{
-    plan_model_access, plan_model_bundle, ModelAccessJobRequest, ModelBundlePlan, ModelFileRequest,
+    plan_model_access, plan_model_bundle, ModelAccessRequest, ModelBundlePlan, ModelFileRequest,
     ModelPreset, ModelSource, ModelSpec,
 };
 
@@ -25,7 +25,7 @@ pub fn package_surface() -> PackageSurface {
                 surface_operation(
                 "describe",
                 "Describe package",
-                "Generic model specs, bundle plans, presets, and job helpers for multimodal runtimes.",
+                "Generic model specs, bundle plans, presets, and runtime access for multimodal runtimes.",
                 serde_json::json!({"includeOperations": true}),
             ),
                 SurfaceOperationCuration::debug(900),
@@ -34,8 +34,8 @@ pub fn package_surface() -> PackageSurface {
                 surface_operation_with_execution_plan(
                 "model.executionPlan",
                 "Model execution plan",
-                "Validates a model access job request and returns a pure execution plan without spawning jobs or running inference.",
-                serde_json::json!({"id": "model-job-1", "kind": "Inference", "spec": {"name": "demo-model", "task": "text_embedding", "source": {"kind": "hugging_face", "repo_id": "demo/model", "revision": "main"}, "files": [{"required": "config.json"}]}, "backend": "heuristic", "inputs": [{"kind": "json", "value": {"text": "hello"}}], "outputArtifactPrefix": "prediction"}),
+                "Validates a model access request and returns a pure execution plan without running inference.",
+                serde_json::json!({"kind": "inference", "spec": {"name": "demo-model", "task": "text_embedding", "source": {"kind": "hugging_face", "repo_id": "demo/model", "revision": "main"}, "files": [{"required": "config.json"}]}, "backend": "heuristic", "inputs": [{"kind": "json", "value": {"text": "hello"}}], "outputArtifactPrefix": "prediction"}),
                 surface_plan("model.executionPlan"),
             ),
                 SurfaceOperationCuration::workflow(10).primary(),
@@ -49,16 +49,6 @@ pub fn package_surface() -> PackageSurface {
                 surface_plan("model.bundlePlan"),
             ),
                 SurfaceOperationCuration::workflow(20),
-            ),
-            curated(
-                surface_operation_with_execution_plan(
-                "model.jobManifest",
-                "Model job manifest",
-                "Projects a planned model access job into a deterministic JobManifest without starting a job.",
-                serde_json::json!({"id": "model-job-1", "kind": "Inference", "spec": {"name": "demo-model", "task": "text_embedding", "source": {"kind": "hugging_face", "repo_id": "demo/model", "revision": "main"}, "files": [{"required": "config.json"}]}, "backend": "heuristic", "outputArtifactPrefix": "prediction"}),
-                surface_plan("model.jobManifest"),
-            ),
-                SurfaceOperationCuration::workflow(30),
             ),
             curated(
                 surface_operation(
@@ -93,10 +83,10 @@ fn curated(
 fn surface_plan(operation: &str) -> SurfaceExecutionPlan {
     SurfaceExecutionPlan {
         operation: OperationId::new(operation),
-        mode: SurfaceExecutionMode::PlannedJob,
+        mode: SurfaceExecutionMode::InMemory,
         side_effects: vec![SurfaceSideEffect::None],
         cancellable: false,
-        progress_unit: Some("steps".to_string()),
+        progress_unit: None,
         expected_artifacts: Vec::new(),
         requirements: Vec::new(),
         max_recommended_input_bytes: Some(1_048_576),
@@ -114,10 +104,6 @@ pub fn run_surface_operation(request: SurfaceRequest) -> Result<SurfaceResponse,
             parse_surface_input(Some(operation.as_str()), request.input)?,
         )?,
         "model.bundlePlan" => bundle_plan_value(
-            operation.as_str(),
-            parse_surface_input(Some(operation.as_str()), request.input)?,
-        )?,
-        "model.jobManifest" => job_manifest_value(
             operation.as_str(),
             parse_surface_input(Some(operation.as_str()), request.input)?,
         )?,
@@ -146,16 +132,16 @@ struct BundlePlanRequest {
 
 fn execution_plan_value(
     operation: &str,
-    request: ModelAccessJobRequest,
+    request: ModelAccessRequest,
 ) -> Result<serde_json::Value, String> {
     let plan = plan_model_access(&request)
         .map_err(|error| invalid_request(operation, error.to_string()))?;
     Ok(serde_json::json!({
         "plan": plan,
-        "jobSpec": plan.job_spec,
         "executionPlan": plan.execution_plan,
         "expectedArtifacts": plan.expected_artifacts,
         "kind": plan.kind.as_str(),
+        "metadata": plan.metadata,
         "backend": plan.backend.as_str(),
         "sideEffects": plan.execution_plan.side_effects
     }))
@@ -168,47 +154,6 @@ fn bundle_plan_value(
     let plan = plan_model_bundle(&request.spec, &request.local_files)
         .map_err(|error| invalid_request(operation, error.to_string()))?;
     Ok(bundle_plan_json(plan))
-}
-
-fn job_manifest_value(
-    operation: &str,
-    request: ModelAccessJobRequest,
-) -> Result<serde_json::Value, String> {
-    let plan = plan_model_access(&request)
-        .map_err(|error| invalid_request(operation, error.to_string()))?;
-    let timestamp = chrono_like_epoch();
-    let snapshot = jobs_core::JobSnapshot {
-        metadata: plan.job_spec.metadata.clone(),
-        spec: plan.job_spec.clone(),
-        status: jobs_core::JobStatus::Queued,
-        progress: None,
-        logs: Vec::new(),
-        artifacts: plan
-            .expected_artifacts
-            .iter()
-            .map(jobs_core::JobArtifact::from_artifact_ref)
-            .collect(),
-        created_at: timestamp,
-        started_at: None,
-        finished_at: None,
-        failure: None,
-    };
-    let manifest = jobs_core::JobManifest::from_snapshot(
-        OperationId::new("model.executionPlan"),
-        snapshot,
-        plan.expected_artifacts.clone(),
-        serde_json::json!({
-            "kind": plan.kind.as_str(),
-            "backend": plan.backend.as_str(),
-            "model": plan.job_spec.metadata.get("model.name")
-        }),
-    );
-    Ok(serde_json::json!({
-        "manifest": manifest,
-        "artifactCount": manifest.artifacts.len(),
-        "jobKind": plan.kind.as_str(),
-        "status": "queued"
-    }))
 }
 
 fn presets_value() -> serde_json::Value {
@@ -250,7 +195,7 @@ fn bundle_plan_json(plan: ModelBundlePlan) -> serde_json::Value {
             "task": plan.spec.task.as_protocol_str(),
             "files": plan.files
         },
-        "artifactRefs": plan.artifact_refs,
+        "artifacts": plan.artifacts,
         "downloadsRequired": plan.downloads_required
     })
 }
@@ -321,12 +266,6 @@ fn invalid_request(operation: &str, message: impl Into<String>) -> String {
     SurfaceError::invalid_request(Some(OperationId::new(operation)), message).to_error_string()
 }
 
-fn chrono_like_epoch() -> chrono::DateTime<chrono::Utc> {
-    chrono::DateTime::parse_from_rfc3339("1970-01-01T00:00:00Z")
-        .expect("valid timestamp")
-        .with_timezone(&chrono::Utc)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -340,7 +279,6 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(ids.contains(&"model.executionPlan".to_string()));
         assert!(ids.contains(&"model.bundlePlan".to_string()));
-        assert!(ids.contains(&"model.jobManifest".to_string()));
         assert!(ids.contains(&"model.presets".to_string()));
         assert!(ids.contains(&"model.spec".to_string()));
     }
@@ -350,8 +288,7 @@ mod tests {
         let response = run_surface_operation(SurfaceRequest {
             operation: OperationId::new("model.executionPlan"),
             input: serde_json::json!({
-                "id": "model-job-1",
-                "kind": "Inference",
+                "kind": "inference",
                 "spec": {
                     "name": "demo/model",
                     "task": "text_embedding",
@@ -366,9 +303,8 @@ mod tests {
         .expect("execution plan");
 
         assert_eq!(response.value["operation"], "model.executionPlan");
-        assert_eq!(response.value["jobSpec"]["id"], "model-job-1");
-        assert_eq!(response.value["executionPlan"]["mode"], "plannedJob");
-        assert_eq!(response.value["kind"], "model-inference");
+        assert_eq!(response.value["executionPlan"]["mode"], "inMemory");
+        assert_eq!(response.value["kind"], "inference");
     }
 
     #[test]
@@ -391,28 +327,6 @@ mod tests {
             "pytorch_model.bin"
         );
         assert_eq!(response.value["downloadsRequired"], false);
-    }
-
-    #[test]
-    fn job_manifest_operation_returns_manifest_projection() {
-        let response = run_surface_operation(SurfaceRequest {
-            operation: OperationId::new("model.jobManifest"),
-            input: serde_json::json!({
-                "id": "model-job-1",
-                "kind": "Inference",
-                "spec": {
-                    "name": "demo/model",
-                    "task": "text_embedding",
-                    "source": {"kind": "hugging_face", "repo_id": "demo/model", "revision": "main"},
-                    "files": [{"required": "config.json"}]
-                },
-                "backend": "heuristic",
-                "outputArtifactPrefix": "prediction"
-            }),
-        })
-        .expect("job manifest");
-        assert_eq!(response.value["status"], "queued");
-        assert_eq!(response.value["manifest"]["jobId"], "model-job-1");
     }
 
     #[test]

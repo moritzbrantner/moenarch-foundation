@@ -4,8 +4,9 @@ use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
-use crate::{ModelRuntimeError, Result};
-use jobs_core::{ArtifactKind, ArtifactRef};
+use crate::download::check_cancelled;
+use crate::{ModelArtifactKind, ModelArtifactRef, ModelRuntimeError, Result};
+use runtime_core::CancellationToken;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -117,8 +118,32 @@ impl ModelBundleStore {
         self.materialize(&downloaded)
     }
 
+    /// Downloads and materializes a bundle, observing `cancellation` between
+    /// file transfers and between materialized files.
+    pub fn download_cancellable(
+        &self,
+        spec: &HuggingFaceModelSpec,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<ModelBundle> {
+        let downloaded = self
+            .downloader
+            .download_model_cancellable(spec, cancellation)?;
+        self.materialize_cancellable(&downloaded, cancellation)
+    }
+
     /// Returns materialize.
     pub fn materialize(&self, downloaded: &DownloadedModel) -> Result<ModelBundle> {
+        self.materialize_cancellable(downloaded, None)
+    }
+
+    /// Materializes a downloaded model, observing `cancellation` before each
+    /// file and before the manifest is written.
+    pub fn materialize_cancellable(
+        &self,
+        downloaded: &DownloadedModel,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<ModelBundle> {
+        check_cancelled(cancellation)?;
         let bundle_root = self.bundle_dir(&downloaded.spec);
         let manifest_path = bundle_root.join("manifest.json");
         for remote_path in downloaded.files.keys() {
@@ -127,42 +152,45 @@ impl ModelBundleStore {
         if manifest_path.exists() && !self.overwrite {
             return ModelBundle::load(manifest_path);
         }
+        // Invalidate an existing bundle before touching its files so an
+        // interrupted overwrite (cancellation or I/O failure) never leaves a
+        // stale manifest describing partially replaced files.
+        match fs::remove_file(&manifest_path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == ErrorKind::NotFound => {}
+            Err(err) => return Err(err.into()),
+        }
 
         let files_dir = bundle_root.join("files");
         fs::create_dir_all(&files_dir)?;
 
         let mut manifest_files = BTreeMap::new();
         for (remote_path, source_path) in &downloaded.files {
+            check_cancelled(cancellation)?;
             let relative_file_path = Path::new("files").join(remote_path);
             let destination_path = bundle_root.join(&relative_file_path);
             if let Some(parent) = destination_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            if self.overwrite && fs::symlink_metadata(&destination_path).is_ok() {
-                fs::remove_file(&destination_path)?;
-            }
-            let mut should_materialize = match fs::symlink_metadata(&destination_path) {
-                Ok(_) => false,
-                Err(err) if err.kind() == ErrorKind::NotFound => true,
+            // No trusted manifest covers this bundle at this point (either
+            // `overwrite` is set or the manifest is absent, e.g. after an
+            // interrupted overwrite), so any existing file is an orphan and is
+            // always replaced with fresh bytes.
+            match fs::symlink_metadata(&destination_path) {
+                Ok(_) => fs::remove_file(&destination_path)?,
+                Err(err) if err.kind() == ErrorKind::NotFound => {}
                 Err(err) => return Err(err.into()),
-            };
-            if !should_materialize && fs::metadata(&destination_path).is_err() {
-                // A stale/dangling symlink should be replaced with fresh materialized bytes.
-                fs::remove_file(&destination_path)?;
-                should_materialize = true;
             }
-            if should_materialize {
-                let source_metadata = fs::symlink_metadata(source_path)?;
-                let linked = !source_metadata.file_type().is_symlink()
-                    && fs::hard_link(source_path, &destination_path).is_ok();
-                if !linked {
-                    let source_for_copy = if source_metadata.file_type().is_symlink() {
-                        fs::canonicalize(source_path)?
-                    } else {
-                        source_path.clone()
-                    };
-                    fs::copy(source_for_copy, &destination_path)?;
-                }
+            let source_metadata = fs::symlink_metadata(source_path)?;
+            let linked = !source_metadata.file_type().is_symlink()
+                && fs::hard_link(source_path, &destination_path).is_ok();
+            if !linked {
+                let source_for_copy = if source_metadata.file_type().is_symlink() {
+                    fs::canonicalize(source_path)?
+                } else {
+                    source_path.clone()
+                };
+                fs::copy(source_for_copy, &destination_path)?;
             }
 
             let size_bytes = fs::metadata(&destination_path)?.len();
@@ -184,6 +212,7 @@ impl ModelBundleStore {
             task: downloaded.spec.task.clone(),
             files: manifest_files,
         };
+        check_cancelled(cancellation)?;
         let encoded = serde_json::to_vec_pretty(&manifest).map_err(|err| {
             ModelRuntimeError::Source(format!("failed to encode model manifest: {err}"))
         })?;
@@ -300,14 +329,14 @@ impl ModelBundle {
             .map(|file| self.root.join(&file.local_path))
     }
 
-    /// Returns generic job artifact references for the files in this model bundle.
-    pub fn artifact_refs(&self) -> Vec<ArtifactRef> {
+    /// Returns model-owned artifact references for the files in this bundle.
+    pub fn artifacts(&self) -> Vec<ModelArtifactRef> {
         self.manifest
             .files
             .iter()
             .map(|(remote_path, file)| {
                 let local_path = self.root.join(&file.local_path);
-                let mut artifact = ArtifactRef::new(
+                let mut artifact = ModelArtifactRef::new(
                     format!("model:{}", remote_path.replace(['/', '\\'], "_")),
                     model_file_kind(remote_path),
                     model_file_media_type(remote_path),
@@ -451,11 +480,11 @@ fn file_uri(path: &Path) -> String {
     format!("file://{}", path.to_string_lossy())
 }
 
-fn model_file_kind(remote_path: &str) -> ArtifactKind {
+fn model_file_kind(remote_path: &str) -> ModelArtifactKind {
     match model_file_role(remote_path) {
-        "config" | "tokenizer" => ArtifactKind::Json,
-        "vocabulary" => ArtifactKind::Text,
-        _ => ArtifactKind::Binary,
+        "config" | "tokenizer" => ModelArtifactKind::Json,
+        "vocabulary" => ModelArtifactKind::Text,
+        _ => ModelArtifactKind::Binary,
     }
 }
 

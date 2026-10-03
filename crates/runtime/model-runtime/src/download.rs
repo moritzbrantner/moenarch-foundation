@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::{ModelRuntimeError, Result};
 use hf_hub::api::sync::ApiBuilder;
 use hf_hub::{Repo, RepoType};
+use runtime_core::CancellationToken;
 
 use crate::{HuggingFaceModelSpec, ModelFileRequest};
 
@@ -75,6 +76,16 @@ impl HuggingFaceDownloader {
 
     /// Returns download.
     pub fn download(&self, spec: &HuggingFaceModelSpec) -> Result<DownloadedModel> {
+        self.download_cancellable(spec, None)
+    }
+
+    /// Downloads the requested files, observing `cancellation` before every
+    /// file request. A single in-flight file transfer is not interrupted.
+    pub fn download_cancellable(
+        &self,
+        spec: &HuggingFaceModelSpec,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<DownloadedModel> {
         if spec.files.is_empty() {
             return Err(ModelRuntimeError::InvalidArgument(
                 "at least one model file must be requested".to_string(),
@@ -101,6 +112,7 @@ impl HuggingFaceDownloader {
 
         let mut files = BTreeMap::new();
         for request in &spec.files {
+            check_cancelled(cancellation)?;
             match request {
                 ModelFileRequest::Required(path) => {
                     let local = repo.get(path).map_err(|err| {
@@ -120,6 +132,7 @@ impl HuggingFaceDownloader {
                     let mut last_error = None;
                     let mut found = None;
                     for path in paths {
+                        check_cancelled(cancellation)?;
                         match repo.get(path) {
                             Ok(local) => {
                                 found = Some((path.clone(), local));
@@ -144,6 +157,7 @@ impl HuggingFaceDownloader {
             }
         }
 
+        check_cancelled(cancellation)?;
         Ok(DownloadedModel {
             spec: spec.clone(),
             files,
@@ -151,14 +165,45 @@ impl HuggingFaceDownloader {
     }
 }
 
+pub(crate) fn check_cancelled(cancellation: Option<&CancellationToken>) -> Result<()> {
+    if cancellation.is_some_and(CancellationToken::is_cancelled) {
+        return Err(ModelRuntimeError::Cancelled);
+    }
+    Ok(())
+}
+
 /// Minimal downloader seam for bundle resolution tests and alternate materializers.
 pub trait ModelDownloader {
     /// Downloads or otherwise stages the requested model files.
     fn download_model(&self, spec: &HuggingFaceModelSpec) -> Result<DownloadedModel>;
+
+    /// Downloads or stages the requested files while observing `cancellation`.
+    ///
+    /// The default implementation only checks before and after
+    /// [`ModelDownloader::download_model`]; implementations should override it
+    /// to observe cancellation between individual file transfers.
+    fn download_model_cancellable(
+        &self,
+        spec: &HuggingFaceModelSpec,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<DownloadedModel> {
+        check_cancelled(cancellation)?;
+        let downloaded = self.download_model(spec)?;
+        check_cancelled(cancellation)?;
+        Ok(downloaded)
+    }
 }
 
 impl ModelDownloader for HuggingFaceDownloader {
     fn download_model(&self, spec: &HuggingFaceModelSpec) -> Result<DownloadedModel> {
         self.download(spec)
+    }
+
+    fn download_model_cancellable(
+        &self,
+        spec: &HuggingFaceModelSpec,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<DownloadedModel> {
+        self.download_cancellable(spec, cancellation)
     }
 }
