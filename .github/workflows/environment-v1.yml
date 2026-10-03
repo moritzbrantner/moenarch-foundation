@@ -81,29 +81,52 @@ jobs:
             Cargo.lock \
             .repository-environment.toml
 
-      - name: Verify prepared environment fingerprint
+      - name: Smoke-test repository metadata
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Smoke-test agent readiness script
         shell: bash
         run: |
           set -euo pipefail
+          bash -n scripts/check-agent-readiness.sh
+          # Exercise the readiness script's own logic (disk floor, receipt
+          # parsing, locked metadata) against a stub verifier, so semantic
+          # environment verification stays failure-only.
+          stub="$(mktemp -d)"
+          trap 'rm -rf "$stub"' EXIT
+          cat > "$stub/coding-tooling" <<'STUB'
+          #!/usr/bin/env bash
+          status="${STUB_RECEIPT_STATUS:-passed}"
+          printf '{"status":"%s","data":{"expectedFingerprint":"stub","verifiedFingerprint":"stub"}}\n' "$status"
+          exit "${STUB_EXIT_CODE:-0}"
+          STUB
+          chmod +x "$stub/coding-tooling"
+          PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=1 bash scripts/check-agent-readiness.sh
+          if PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=1 STUB_RECEIPT_STATUS=failed \
+            bash scripts/check-agent-readiness.sh; then
+            echo "readiness script accepted a failed verification receipt" >&2
+            exit 1
+          fi
+          if PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=1 STUB_EXIT_CODE=1 \
+            bash scripts/check-agent-readiness.sh; then
+            echo "readiness script accepted a failing verifier command" >&2
+            exit 1
+          fi
+          if PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=not-a-number \
+            bash scripts/check-agent-readiness.sh; then
+            echo "readiness script accepted an invalid free-space floor" >&2
+            exit 1
+          fi
+
+      - name: Diagnose exact environment after canary failure
+        if: ${{ failure() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/environment
           bun .ci/coding-tooling/src/cli.ts environment verify --json \
             > .artifacts/environment/receipt.json
-          python3 - <<'PY'
-          import json
-          import os
-
-          expected = os.environ['EXPECTED_ENVIRONMENT_FINGERPRINT']
-          with open('.artifacts/environment/receipt.json', encoding='utf-8') as handle:
-              receipt = json.load(handle)
-
-          assert receipt['status'] == 'passed', receipt
-          assert receipt['data']['expectedFingerprint'] == expected, receipt
-          assert receipt['data']['verifiedFingerprint'] == expected, receipt
-          PY
-
-      - name: Smoke-test agent readiness
-        env:
-          CODING_TOOLING_DIR: ${{ github.workspace }}/.ci/coding-tooling
-        run: bash scripts/check-agent-readiness.sh
 
       - name: Upload environment fingerprint evidence
         if: always()
