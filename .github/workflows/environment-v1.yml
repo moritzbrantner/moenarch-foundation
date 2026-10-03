@@ -98,13 +98,18 @@ jobs:
           #!/usr/bin/env bash
           status="${STUB_RECEIPT_STATUS:-passed}"
           printf '{"status":"%s","data":{"expectedFingerprint":"stub","verifiedFingerprint":"stub"}}\n' "$status"
-          [[ "$status" == passed ]]
+          exit "${STUB_EXIT_CODE:-0}"
           STUB
           chmod +x "$stub/coding-tooling"
           PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=1 bash scripts/check-agent-readiness.sh
           if PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=1 STUB_RECEIPT_STATUS=failed \
             bash scripts/check-agent-readiness.sh; then
             echo "readiness script accepted a failed verification receipt" >&2
+            exit 1
+          fi
+          if PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=1 STUB_EXIT_CODE=1 \
+            bash scripts/check-agent-readiness.sh; then
+            echo "readiness script accepted a failing verifier command" >&2
             exit 1
           fi
           if PATH="$stub:$PATH" AGENT_MIN_FREE_GIB=not-a-number \
