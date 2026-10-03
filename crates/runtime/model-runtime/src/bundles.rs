@@ -152,6 +152,14 @@ impl ModelBundleStore {
         if manifest_path.exists() && !self.overwrite {
             return ModelBundle::load(manifest_path);
         }
+        // Invalidate an existing bundle before touching its files so an
+        // interrupted overwrite (cancellation or I/O failure) never leaves a
+        // stale manifest describing partially replaced files.
+        match fs::remove_file(&manifest_path) {
+            Ok(()) => {}
+            Err(err) if err.kind() == ErrorKind::NotFound => {}
+            Err(err) => return Err(err.into()),
+        }
 
         let files_dir = bundle_root.join("files");
         fs::create_dir_all(&files_dir)?;

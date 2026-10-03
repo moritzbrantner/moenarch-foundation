@@ -434,3 +434,36 @@ fn cancellation_during_download_skips_bundle_materialization() {
     assert!(matches!(error, crate::ModelRuntimeError::Cancelled));
     assert!(!store.bundle_dir(&spec).join("manifest.json").exists());
 }
+
+#[test]
+fn interrupted_overwrite_invalidates_existing_bundle_manifest() {
+    let temp = tempdir().unwrap();
+    let spec = ModelSpec::new("owner/model", ModelTask::TextEmbedding)
+        .revision("v1")
+        .file("config.json")
+        .file("model.onnx");
+    let bundles = temp.path().join("bundles");
+    let fake = FakeDownloader {
+        root: temp.path().join("cache"),
+    };
+    let mut downloaded = fake.download_model(&spec).unwrap();
+    let store = ModelBundleStore::new(&bundles);
+    store.materialize(&downloaded).unwrap();
+    let manifest_path = store.bundle_dir(&spec).join("manifest.json");
+    assert!(manifest_path.exists());
+
+    // The second file's source disappears, so the overwrite fails after the
+    // first file has already been replaced.
+    downloaded.files.insert(
+        "model.onnx".to_string(),
+        temp.path().join("missing-model.onnx"),
+    );
+    let cancellation = runtime_core::CancellationToken::new();
+    store
+        .clone()
+        .overwrite(true)
+        .materialize_cancellable(&downloaded, Some(&cancellation))
+        .expect_err("overwrite interrupted");
+    assert!(!manifest_path.exists());
+    assert!(store.load("owner/model", "v1").is_err());
+}
