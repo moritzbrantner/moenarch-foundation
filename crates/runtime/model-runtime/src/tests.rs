@@ -466,4 +466,15 @@ fn interrupted_overwrite_invalidates_existing_bundle_manifest() {
         .expect_err("overwrite interrupted");
     assert!(!manifest_path.exists());
     assert!(store.load("owner/model", "v1").is_err());
+
+    // A plain retry must replace the orphaned files rather than reuse them.
+    let stale_config = store.bundle_dir(&spec).join("files/config.json");
+    std::fs::remove_file(&stale_config).unwrap();
+    std::fs::write(&stale_config, b"stale").unwrap();
+    let retried = fake.download_model(&spec).unwrap();
+    let bundle = store.materialize(&retried).unwrap();
+    assert_eq!(
+        std::fs::read(bundle.file_path("config.json").unwrap()).unwrap(),
+        b"fake"
+    );
 }

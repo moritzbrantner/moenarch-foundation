@@ -172,31 +172,25 @@ impl ModelBundleStore {
             if let Some(parent) = destination_path.parent() {
                 fs::create_dir_all(parent)?;
             }
-            if self.overwrite && fs::symlink_metadata(&destination_path).is_ok() {
-                fs::remove_file(&destination_path)?;
-            }
-            let mut should_materialize = match fs::symlink_metadata(&destination_path) {
-                Ok(_) => false,
-                Err(err) if err.kind() == ErrorKind::NotFound => true,
+            // No trusted manifest covers this bundle at this point (either
+            // `overwrite` is set or the manifest is absent, e.g. after an
+            // interrupted overwrite), so any existing file is an orphan and is
+            // always replaced with fresh bytes.
+            match fs::symlink_metadata(&destination_path) {
+                Ok(_) => fs::remove_file(&destination_path)?,
+                Err(err) if err.kind() == ErrorKind::NotFound => {}
                 Err(err) => return Err(err.into()),
-            };
-            if !should_materialize && fs::metadata(&destination_path).is_err() {
-                // A stale/dangling symlink should be replaced with fresh materialized bytes.
-                fs::remove_file(&destination_path)?;
-                should_materialize = true;
             }
-            if should_materialize {
-                let source_metadata = fs::symlink_metadata(source_path)?;
-                let linked = !source_metadata.file_type().is_symlink()
-                    && fs::hard_link(source_path, &destination_path).is_ok();
-                if !linked {
-                    let source_for_copy = if source_metadata.file_type().is_symlink() {
-                        fs::canonicalize(source_path)?
-                    } else {
-                        source_path.clone()
-                    };
-                    fs::copy(source_for_copy, &destination_path)?;
-                }
+            let source_metadata = fs::symlink_metadata(source_path)?;
+            let linked = !source_metadata.file_type().is_symlink()
+                && fs::hard_link(source_path, &destination_path).is_ok();
+            if !linked {
+                let source_for_copy = if source_metadata.file_type().is_symlink() {
+                    fs::canonicalize(source_path)?
+                } else {
+                    source_path.clone()
+                };
+                fs::copy(source_for_copy, &destination_path)?;
             }
 
             let size_bytes = fs::metadata(&destination_path)?.len();
