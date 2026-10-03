@@ -4,7 +4,9 @@ use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
+use crate::download::check_cancelled;
 use crate::{ModelArtifactKind, ModelArtifactRef, ModelRuntimeError, Result};
+use runtime_core::CancellationToken;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -116,8 +118,32 @@ impl ModelBundleStore {
         self.materialize(&downloaded)
     }
 
+    /// Downloads and materializes a bundle, observing `cancellation` between
+    /// file transfers and between materialized files.
+    pub fn download_cancellable(
+        &self,
+        spec: &HuggingFaceModelSpec,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<ModelBundle> {
+        let downloaded = self
+            .downloader
+            .download_model_cancellable(spec, cancellation)?;
+        self.materialize_cancellable(&downloaded, cancellation)
+    }
+
     /// Returns materialize.
     pub fn materialize(&self, downloaded: &DownloadedModel) -> Result<ModelBundle> {
+        self.materialize_cancellable(downloaded, None)
+    }
+
+    /// Materializes a downloaded model, observing `cancellation` before each
+    /// file and before the manifest is written.
+    pub fn materialize_cancellable(
+        &self,
+        downloaded: &DownloadedModel,
+        cancellation: Option<&CancellationToken>,
+    ) -> Result<ModelBundle> {
+        check_cancelled(cancellation)?;
         let bundle_root = self.bundle_dir(&downloaded.spec);
         let manifest_path = bundle_root.join("manifest.json");
         for remote_path in downloaded.files.keys() {
@@ -132,6 +158,7 @@ impl ModelBundleStore {
 
         let mut manifest_files = BTreeMap::new();
         for (remote_path, source_path) in &downloaded.files {
+            check_cancelled(cancellation)?;
             let relative_file_path = Path::new("files").join(remote_path);
             let destination_path = bundle_root.join(&relative_file_path);
             if let Some(parent) = destination_path.parent() {
@@ -183,6 +210,7 @@ impl ModelBundleStore {
             task: downloaded.spec.task.clone(),
             files: manifest_files,
         };
+        check_cancelled(cancellation)?;
         let encoded = serde_json::to_vec_pretty(&manifest).map_err(|err| {
             ModelRuntimeError::Source(format!("failed to encode model manifest: {err}"))
         })?;

@@ -358,6 +358,7 @@ fn model_access_plan_keeps_model_metadata_without_job_state() {
     assert_eq!(plan.kind, crate::ModelAccessKind::Inference);
     assert_eq!(plan.backend, ModelRuntimeBackend::Heuristic);
     assert_eq!(plan.metadata["caller"], "test");
+    assert_eq!(plan.metadata["model.name"], "owner/model");
     assert_eq!(plan.expected_artifacts.len(), 1);
     assert_eq!(plan.expected_artifacts[0].id.as_str(), "prediction:output");
 }
@@ -378,4 +379,58 @@ fn cancelled_model_download_stops_before_work_starts() {
     let error = crate::download_model_bundle(&spec, &store, Some(&cancellation))
         .expect_err("cancelled before download");
     assert!(matches!(error, crate::ModelRuntimeError::Cancelled));
+}
+
+#[test]
+fn warmup_access_plan_keeps_model_identity_metadata() {
+    let request = crate::ModelAccessRequest {
+        kind: crate::ModelAccessKind::Warmup,
+        spec: ModelSpec::new("owner/model", ModelTask::TextEmbedding).revision("v1"),
+        backend: ModelRuntimeBackend::Heuristic,
+        inputs: Vec::new(),
+        output_artifact_prefix: None,
+        metadata: BTreeMap::from([("model.runtime".to_string(), "caller".to_string())]),
+    };
+
+    let plan = crate::plan_model_access(&request).unwrap();
+    assert!(plan.expected_artifacts.is_empty());
+    assert_eq!(plan.metadata["model.name"], "owner/model");
+    assert_eq!(plan.metadata["model.revision"], "v1");
+    assert_eq!(plan.metadata["model.runtime"], "caller");
+}
+
+#[derive(Debug, Clone)]
+struct CancellingDownloader {
+    inner: FakeDownloader,
+    cancellation: runtime_core::CancellationToken,
+}
+
+impl ModelDownloader for CancellingDownloader {
+    fn download_model(&self, spec: &HuggingFaceModelSpec) -> crate::Result<DownloadedModel> {
+        let downloaded = self.inner.download_model(spec)?;
+        self.cancellation.cancel();
+        Ok(downloaded)
+    }
+}
+
+#[test]
+fn cancellation_during_download_skips_bundle_materialization() {
+    let temp = tempdir().unwrap();
+    let spec = ModelSpec::new("owner/model", ModelTask::TextEmbedding)
+        .revision("v1")
+        .file("config.json")
+        .file("model.onnx");
+    let cancellation = runtime_core::CancellationToken::new();
+    let store =
+        ModelBundleStore::new(temp.path().join("bundles")).model_downloader(CancellingDownloader {
+            inner: FakeDownloader {
+                root: temp.path().join("cache"),
+            },
+            cancellation: cancellation.clone(),
+        });
+
+    let error = crate::download_model_bundle(&spec, &store, Some(&cancellation))
+        .expect_err("cancelled during download");
+    assert!(matches!(error, crate::ModelRuntimeError::Cancelled));
+    assert!(!store.bundle_dir(&spec).join("manifest.json").exists());
 }

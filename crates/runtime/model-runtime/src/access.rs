@@ -207,7 +207,7 @@ pub fn plan_model_access(request: &ModelAccessRequest) -> Result<ModelAccessPlan
     Ok(ModelAccessPlan {
         kind: request.kind,
         backend: request.backend.clone(),
-        metadata: request.metadata.clone(),
+        metadata: plan_metadata(request),
         execution_plan,
         expected_artifacts,
     })
@@ -219,14 +219,7 @@ pub fn download_model_bundle(
     store: &crate::ModelBundleStore,
     cancellation: Option<&CancellationToken>,
 ) -> Result<crate::ModelBundle> {
-    if cancellation.is_some_and(CancellationToken::is_cancelled) {
-        return Err(ModelRuntimeError::Cancelled);
-    }
-    let bundle = store.download(spec)?;
-    if cancellation.is_some_and(CancellationToken::is_cancelled) {
-        return Err(ModelRuntimeError::Cancelled);
-    }
-    Ok(bundle)
+    store.download_cancellable(spec, cancellation)
 }
 
 fn validate_model_spec(spec: &ModelSpec) -> Result<()> {
@@ -438,6 +431,18 @@ fn model_metadata(spec: &ModelSpec, backend: ModelRuntimeBackend) -> BTreeMap<St
     if let Some(repo_id) = spec.repo_id_value() {
         metadata.insert("model.repoId".to_string(), repo_id.to_string());
     }
+    metadata
+}
+
+/// Standard model identity metadata, with caller metadata layered on top.
+fn plan_metadata(request: &ModelAccessRequest) -> BTreeMap<String, String> {
+    let mut metadata = model_metadata(&request.spec, request.backend.clone());
+    metadata.extend(
+        request
+            .metadata
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone())),
+    );
     metadata
 }
 
