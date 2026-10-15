@@ -17,9 +17,15 @@ name = "math_probability"
 
 [dependencies]
 media-core.workspace = true
+statrs.workspace = true
 
 [dev-dependencies]
+criterion.workspace = true
 proptest.workspace = true
 math-linear.workspace = true
 math-sparse-data.workspace = true
 math-statistics.workspace = true
+
+[[bench]]
+name = "cdf_reference"
+harness = false

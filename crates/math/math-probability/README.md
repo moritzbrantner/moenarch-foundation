@@ -20,9 +20,9 @@ All parameters and continuous evaluation points must be finite. Invalid paramete
 
 Zero probability is represented as `0.0`; its logarithm is mathematically `-∞`, so `log_pmf`/`log_pdf` may return negative infinity only when the corresponding probability is exactly zero. Valid CDF results are clamped to `[0, 1]` against final rounding drift.
 
-Normal CDF uses a compact deterministic error-function approximation with absolute error on the order of `1e-7` for ordinary finite inputs. It is suitable for local analytics and referenceable package behavior, not arbitrary-precision tail computation.
+Normal, Binomial and Poisson CDF calculations delegate to [statrs 0.19.1](https://docs.rs/statrs/0.19.1/statrs/) (MIT), with default features disabled and only `std` enabled. This avoids importing sampling, RNG, or optional numerical matrix backends. The Foundation contract retains stricter finite validation, stable public types, and special handling of valid degenerate distributions; in particular, `Poisson::new(0.0)` remains supported despite being rejected by statrs.
 
-Binomial and Poisson probability mass use logarithmic formulations rather than factorial arithmetic. Their CDFs use log-space recurrence and log-addition, avoiding factorial overflow and preserving small terms substantially longer than naïve probability-space accumulation.
+Normal CDF uses the backend's complementary error function rather than the former local `~1e-7` approximation. Binomial and positive-rate Poisson CDFs use incomplete beta/gamma functions rather than a recurrence proportional to the count argument. Input-dependent convergence work remains within statrs' numerical routines; performance comparisons must be made on representative values. Probability mass/log-mass calculations retain their existing local formulas for now, preserving their established edge and underflow semantics pending separate parity evidence. Existing public return and error types are unchanged.
 
 ## Examples
 

@@ -1,5 +1,5 @@
 use math_linear::{F32Matrix, F64Matrix, SymmetricEigenOptions};
-use math_probability::Bernoulli;
+use math_probability::{Bernoulli, Poisson};
 use math_sparse_data::CooMatrix;
 use math_statistics::{cross_correlation, summarize_series, RunningCovariance, VarianceMode};
 
@@ -111,4 +111,17 @@ fn sparse_product_matches_dense_oracle_and_exposes_less_candidate_work() {
     let summary = summarize_series(&finite_values, VarianceMode::Population)
         .expect("sparse-to-dense output remains finite");
     assert_eq!(summary.count, actual.shape().rows * actual.shape().cols);
+}
+
+#[test]
+fn external_poisson_cdf_composes_with_foundation_statistics() {
+    let poisson = Poisson::new(3.0).expect("valid Poisson rate");
+    let masses = (0..=40).map(|k| poisson.pmf(k)).collect::<Vec<_>>();
+    let cumulative = poisson.cdf(40);
+    let summary = summarize_series(&masses, VarianceMode::Population)
+        .expect("finite mass sequence is a valid analytical series");
+
+    assert_close(masses.iter().sum::<f64>(), cumulative, 1.0e-12);
+    assert_eq!(summary.count, masses.len());
+    assert!(summary.variance.is_finite());
 }

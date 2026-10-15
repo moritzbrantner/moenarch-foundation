@@ -1,7 +1,11 @@
 #![doc = include_str!("../README.md")]
 
 use media_core::{DetectError, Result};
-use std::f64::consts::{PI, SQRT_2};
+use statrs::distribution::{
+    Binomial as StatrsBinomial, ContinuousCDF, DiscreteCDF, Normal as StatrsNormal,
+    Poisson as StatrsPoisson,
+};
+use std::f64::consts::PI;
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())
@@ -196,11 +200,14 @@ impl Normal {
         Ok(-0.5 * z * z - self.std_dev.ln() - 0.5 * (2.0 * PI).ln())
     }
 
-    /// Returns cumulative probability using a deterministic erf approximation.
+    /// Returns cumulative probability using statrs' error-function implementation.
     pub fn cdf(self, x: f64) -> Result<f64> {
         validate_finite(x, "normal evaluation point")?;
-        let z = (x - self.mean) / (self.std_dev * SQRT_2);
-        Ok((0.5 * (1.0 + erf_approx(z))).clamp(0.0, 1.0))
+        // These parameters were validated in Normal::new; statrs does not apply
+        // Foundation's stricter finite-variance rule, which remains authoritative.
+        let backend = StatrsNormal::new(self.mean, self.std_dev)
+            .expect("validated Foundation normal parameters are valid for statrs");
+        Ok(backend.cdf(x).clamp(0.0, 1.0))
     }
 
     /// Returns the distribution mean.
@@ -278,42 +285,20 @@ impl Binomial {
     }
 
     /// Returns cumulative probability through `k` successes.
+    ///
+    /// The non-degenerate calculation is delegated to statrs' regularized
+    /// incomplete beta function instead of an O(k) or O(n - k) recurrence.
     #[must_use]
     pub fn cdf(self, k: u64) -> f64 {
-        if k >= self.trials {
-            return 1.0;
-        }
-        if self.probability == 0.0 {
+        if k >= self.trials || self.probability == 0.0 {
             return 1.0;
         }
         if self.probability == 1.0 {
             return 0.0;
         }
-
-        if k <= self.trials / 2 {
-            let mut log_term = self.trials as f64 * (-self.probability).ln_1p();
-            let mut log_sum = log_term;
-            for successes in 0..k {
-                log_term += ((self.trials - successes) as f64).ln() - ((successes + 1) as f64).ln()
-                    + self.probability.ln()
-                    - (-self.probability).ln_1p();
-                log_sum = log_add_exp(log_sum, log_term);
-            }
-            log_sum.exp().clamp(0.0, 1.0)
-        } else {
-            let mut log_term = self.trials as f64 * self.probability.ln();
-            let mut log_tail = f64::NEG_INFINITY;
-            for successes in (k + 1..=self.trials).rev() {
-                log_tail = log_add_exp(log_tail, log_term);
-                if successes > k + 1 {
-                    log_term += (successes as f64).ln()
-                        - ((self.trials - successes + 1) as f64).ln()
-                        + (-self.probability).ln_1p()
-                        - self.probability.ln();
-                }
-            }
-            (1.0 - log_tail.exp()).clamp(0.0, 1.0)
-        }
+        let backend = StatrsBinomial::new(self.probability, self.trials)
+            .expect("validated Foundation binomial parameters are valid for statrs");
+        backend.cdf(k).clamp(0.0, 1.0)
     }
 
     /// Returns the distribution mean.
@@ -366,19 +351,19 @@ impl Poisson {
         -self.lambda + k as f64 * self.lambda.ln() - log_factorial(k)
     }
 
-    /// Returns cumulative probability through event count `k` using log-space recurrence.
+    /// Returns cumulative probability through event count `k`.
+    ///
+    /// For positive rates this uses statrs' regularized incomplete gamma
+    /// function, avoiding the previous O(k) recurrence. The zero-rate case
+    /// remains a valid Foundation distribution even though statrs rejects it.
     #[must_use]
     pub fn cdf(self, k: u64) -> f64 {
         if self.lambda == 0.0 {
             return 1.0;
         }
-        let mut log_term = -self.lambda;
-        let mut log_sum = log_term;
-        for count in 1..=k {
-            log_term += self.lambda.ln() - (count as f64).ln();
-            log_sum = log_add_exp(log_sum, log_term);
-        }
-        log_sum.exp().clamp(0.0, 1.0)
+        let backend = StatrsPoisson::new(self.lambda)
+            .expect("validated positive Foundation Poisson rate is valid for statrs");
+        backend.cdf(k).clamp(0.0, 1.0)
     }
 
     /// Returns the distribution mean.
@@ -392,38 +377,6 @@ impl Poisson {
     pub const fn variance(self) -> f64 {
         self.lambda
     }
-}
-
-fn erf_approx(value: f64) -> f64 {
-    if value.is_infinite() {
-        return value.signum();
-    }
-    let absolute = value.abs();
-    let t = 1.0 / (1.0 + 0.5 * absolute);
-    let polynomial = 1.000_023_68
-        + t * (0.374_091_96
-            + t * (0.096_784_18
-                + t * (-0.186_288_06
-                    + t * (0.278_868_07
-                        + t * (-1.135_203_98
-                            + t * (1.488_515_87 + t * (-0.822_152_23 + t * 0.170_872_77)))))));
-    let tau = t * (-absolute * absolute - 1.265_512_23 + t * polynomial).exp();
-    if value >= 0.0 {
-        1.0 - tau
-    } else {
-        tau - 1.0
-    }
-}
-
-fn log_add_exp(left: f64, right: f64) -> f64 {
-    if left == f64::NEG_INFINITY {
-        return right;
-    }
-    if right == f64::NEG_INFINITY {
-        return left;
-    }
-    let maximum = left.max(right);
-    maximum + ((left - maximum).exp() + (right - maximum).exp()).ln()
 }
 
 fn log_factorial(value: u64) -> f64 {
