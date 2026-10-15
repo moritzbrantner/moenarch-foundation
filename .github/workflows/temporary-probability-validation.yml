@@ -21,7 +21,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo metadata --format-version 1 --no-deps > /dev/null
+          cargo fetch
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
           cargo fmt --all
           if cargo test --locked -p moenarch-math-probability; then
             echo "FOCUSED_PROBABILITY_TEST:passed"
