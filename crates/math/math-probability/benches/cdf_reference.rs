@@ -12,8 +12,7 @@ fn legacy_poisson_cdf(lambda: f64, k: u64) -> f64 {
     for count in 1..=k {
         log_term += lambda.ln() - (count as f64).ln();
         let maximum = log_sum.max(log_term);
-        log_sum = maximum
-            + ((log_sum - maximum).exp() + (log_term - maximum).exp()).ln();
+        log_sum = maximum + ((log_sum - maximum).exp() + (log_term - maximum).exp()).ln();
     }
     log_sum.exp().clamp(0.0, 1.0)
 }

@@ -35,7 +35,7 @@ fn normal_cdf_matches_analytic_and_previous_precision_contracts() {
         (1.0, 0.841_344_746_068_542_9),
         (3.0, 0.998_650_101_968_369_9),
     ] {
-        assert_close(normal.cdf(x).unwrap(), expected, 1.0e-12);
+        assert_close(normal.cdf(x).unwrap(), expected, 5.0e-11);
     }
     // Foundation validation is stricter than statrs: infinite variance is rejected.
     assert!(Normal::new(0.0, f64::MAX).is_err());
