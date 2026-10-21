@@ -3,8 +3,9 @@
 //! Run: cargo bench --locked -p moenarch-math-probability --bench cdf_reference
 //! Compare controlled-run timings; shared CI wall-clock numbers are not a gate.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math_probability::{Binomial, Normal, Poisson};
+use std::hint::black_box;
 
 fn legacy_poisson_cdf(lambda: f64, k: u64) -> f64 {
     let mut log_term = -lambda;

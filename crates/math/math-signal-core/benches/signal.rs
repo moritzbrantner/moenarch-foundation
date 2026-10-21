@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use math_signal_core::{apply_fir_mono, signal_levels, FirKernel1d};
+use std::hint::black_box;
 
 fn samples(count: usize) -> Vec<f32> {
     (0..count)

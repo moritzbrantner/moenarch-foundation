@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use dense_data::{bucket_points, dense_summary, k_means, BucketGrid, DensePoint, KMeansConfig};
+use std::hint::black_box;
 
 fn sample_points() -> Vec<DensePoint> {
     (0..2_048)

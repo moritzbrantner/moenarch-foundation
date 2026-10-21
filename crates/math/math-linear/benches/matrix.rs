@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use math_linear::{F32Matrix, F64Matrix, MatrixShape, SvdOptions};
+use std::hint::black_box;
 
 fn matrix(rows: usize, cols: usize, seed: f32) -> F32Matrix {
     F32Matrix::new(

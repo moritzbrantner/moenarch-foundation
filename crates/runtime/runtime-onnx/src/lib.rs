@@ -398,7 +398,7 @@ fn from_file_impl(
     }
 
     diagnostic_stage(diagnostics.enabled, "onnxSessionBuilder=begin");
-    let mut builder = ort::session::Session::builder().map_err(ort_error)?;
+    let mut builder = ort::session::Session::builder(onnx_environment()?).map_err(ort_error)?;
     diagnostic_stage(diagnostics.enabled, "onnxSessionBuilder=ok");
     if let Some(level) = diagnostics.log_level {
         builder = builder.with_log_level(level).map_err(ort_error)?;
@@ -430,7 +430,7 @@ fn from_file_impl(
                 .with_no_environment_execution_providers()
                 .map_err(ort_error)?;
             let builder = builder
-                .with_execution_providers([ort::ep::CPUExecutionProvider::default().build()])
+                .with_execution_providers([ort::ep::CPU::default().build()])
                 .map_err(ort_error)?;
             diagnostic_stage(diagnostics.enabled, "onnxSessionExecutionProviders=cpu");
             builder
@@ -1231,6 +1231,21 @@ fn element_type_from_ort(ty: ort::value::TensorElementType) -> Option<OnnxTensor
         ort::value::TensorElementType::Uint8 => Some(OnnxTensorElementType::U8),
         _ => None,
     }
+}
+
+/// The process-wide ONNX Runtime environment that every session is built in.
+#[cfg(feature = "onnxruntime")]
+fn onnx_environment() -> Result<&'static ort::environment::Environment> {
+    static ENVIRONMENT: std::sync::OnceLock<ort::environment::Environment> =
+        std::sync::OnceLock::new();
+    if let Some(environment) = ENVIRONMENT.get() {
+        return Ok(environment);
+    }
+    let environment = ort::init()
+        .with_name("moenarch-runtime-onnx")
+        .build()
+        .map_err(ort_error)?;
+    Ok(ENVIRONMENT.get_or_init(|| environment))
 }
 
 #[cfg(feature = "onnxruntime")]
