@@ -1233,8 +1233,8 @@ fn element_type_from_ort(ty: ort::value::TensorElementType) -> Option<OnnxTensor
     }
 }
 
-#[cfg(feature = "onnxruntime")]
 /// The process-wide ONNX Runtime environment that every session is built in.
+#[cfg(feature = "onnxruntime")]
 fn onnx_environment() -> Result<&'static ort::environment::Environment> {
     static ENVIRONMENT: std::sync::OnceLock<ort::environment::Environment> =
         std::sync::OnceLock::new();
@@ -1248,6 +1248,7 @@ fn onnx_environment() -> Result<&'static ort::environment::Environment> {
     Ok(ENVIRONMENT.get_or_init(|| environment))
 }
 
+#[cfg(feature = "onnxruntime")]
 fn ort_error<T>(error: ort::Error<T>) -> OnnxRuntimeError {
     OnnxRuntimeError::Source(error.to_string())
 }
