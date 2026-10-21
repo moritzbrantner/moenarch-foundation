@@ -115,11 +115,13 @@ if os.environ.get('BENCH_FAIL', '') in sys.argv and os.environ.get('BENCH_FAIL')
     def test_invalid_baseline_is_not_silently_seeded(self) -> None:
         self.assertNotEqual(self.run_gate("missing-commit").returncode, 0)
 
-    def test_incompatible_toolchains_are_not_compared(self) -> None:
+    def test_toolchain_change_is_an_automatic_baseline_transition(self) -> None:
         (self.root / "rust-toolchain.toml").write_text('[toolchain]\nchannel="1.96.0"\n')
         result = self.run_gate(self.base)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Incompatible benchmark toolchains", result.stderr)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("toolchain transition", result.stdout)
+        fingerprint = (self.root / ".artifacts/performance-smoke/fingerprint.txt").read_text()
+        self.assertIn("baseline_transition=toolchain", fingerprint)
 
 
 if __name__ == "__main__":

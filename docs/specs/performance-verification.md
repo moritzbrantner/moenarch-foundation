@@ -47,7 +47,7 @@ cargo bench --locked -p moenarch-vector-analysis-core --bench metrics
 
 Smoke evidence is written to `.artifacts/performance-smoke/` together with a fingerprint containing candidate and baseline revisions, Rust/Cargo versions, `RUSTFLAGS`, Cargo lock hash, Valgrind and Iai-Callgrind runner versions, and host architecture.
 
-Measurements from incompatible fingerprints are not directly comparable. Deliberate compiler, target, algorithm, dependency, or workload changes may require a reviewed baseline transition rather than weakening the threshold.
+Measurements from incompatible fingerprints are not directly comparable. A Rust toolchain change (`rust-toolchain.toml`) is an automatic baseline transition: the driver warns, measures the candidate alone and records `baseline_transition=toolchain` in the fingerprint; it needs no review (owner decision 2026-10-21). Deliberate target, algorithm, dependency, or workload changes may still require a reviewed baseline transition rather than weakening the threshold.
 
 Per-suite logs and workload SHA-256 hashes are retained alongside the shared
 fingerprint in the uploaded CI artifact. The measured unit is Callgrind `Ir`
