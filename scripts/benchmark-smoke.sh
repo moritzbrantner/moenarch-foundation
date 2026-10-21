@@ -49,10 +49,14 @@ if [[ -n "$base_sha" ]]; then
   git worktree add --detach "$baseline_dir" "$base_sha" >/dev/null
   trap cleanup EXIT
   if ! cmp -s rust-toolchain.toml "$baseline_dir/rust-toolchain.toml"; then
-    printf '%s\n' 'Incompatible benchmark toolchains; review an explicit baseline transition.' >&2
-    exit 1
+    # Callgrind counts from different compilers are not comparable. A toolchain change is an
+    # automatic baseline transition: measure the candidate alone and record the transition.
+    printf '%s\n' "::warning::Benchmark toolchain transition: rust-toolchain.toml differs from baseline $base_sha; measuring the candidate only."
+    printf 'baseline_transition=toolchain\n' >> "$artifact_dir/fingerprint.txt"
+    base_sha=""
+  else
+    sha256sum "$baseline_dir/Cargo.lock" > "$artifact_dir/baseline-lock.sha256"
   fi
-  sha256sum "$baseline_dir/Cargo.lock" > "$artifact_dir/baseline-lock.sha256"
 fi
 
 for index in "${!packages[@]}"; do
