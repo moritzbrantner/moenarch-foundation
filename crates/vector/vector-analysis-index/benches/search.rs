@@ -1,4 +1,5 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 use vector_analysis_core::{DenseVector, VectorMetric};
 use vector_analysis_index::{
     approximate::{CosineLshConfig, CosineLshIndex, CosineLshSearchConfig},

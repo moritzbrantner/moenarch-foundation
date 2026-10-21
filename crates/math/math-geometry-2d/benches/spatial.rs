@@ -1,7 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use math_geometry_2d::{
     broad_phase_pairs_2d, BroadPhase2Config, BroadPhase2Strategy, RectU32, SpatialCellSize2,
 };
+use std::hint::black_box;
 
 fn sparse_rects(count: usize) -> Vec<RectU32> {
     (0..count)

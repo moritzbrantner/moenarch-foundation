@@ -1,5 +1,6 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use graph_analysis_core::{minimum_spanning_tree, page_rank, Graph, PageRankConfig};
+use std::hint::black_box;
 
 const NODES: usize = 2_048;
 

@@ -1,9 +1,10 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use math_linear::{F32Matrix, MatrixShape};
 use math_statistics::{
     ordinary_least_squares, PrincipalComponents, RunningCovariance, WeightedObservation,
     ZScoreNormalizer,
 };
+use std::hint::black_box;
 
 fn matrix(rows: usize, cols: usize) -> F32Matrix {
     F32Matrix::new(
