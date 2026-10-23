@@ -90,7 +90,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
-          toolchain: "1.99.1"
+          toolchain: stable
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Fetch locked dependencies
@@ -121,7 +121,7 @@ jobs:
       - name: Diagnose exact environment after verification failure
         if: ${{ failure() }}
         continue-on-error: true
-        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        uses: moritzbrantner/coding-tooling@2ceb2b57c946fd042fdf098c05427519c146a62f
         with:
           operation: environment-verify
           report-path: .artifacts/environment/verify.json
@@ -136,7 +136,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
-          toolchain: "1.99.1"
+          toolchain: stable
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check every WASM binding crate on its deployment target
@@ -163,7 +163,7 @@ jobs:
       - name: Diagnose exact environment after WASM verification failure
         if: ${{ failure() }}
         continue-on-error: true
-        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        uses: moritzbrantner/coding-tooling@2ceb2b57c946fd042fdf098c05427519c146a62f
         with:
           operation: environment-verify
           report-path: .artifacts/environment/wasm.json
@@ -180,7 +180,7 @@ jobs:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87
         with:
-          toolchain: "1.99.1"
+          toolchain: stable
       - name: Compile full benchmark matrix
         run: |
           mkdir -p .artifacts/performance-smoke
@@ -213,7 +213,7 @@ jobs:
       - name: Diagnose exact environment after performance-smoke failure
         if: ${{ failure() }}
         continue-on-error: true
-        uses: moritzbrantner/coding-tooling@81da4fbbdbe75a8937716cbab0b9a47c447269e8
+        uses: moritzbrantner/coding-tooling@2ceb2b57c946fd042fdf098c05427519c146a62f
         with:
           operation: environment-verify
           report-path: .artifacts/environment/performance.json
