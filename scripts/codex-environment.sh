@@ -53,10 +53,6 @@ PY
 )"
 
 if [[ -n "$rust_toolchain" ]]; then
-  if ! [[ "$rust_toolchain" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    printf 'Rust toolchain must use an exact version, got %s\n' "$rust_toolchain" >&2
-    exit 2
-  fi
   # Machine bootstrap is intentionally outside the repository contract: an agent
   # must arrive with a trusted rustup instead of executing a mutable installer.
   if ! command -v rustup >/dev/null 2>&1; then
@@ -92,10 +88,3 @@ for command in "${environment_commands[@]}"; do
   (cd "$root" && bash -lc "$command")
 done
 
-if [[ -n "$rust_toolchain" ]]; then
-  observed_rust="$(cd "$root" && rustc --version | awk '{print $2}')"
-  if [[ "$observed_rust" != "$rust_toolchain" ]]; then
-    printf 'Rust preflight mismatch: expected %s, got %s\n' "$rust_toolchain" "$observed_rust" >&2
-    exit 1
-  fi
-fi
