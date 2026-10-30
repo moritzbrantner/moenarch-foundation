@@ -1241,11 +1241,33 @@ fn onnx_environment() -> Result<&'static ort::environment::Environment> {
     if let Some(environment) = ENVIRONMENT.get() {
         return Ok(environment);
     }
-    let environment = ort::init()
+    // Load the dylib explicitly so a missing or too-old ONNX Runtime is an error.
+    // `ort::init()` loads it lazily inside `ort::api()` and panics on failure.
+    let environment = ort::init_from(onnx_runtime_library_path())
+        .map_err(|error| {
+            OnnxRuntimeError::Source(format!(
+                "cannot load ONNX Runtime ({error}); set ORT_DYLIB_PATH to an ONNX Runtime >= 1.24 shared library"
+            ))
+        })?
         .with_name("moenarch-runtime-onnx")
         .build()
         .map_err(ort_error)?;
     Ok(ENVIRONMENT.get_or_init(|| environment))
+}
+
+/// `ORT_DYLIB_PATH`, else the platform's ONNX Runtime library name on the loader path.
+#[cfg(feature = "onnxruntime")]
+fn onnx_runtime_library_path() -> std::path::PathBuf {
+    match std::env::var_os("ORT_DYLIB_PATH") {
+        Some(path) if !path.is_empty() => path.into(),
+        _ => std::path::PathBuf::from(if cfg!(target_os = "windows") {
+            "onnxruntime.dll"
+        } else if cfg!(target_vendor = "apple") {
+            "libonnxruntime.dylib"
+        } else {
+            "libonnxruntime.so"
+        }),
+    }
 }
 
 #[cfg(feature = "onnxruntime")]
