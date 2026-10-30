@@ -9,9 +9,9 @@ fn missing_onnx_runtime_dylib_is_an_error_not_a_hang() {
     std::fs::write(&model, b"not a model").unwrap();
     std::env::set_var("ORT_DYLIB_PATH", dir.join("libonnxruntime-missing.so"));
 
-    let error = runtime_onnx::OnnxSession::from_file(&model)
-        .err()
-        .expect("loading without an ONNX Runtime dylib must fail");
+    let Err(error) = runtime_onnx::OnnxSession::from_file(&model) else {
+        panic!("loading without an ONNX Runtime dylib must fail");
+    };
 
     let message = error.to_string();
     assert!(message.contains("ORT_DYLIB_PATH"), "{message}");
