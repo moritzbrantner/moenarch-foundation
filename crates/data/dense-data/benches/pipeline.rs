@@ -24,7 +24,12 @@ fn sample_points() -> Vec<DensePoint> {
 
 fn sample_series() -> Vec<NumericSeriesPoint> {
     const METRICS: [&str; 6] = [
-        "bitrate", "duration", "frames", "keyframes", "motion", "scenes",
+        "bitrate",
+        "duration",
+        "frames",
+        "keyframes",
+        "motion",
+        "scenes",
     ];
     (0..20_000)
         .map(|index| NumericSeriesPoint {
