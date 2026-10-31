@@ -46,6 +46,11 @@ impl BucketGrid {
     pub fn key_for(&self, point: &DensePoint) -> Result<BucketKey> {
         self.validate()?;
         point.validate()?;
+        self.key_for_validated(point)
+    }
+
+    /// Computes a bucket key for a grid and point that have already been validated.
+    fn key_for_validated(&self, point: &DensePoint) -> Result<BucketKey> {
         if point.dimensions() != self.dimensions() {
             return Err(invalid_argument(
                 "point dimensions must match bucket grid dimensions",
@@ -119,10 +124,9 @@ pub fn bucket_points(points: &[DensePoint], grid: &BucketGrid) -> Result<Vec<Den
     grid.validate()?;
     let mut buckets = BTreeMap::<BucketKey, BucketAccumulator>::new();
     for (index, point) in points.iter().enumerate() {
-        let key = grid.key_for(point)?;
         buckets
-            .entry(key.clone())
-            .or_insert_with(|| BucketAccumulator::new(key))
+            .entry(grid.key_for_validated(point)?)
+            .or_insert_with_key(|key| BucketAccumulator::new(key.clone()))
             .push(index, point);
     }
     buckets

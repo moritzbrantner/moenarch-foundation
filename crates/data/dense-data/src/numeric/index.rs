@@ -6,7 +6,7 @@ use media_core::Result;
 
 use super::accumulators::{
     create_numeric_heatmap_cells, create_numeric_histogram_buckets, numeric_bin_width,
-    NumericHistogramAccumulator, NumericSeriesBinAccumulator,
+    NumericSeriesBinAccumulator,
 };
 use super::types::{
     NumericHeatmapQuery, NumericHeatmapResult, NumericHeatmapSummary, NumericHistogramQuery,
@@ -142,7 +142,7 @@ impl NumericSeriesIndex {
             bins: bins
                 .into_iter()
                 .filter(|bin| query.include_empty_bins || bin.point_count > 0)
-                .map(NumericSeriesBinAccumulator::finish)
+                .map(|bin| bin.finish(&self.metric_keys))
                 .collect(),
         })
     }
@@ -210,7 +210,7 @@ impl NumericSeriesIndex {
         let buckets = buckets
             .into_iter()
             .filter(|bucket| query.include_empty_buckets || bucket.point_count > 0)
-            .map(NumericHistogramAccumulator::finish)
+            .map(|bucket| bucket.finish(&self.metric_keys))
             .collect::<Vec<_>>();
 
         Ok(NumericHistogramResult {
@@ -268,7 +268,7 @@ impl NumericSeriesIndex {
         let cells = cells
             .into_iter()
             .filter(|cell| query.include_empty_cells || cell.point_count > 0)
-            .map(|cell| cell.finish(max_cell_count))
+            .map(|cell| cell.finish(max_cell_count, &self.metric_keys))
             .collect::<Vec<_>>();
 
         Ok(NumericHeatmapResult {

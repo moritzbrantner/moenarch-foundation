@@ -16,6 +16,27 @@ pub(super) fn numeric_bin_width(domain: [f64; 2], bin_count: usize) -> f64 {
     }
 }
 
+/// Adds a point's metrics to totals held in `metric_keys` order.
+///
+/// Both sides are sorted and `metric_keys` holds every key in the index, so one
+/// forward walk finds each metric. Totals start at +0.0 and so cannot be -0.0,
+/// which makes skipping an absent metric the same as adding 0.0 to it.
+fn add_metrics(totals: &mut [f64], metric_keys: &[String], metrics: &BTreeMap<String, f64>) {
+    let mut slots = metric_keys.iter().zip(totals);
+    for (key, value) in metrics {
+        for (slot_key, total) in slots.by_ref() {
+            if slot_key == key {
+                *total += *value;
+                break;
+            }
+        }
+    }
+}
+
+fn metric_map(metric_keys: &[String], totals: Vec<f64>) -> BTreeMap<String, f64> {
+    metric_keys.iter().cloned().zip(totals).collect()
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct NumericSeriesBinAccumulator {
     average_y: Option<f64>,
@@ -23,7 +44,7 @@ pub(super) struct NumericSeriesBinAccumulator {
     index: usize,
     last_point_index: Option<usize>,
     max_y: Option<f64>,
-    metrics: BTreeMap<String, f64>,
+    metrics: Vec<f64>,
     min_y: Option<f64>,
     pub(super) point_count: u64,
     sum_y: f64,
@@ -47,7 +68,7 @@ impl NumericSeriesBinAccumulator {
             index,
             last_point_index: None,
             max_y: None,
-            metrics: metric_keys.iter().map(|key| (key.clone(), 0.0)).collect(),
+            metrics: vec![0.0; metric_keys.len()],
             min_y: None,
             point_count: 0,
             sum_y: 0.0,
@@ -69,20 +90,17 @@ impl NumericSeriesBinAccumulator {
         self.min_y = Some(self.min_y.map_or(point.y, |min_y| min_y.min(point.y)));
         self.max_y = Some(self.max_y.map_or(point.y, |max_y| max_y.max(point.y)));
 
-        for metric_key in metric_keys {
-            *self.metrics.entry(metric_key.clone()).or_insert(0.0) +=
-                point.metrics.get(metric_key).copied().unwrap_or(0.0);
-        }
+        add_metrics(&mut self.metrics, metric_keys, &point.metrics);
     }
 
-    pub(super) fn finish(self) -> NumericSeriesBin {
+    pub(super) fn finish(self, metric_keys: &[String]) -> NumericSeriesBin {
         NumericSeriesBin {
             average_y: self.average_y,
             first_point_index: self.first_point_index,
             index: self.index,
             last_point_index: self.last_point_index,
             max_y: self.max_y,
-            metrics: self.metrics,
+            metrics: metric_map(metric_keys, self.metrics),
             min_y: self.min_y,
             point_count: self.point_count,
             sum_y: self.sum_y,
@@ -99,7 +117,7 @@ pub(super) struct NumericHistogramAccumulator {
     index: usize,
     last_point_index: Option<usize>,
     max_value: Option<f64>,
-    metrics: BTreeMap<String, f64>,
+    metrics: Vec<f64>,
     min_value: Option<f64>,
     pub(super) point_count: u64,
     sum_value: f64,
@@ -124,20 +142,17 @@ impl NumericHistogramAccumulator {
                 .map_or(value, |max_value| max_value.max(value)),
         );
 
-        for metric_key in metric_keys {
-            *self.metrics.entry(metric_key.clone()).or_insert(0.0) +=
-                point.metrics.get(metric_key).copied().unwrap_or(0.0);
-        }
+        add_metrics(&mut self.metrics, metric_keys, &point.metrics);
     }
 
-    pub(super) fn finish(self) -> NumericHistogramBucket {
+    pub(super) fn finish(self, metric_keys: &[String]) -> NumericHistogramBucket {
         NumericHistogramBucket {
             average_value: self.average_value,
             first_point_index: self.first_point_index,
             index: self.index,
             last_point_index: self.last_point_index,
             max_value: self.max_value,
-            metrics: self.metrics,
+            metrics: metric_map(metric_keys, self.metrics),
             min_value: self.min_value,
             point_count: self.point_count,
             sum_value: self.sum_value,
@@ -164,7 +179,7 @@ pub(super) fn create_numeric_histogram_buckets(
                 index,
                 last_point_index: None,
                 max_value: None,
-                metrics: metric_keys.iter().map(|key| (key.clone(), 0.0)).collect(),
+                metrics: vec![0.0; metric_keys.len()],
                 min_value: None,
                 point_count: 0,
                 sum_value: 0.0,
@@ -186,7 +201,7 @@ pub(super) struct NumericHeatmapAccumulator {
     first_point_index: Option<usize>,
     index: usize,
     last_point_index: Option<usize>,
-    metrics: BTreeMap<String, f64>,
+    metrics: Vec<f64>,
     pub(super) point_count: u64,
     sum_value: f64,
     x: f64,
@@ -207,19 +222,16 @@ impl NumericHeatmapAccumulator {
         self.sum_value += value;
         self.average_value = Some(self.sum_value / self.point_count as f64);
 
-        for metric_key in metric_keys {
-            *self.metrics.entry(metric_key.clone()).or_insert(0.0) +=
-                point.metrics.get(metric_key).copied().unwrap_or(0.0);
-        }
+        add_metrics(&mut self.metrics, metric_keys, &point.metrics);
     }
 
-    pub(super) fn finish(self, max_cell_count: u64) -> NumericHeatmapCell {
+    pub(super) fn finish(self, max_cell_count: u64, metric_keys: &[String]) -> NumericHeatmapCell {
         NumericHeatmapCell {
             average_value: self.average_value,
             first_point_index: self.first_point_index,
             index: self.index,
             last_point_index: self.last_point_index,
-            metrics: self.metrics,
+            metrics: metric_map(metric_keys, self.metrics),
             point_count: self.point_count,
             sum_value: self.sum_value,
             value: if max_cell_count > 0 {
@@ -261,7 +273,7 @@ pub(super) fn create_numeric_heatmap_cells(
                 first_point_index: None,
                 index,
                 last_point_index: None,
-                metrics: metric_keys.iter().map(|key| (key.clone(), 0.0)).collect(),
+                metrics: vec![0.0; metric_keys.len()],
                 point_count: 0,
                 sum_value: 0.0,
                 x: x0 + x_width / 2.0,
