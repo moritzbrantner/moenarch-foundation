@@ -1,8 +1,13 @@
 #![doc = include_str!("../README.md")]
 
+pub mod rolling_captions;
 mod time;
 pub mod timed_text;
 pub mod timed_text_format;
+pub use rolling_captions::{
+    project_rolling_captions, RollingCaptionProjection, RollingCaptionWord, RollingWordTiming,
+    ROLLING_CAPTION_PROJECTION,
+};
 pub use time::MediaRange;
 pub use timed_text::{
     MediaSourceRef, MediaTimeRange, TimedTextCharContract, TimedTextContract,
