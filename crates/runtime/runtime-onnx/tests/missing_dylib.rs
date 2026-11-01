@@ -13,7 +13,15 @@ fn missing_onnx_runtime_dylib_is_an_error_not_a_hang() {
         panic!("loading without an ONNX Runtime dylib must fail");
     };
 
+    assert!(
+        matches!(
+            error,
+            runtime_onnx::OnnxRuntimeError::RuntimeUnavailable { .. }
+        ),
+        "{error:?}"
+    );
     let message = error.to_string();
+    assert!(message.contains("ONNX Runtime unavailable"), "{message}");
     assert!(message.contains("ORT_DYLIB_PATH"), "{message}");
     std::fs::remove_dir_all(&dir).ok();
 }

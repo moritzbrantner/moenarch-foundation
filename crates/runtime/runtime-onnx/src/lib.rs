@@ -23,6 +23,26 @@ pub enum OnnxRuntimeError {
     Io(#[from] std::io::Error),
     #[error("ONNX Runtime source error: {0}")]
     Source(String),
+    /// The ONNX Runtime shared library could not be loaded at all.
+    #[error(
+        "ONNX Runtime unavailable: cannot load `{}` ({reason}); set ORT_DYLIB_PATH to an ONNX Runtime >= {required} shared library",
+        path.display()
+    )]
+    RuntimeUnavailable {
+        path: PathBuf,
+        reason: String,
+        required: String,
+    },
+    /// The ONNX Runtime shared library loaded but is older than `ort` requires.
+    #[error(
+        "ONNX Runtime unavailable: version {found} at `{}` < required {required}; set ORT_DYLIB_PATH to an ONNX Runtime >= {required} shared library",
+        path.display()
+    )]
+    RuntimeTooOld {
+        path: PathBuf,
+        found: String,
+        required: String,
+    },
 }
 
 pub type Result<T> = std::result::Result<T, OnnxRuntimeError>;
@@ -1241,18 +1261,50 @@ fn onnx_environment() -> Result<&'static ort::environment::Environment> {
     if let Some(environment) = ENVIRONMENT.get() {
         return Ok(environment);
     }
-    // Load the dylib explicitly so a missing or too-old ONNX Runtime is an error.
-    // `ort::init()` loads it lazily inside `ort::api()` and panics on failure.
+    // Load the dylib explicitly so a missing or too-old ONNX Runtime is a typed error.
+    // `ort::init()` loads it lazily inside `ort::api()` and panics on failure; ort
+    // rc.12 deadlocked there instead, because building the load error re-entered `api()`.
     let environment = ort::init_from(onnx_runtime_library_path())
-        .map_err(|error| {
-            OnnxRuntimeError::Source(format!(
-                "cannot load ONNX Runtime ({error}); set ORT_DYLIB_PATH to an ONNX Runtime >= 1.24 shared library"
-            ))
-        })?
+        .map_err(runtime_load_error)?
         .with_name("moenarch-runtime-onnx")
         .build()
         .map_err(ort_error)?;
     Ok(ENVIRONMENT.get_or_init(|| environment))
+}
+
+/// The minimum ONNX Runtime release the linked `ort` API level requires.
+#[cfg(feature = "onnxruntime")]
+fn required_runtime_version() -> String {
+    format!("1.{}", ort::MINOR_VERSION)
+}
+
+#[cfg(feature = "onnxruntime")]
+fn runtime_load_error(error: ort::LoadDynamicError) -> OnnxRuntimeError {
+    let required = required_runtime_version();
+    match error {
+        ort::LoadDynamicError::BadVersion { version_str, path } => {
+            OnnxRuntimeError::RuntimeTooOld {
+                path,
+                found: version_str,
+                required,
+            }
+        }
+        ort::LoadDynamicError::Dlopen { error, path } => OnnxRuntimeError::RuntimeUnavailable {
+            path,
+            reason: error.to_string(),
+            required,
+        },
+        ort::LoadDynamicError::MissingApi { path } => OnnxRuntimeError::RuntimeUnavailable {
+            path,
+            reason: "the library does not export `OrtGetApiBase`".to_string(),
+            required,
+        },
+        ort::LoadDynamicError::InvalidVersionString => OnnxRuntimeError::RuntimeUnavailable {
+            path: onnx_runtime_library_path(),
+            reason: "the library reports a malformed version string".to_string(),
+            required,
+        },
+    }
 }
 
 /// `ORT_DYLIB_PATH`, else the platform's ONNX Runtime library name on the loader path.
@@ -1278,6 +1330,26 @@ fn ort_error<T>(error: ort::Error<T>) -> OnnxRuntimeError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "onnxruntime")]
+    #[test]
+    fn too_old_onnx_runtime_is_a_typed_version_error() {
+        let error = runtime_load_error(ort::LoadDynamicError::BadVersion {
+            version_str: "1.23.2".to_string(),
+            path: PathBuf::from("/usr/lib/libonnxruntime.so.1.23.2"),
+        });
+        let OnnxRuntimeError::RuntimeTooOld {
+            found, required, ..
+        } = &error
+        else {
+            panic!("expected RuntimeTooOld, got {error:?}");
+        };
+        assert_eq!(found, "1.23.2");
+        assert_eq!(required, &required_runtime_version());
+        let message = error.to_string();
+        assert!(message.contains("version 1.23.2"), "{message}");
+        assert!(message.contains("ORT_DYLIB_PATH"), "{message}");
+    }
 
     #[test]
     fn tensor_shape_validation_rejects_mismatched_element_counts() {

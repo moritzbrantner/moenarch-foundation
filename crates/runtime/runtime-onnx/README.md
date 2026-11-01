@@ -30,8 +30,9 @@ to stderr. Optional diagnostic-only knobs:
 - `ONNX_RUNTIME_DISABLE_SPINNING=1`
 - `ONNX_RUNTIME_OPTIMIZED_MODEL_PATH=/ignored/path/model.optimized.onnx`
 
-When using the `ort` `load-dynamic` feature, local smoke execution may require
-an explicit `ORT_DYLIB_PATH`. On the 2026-06-10 smoke host, leaving
-`ORT_DYLIB_PATH` unset hung before `onnxSessionBuilder=ok`, while pointing it
-at the local `.audio-tools/whisperx-venv` ONNX Runtime 1.26.0 dylib allowed
-both file and memory session commits to pass.
+ONNX Runtime is loaded dynamically from `ORT_DYLIB_PATH`, else from
+`libonnxruntime.so` (`.dylib`/`.dll`) on the loader path, and must be at least
+the release the linked `ort` API level requires (1.24). A library that cannot
+be loaded returns `OnnxRuntimeError::RuntimeUnavailable`; an older one returns
+`OnnxRuntimeError::RuntimeTooOld` with the found and required versions. Before
+`ort` 2.0.0-rc.15 either case deadlocked inside `ort::api()` instead.
