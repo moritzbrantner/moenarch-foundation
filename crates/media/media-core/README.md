@@ -19,6 +19,11 @@ The crate owns only:
   media timeline without NLP behavior;
 - deterministic SRT, WebVTT, plain-text, TSV, and Audacity-label parsing or
   rendering over those DTOs, without product-specific output policy;
+- `project_rolling_captions`, a source-mapped projection of rolling (roll-up)
+  caption cues, such as YouTube automatic captions, into each spoken word once,
+  with inline-timestamp, cue-start or interpolated timing and the cue that
+  introduced it. Raw cues stay untouched; passage building, persistence and
+  retrieval stay with consumers;
 - `PixelFormat` and `AudioSampleFormat`, compact stream-format identifiers
   without frame or buffer ownership;
 - `DetectError` and `Result`, the shared media error identity used across
