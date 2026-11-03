@@ -50,7 +50,11 @@ pub enum AudioSampleFormat {
 }
 
 /// Errors shared by media contract consumers.
+///
+/// The enum is `#[non_exhaustive]`: downstream `match` expressions need a
+/// wildcard arm so later variants are not breaking changes.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum DetectError {
     /// The pixel format is unsupported by the requested operation.
     UnsupportedPixelFormat(PixelFormat),
@@ -83,6 +87,13 @@ pub enum DetectError {
     InvalidArgument(String),
     /// An I/O operation failed.
     Io(std::io::Error),
+    /// A capability needs a model that is not installed or configured.
+    ModelRequired {
+        /// The capability that cannot run without the model.
+        capability: String,
+        /// Caller-facing guidance for providing the model.
+        hint: String,
+    },
 }
 
 impl std::fmt::Display for DetectError {
@@ -115,6 +126,9 @@ impl std::fmt::Display for DetectError {
             Self::Source(message) => write!(f, "video source error: {message}"),
             Self::InvalidArgument(message) => write!(f, "invalid argument: {message}"),
             Self::Io(error) => write!(f, "I/O error: {error}"),
+            Self::ModelRequired { capability, hint } => {
+                write!(f, "model required for {capability}: {hint}")
+            }
         }
     }
 }
@@ -485,5 +499,26 @@ mod tests {
             DetectError::from(std::io::Error::other("disk")).to_string(),
             "I/O error: disk"
         );
+        assert_eq!(
+            DetectError::ModelRequired {
+                capability: "named-entity recognition".into(),
+                hint: "install the NER model bundle".into(),
+            }
+            .to_string(),
+            "model required for named-entity recognition: install the NER model bundle"
+        );
+    }
+
+    #[test]
+    fn model_required_is_a_typed_error_without_a_source() {
+        let error = DetectError::ModelRequired {
+            capability: "tokenization".into(),
+            hint: "set the tokenizer model path".into(),
+        };
+        assert!(std::error::Error::source(&error).is_none());
+        assert!(matches!(
+            error,
+            DetectError::ModelRequired { ref capability, .. } if capability == "tokenization"
+        ));
     }
 }

@@ -23,4 +23,4 @@ path = "src/main.rs"
 runtime-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
-tensor-data = { package = "moenarch-tensor-data", version = "0.1.0", path = "../tensor-data" }
+tensor-data = { package = "moenarch-tensor-data", version = "0.2.0", path = "../tensor-data" }

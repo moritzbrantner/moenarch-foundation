@@ -99,28 +99,28 @@ statrs = { version = "0.19.1", default-features = false, features = ["std"] }
 tempfile = "3.23.0"
 thiserror = "2.0.17"
 
-audio-contracts = { package = "moenarch-audio-contracts", version = "=0.1.0", path = "crates/audio/audio-contracts" }
+audio-contracts = { package = "moenarch-audio-contracts", version = "=0.2.0", path = "crates/audio/audio-contracts" }
 corpus-core = { package = "moenarch-corpus-core", version = "=0.1.0", path = "crates/corpus/corpus-core" }
-data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.1.1", path = "crates/data/data-inversion-core" }
-dense-data = { package = "moenarch-dense-data", version = "=0.1.0", path = "crates/data/dense-data" }
-graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "=0.1.0", path = "crates/data/graph-analysis-core" }
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "=0.2.0", path = "crates/data/data-inversion-core" }
+dense-data = { package = "moenarch-dense-data", version = "=0.2.0", path = "crates/data/dense-data" }
+graph-analysis-core = { package = "moenarch-graph-analysis-core", version = "=0.2.0", path = "crates/data/graph-analysis-core" }
 jobs-core = { package = "moenarch-jobs-core", version = "=0.1.2", path = "crates/jobs/jobs-core" }
-math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "=0.1.1", path = "crates/math/math-geometry-2d" }
+math-geometry-2d = { package = "moenarch-math-geometry-2d", version = "=0.2.0", path = "crates/math/math-geometry-2d" }
 math-geometry-3d = { package = "moenarch-math-geometry-3d", version = "=0.1.0", path = "crates/math/math-geometry-3d" }
-math-linear = { package = "moenarch-math-linear", version = "=0.1.1", path = "crates/math/math-linear" }
+math-linear = { package = "moenarch-math-linear", version = "=0.2.0", path = "crates/math/math-linear" }
 math-probability = { package = "moenarch-math-probability", version = "=0.1.0", path = "crates/math/math-probability" }
-math-signal-core = { package = "moenarch-math-signal-core", version = "=0.1.1", path = "crates/math/math-signal-core" }
-math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.1.1", path = "crates/math/math-sparse-data" }
-math-statistics = { package = "moenarch-math-statistics", version = "=0.1.0", path = "crates/math/math-statistics" }
-media-core = { package = "moenarch-media-core", version = "=0.1.0", path = "crates/media/media-core" }
+math-signal-core = { package = "moenarch-math-signal-core", version = "=0.2.0", path = "crates/math/math-signal-core" }
+math-sparse-data = { package = "moenarch-math-sparse-data", version = "=0.2.0", path = "crates/math/math-sparse-data" }
+math-statistics = { package = "moenarch-math-statistics", version = "=0.2.0", path = "crates/math/math-statistics" }
+media-core = { package = "moenarch-media-core", version = "=0.2.0", path = "crates/media/media-core" }
 model-runtime = { package = "moenarch-model-runtime", version = "=0.1.1", path = "crates/runtime/model-runtime" }
-numbers-core = { package = "moenarch-numbers-core", version = "=0.1.1", path = "crates/data/numbers-core" }
+numbers-core = { package = "moenarch-numbers-core", version = "=0.2.0", path = "crates/data/numbers-core" }
 priority-queue = { package = "moenarch-priority-queue", version = "=0.1.0", path = "crates/algorithms/priority-queue" }
 runtime-core = { package = "moenarch-runtime-core", version = "=0.2.1", path = "crates/runtime/runtime-core" }
 semantic-core = { package = "moenarch-semantic-core", version = "=0.1.0", path = "crates/semantic/semantic-core" }
-tensor-data = { package = "moenarch-tensor-data", version = "=0.1.1", path = "crates/data/tensor-data" }
-vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.1.1", path = "crates/vector/vector-analysis-core" }
-vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.1.1", path = "crates/vector/vector-analysis-index" }
+tensor-data = { package = "moenarch-tensor-data", version = "=0.2.0", path = "crates/data/tensor-data" }
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.2.0", path = "crates/vector/vector-analysis-core" }
+vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.2.0", path = "crates/vector/vector-analysis-index" }
 
 [patch.crates-io]
 search-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }

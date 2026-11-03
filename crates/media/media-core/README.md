@@ -27,7 +27,9 @@ The crate owns only:
 - `PixelFormat` and `AudioSampleFormat`, compact stream-format identifiers
   without frame or buffer ownership;
 - `DetectError` and `Result`, the shared media error identity used across
-  foundation and capability contracts.
+  foundation and capability contracts. `DetectError` is `#[non_exhaustive]`,
+  so matches need a wildcard arm; `DetectError::ModelRequired` reports a
+  capability that cannot run until its model is installed or configured.
 
 `moenarch-video-analysis-core` re-exports the original neutral types to preserve
 its existing public API and type identity while consumers migrate.

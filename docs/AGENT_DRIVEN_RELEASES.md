@@ -123,6 +123,24 @@ exact-head-bound, rebase it after wave 2 if that merge changes either commit.
 Keep issue #17 unapproved and without control-head authorization until that
 ordering requirement and the shared crates.io-capacity constraint are clear.
 
+## Media-core 0.2 wave
+
+Destination issue #143 prepares the breaking `moenarch-media-core` 0.2.0
+change (`DetectError::ModelRequired`, `DetectError` now `#[non_exhaustive]`)
+and re-releases at 0.2.0 every published crate whose public API exposes
+media-core's `DetectError`/`Result` through its exact pin. Its contract is
+`releases/media-core-model-required.toml` with the current recurring
+`release-gate.toml` gate, the
+`scripts/check_media_core_0_2_candidate_consumer.sh` candidate consumer, and a
+locked package listing for every wave crate. Unpublished `moenarch-math-probability`
+and the CLI/server/WASM adapters follow the new pins without a release.
+
+The wave is blocked until `graph-kernels` and `search-kernels` exist on
+crates.io: `moenarch-graph-analysis-core` uses an exact Git dependency and
+`moenarch-vector-analysis-index`/`moenarch-math-sparse-data` rely on the
+workspace's Git patch for `search-kernels`. No manifest binds the wave until
+that prerequisite is resolved and the live contract test validates cleanly.
+
 The source and manifest use two commits to avoid a self-referential commit
 hash: first commit the exact release source, then add only the release manifest
 in a second commit. `source_sha` names the first commit. Publication runs from

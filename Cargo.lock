@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-audio-contracts"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "moenarch-media-core",
 ]
@@ -1374,7 +1374,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-data-inversion-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "moenarch-media-core",
  "moenarch-runtime-core",
@@ -1417,7 +1417,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-dense-data"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "moenarch-math-linear",
@@ -1464,7 +1464,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-graph-analysis-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "graph-kernels",
@@ -1553,7 +1553,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-geometry-2d"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "moenarch-media-core",
@@ -1610,7 +1610,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-linear"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "faer",
@@ -1673,7 +1673,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-signal-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "moenarch-media-core",
@@ -1718,7 +1718,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-sparse-data"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "moenarch-math-linear",
@@ -1766,7 +1766,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-math-statistics"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "moenarch-math-linear",
@@ -1812,7 +1812,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-media-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bincode",
  "serde",
@@ -1865,7 +1865,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-numbers-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "iai-callgrind",
@@ -1949,7 +1949,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-tensor-data"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "moenarch-media-core",
  "moenarch-runtime-core",
@@ -1992,7 +1992,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-vector-analysis-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "iai-callgrind",
@@ -2038,7 +2038,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-vector-analysis-index"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "moenarch-media-core",

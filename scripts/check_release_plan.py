@@ -72,6 +72,38 @@ FOUNDATION_WAVE_2_VERSIONS = dict(FOUNDATION_WAVE_2)
 FOUNDATION_AUDIO_CONTRACTS = [("moenarch-audio-contracts", "0.1.0")]
 FOUNDATION_AUDIO_CONTRACTS_PATH = "releases/foundation-audio-contracts.toml"
 FOUNDATION_AUDIO_CONTRACTS_VERSIONS = dict(FOUNDATION_AUDIO_CONTRACTS)
+# Issue #143: the breaking media-core 0.2.0 DetectError change (new
+# ModelRequired variant, #[non_exhaustive]) plus every published crate whose
+# public API exposes media-core's DetectError/Result through its exact pin.
+MEDIA_CORE_0_2_ISSUE = 143
+MEDIA_CORE_0_2 = [
+    ("moenarch-media-core", "0.2.0"),
+    ("moenarch-audio-contracts", "0.2.0"),
+    ("moenarch-data-inversion-core", "0.2.0"),
+    ("moenarch-graph-analysis-core", "0.2.0"),
+    ("moenarch-math-geometry-2d", "0.2.0"),
+    ("moenarch-numbers-core", "0.2.0"),
+    ("moenarch-tensor-data", "0.2.0"),
+    ("moenarch-vector-analysis-core", "0.2.0"),
+    ("moenarch-math-signal-core", "0.2.0"),
+    ("moenarch-math-linear", "0.2.0"),
+    ("moenarch-vector-analysis-index", "0.2.0"),
+    ("moenarch-math-sparse-data", "0.2.0"),
+    ("moenarch-math-statistics", "0.2.0"),
+    ("moenarch-dense-data", "0.2.0"),
+]
+MEDIA_CORE_0_2_PATH = "releases/media-core-model-required.toml"
+MEDIA_CORE_0_2_VERSIONS = dict(MEDIA_CORE_0_2)
+MEDIA_CORE_0_2_CONSUMER_CHECKS = [
+    "bash scripts/check_media_core_0_2_candidate_consumer.sh",
+    *[f"cargo package -p {name} --locked --list" for name, _version in MEDIA_CORE_0_2],
+]
+AUTHORIZED_WAVE_VERSIONS = (
+    FOUNDATION_WAVE_1_VERSIONS,
+    FOUNDATION_WAVE_2_VERSIONS,
+    FOUNDATION_AUDIO_CONTRACTS_VERSIONS,
+    MEDIA_CORE_0_2_VERSIONS,
+)
 
 
 def manifest_hashes(root: Path, ownership: dict) -> dict[str, str]:
@@ -280,12 +312,9 @@ def validate(plan: dict, ownership: dict, metadata: dict, root: Path = ROOT) -> 
             errors.append(
                 f"{name}: ownership source_version does not match the bootstrap plan"
             )
-        authorized_workspace_versions = {source_version}
-        wave_version = (
-            FOUNDATION_WAVE_1_VERSIONS | FOUNDATION_WAVE_2_VERSIONS
-        ).get(name)
-        if wave_version is not None:
-            authorized_workspace_versions.add(wave_version)
+        authorized_workspace_versions = {source_version} | {
+            wave[name] for wave in AUTHORIZED_WAVE_VERSIONS if name in wave
+        }
         if actual_version not in authorized_workspace_versions:
             errors.append(
                 f"{name}: workspace version is not an authorized source or wave version "
@@ -404,6 +433,25 @@ def validate_release_manifest(
             )
         if manifest.get("required_consumer_checks") != []:
             errors.append("foundation audio-contracts must not require consumer checks")
+    elif relative_path == MEDIA_CORE_0_2_PATH:
+        expected_order = [name for name, _ in MEDIA_CORE_0_2]
+        if manifest.get("issue") != MEDIA_CORE_0_2_ISSUE:
+            errors.append(
+                f"media-core 0.2 wave must bind destination issue {MEDIA_CORE_0_2_ISSUE}"
+            )
+        if manifest.get("dependency_order") != expected_order:
+            errors.append("media-core 0.2 wave package order does not match its release contract")
+        actual_versions = {
+            package.get("name"): package.get("version")
+            for package in manifest.get("packages", [])
+            if isinstance(package, dict)
+        }
+        if actual_versions != MEDIA_CORE_0_2_VERSIONS:
+            errors.append("media-core 0.2 wave package versions do not match its release contract")
+        if manifest.get("required_consumer_checks") != MEDIA_CORE_0_2_CONSUMER_CHECKS:
+            errors.append(
+                "media-core 0.2 wave consumer checks do not match its release contract"
+            )
     try:
         validate_manifest(root, manifest, metadata, ownership)
     except ReleaseError as error:
