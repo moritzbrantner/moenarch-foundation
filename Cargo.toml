@@ -80,6 +80,7 @@ keywords = ["data", "math", "runtime", "multimedia", "analysis"]
 categories = ["science", "algorithms", "multimedia"]
 
 [workspace.dependencies]
+cdflib = { version = "0.4.4", default-features = false }
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "serde"] }
 clap = { version = "4.5.51", features = ["derive"] }
 criterion = "0.8.0"
