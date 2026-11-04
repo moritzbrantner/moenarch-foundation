@@ -464,7 +464,7 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
         self.assertNotIn("patch", tomllib.loads((ROOT / "Cargo.toml").read_text()))
         for dependency in kernel_dependencies.values():
             self.assertEqual(dependency["req"], "=0.1.0")
-            self.assertIsNone(dependency["path"])
+            self.assertIsNone(dependency.get("path"))
             self.assertTrue(dependency["source"].startswith("registry+"))
 
     def test_kernel_lockfiles_resolve_only_published_crates(self) -> None:
