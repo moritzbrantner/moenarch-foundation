@@ -2,9 +2,8 @@
 # Candidate consumer gate for the issue #143 media-core 0.2 wave.
 #
 # Builds a registry-shaped consumer of all fourteen wave crates against the
-# exact candidate sources. External kernels that are not yet on crates.io are
-# patched to the same exact Git revision the workspace root uses; that patch is
-# verification-only and never reaches `cargo publish`.
+# exact candidate sources. Kernel dependencies must resolve from the published
+# crates.io versions; only the unpublished foundation wave is path-patched.
 set -euo pipefail
 
 repository_root=$(git rev-parse --show-toplevel)
@@ -48,8 +47,6 @@ write_patch() {
   write_patch moenarch-math-sparse-data crates/math/math-sparse-data
   write_patch moenarch-math-statistics crates/math/math-statistics
   write_patch moenarch-dense-data crates/data/dense-data
-  echo 'graph-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }'
-  echo 'search-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }'
 } >"$patch_config"
 
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-"$repository_root/target"}

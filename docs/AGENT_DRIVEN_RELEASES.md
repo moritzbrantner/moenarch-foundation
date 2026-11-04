@@ -137,14 +137,12 @@ and the CLI/server/WASM adapters follow the new pins without a release.
 
 `moenarch-graph-analysis-core` requires `graph-kernels = "=0.1.0"` and
 `moenarch-vector-analysis-index`/`moenarch-math-sparse-data` require
-`search-kernels = "=0.1.0"`. The workspace `[patch.crates-io]` Git overrides
-for both kernels are verification-only. Release validation treats every
-dependency hidden behind that patch as an external registry prerequisite: it
-must use an exact `=version` requirement, `check_release_plan.py --check` on a
-TOML manifest rejects it while crates.io lacks that exact non-yanked version,
-and the publisher refuses before any packaging or publishing effect. The wave
-stays unbound until both kernels are published from `rust-kernels` and the
-patch revision matches the published source.
+`search-kernels = "=0.1.0"`. All three kernel crates (`collection-kernels`,
+`graph-kernels`, and `search-kernels`) were published from `rust-kernels`
+`9bbbc71e1d5d2a76e14034a5a06d78767303d14e`. Foundation's workspace and
+candidate-consumer fixture resolve these exact registry versions without Git
+source overrides. The release checker and publisher still reject registry-absent
+dependencies hidden behind any future workspace patch before publication.
 
 The source and manifest use two commits to avoid a self-referential commit
 hash: first commit the exact release source, then add only the release manifest

@@ -65,7 +65,8 @@ checksum = "f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527"
 [[package]]
 name = "collection-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "967563c46ecaa4ba9c27ed2cfb584e49a81c83364535201e15f5c3189b49d2ef"
 
 [[package]]
 name = "equivalent"
@@ -99,7 +100,8 @@ dependencies = [
 [[package]]
 name = "graph-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48705ad17509a83d65ea83012c66bb854a600c41526bd7bdec5ac5fc79c9510d"
 dependencies = [
  "collection-kernels",
 ]
@@ -461,7 +463,8 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 [[package]]
 name = "search-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2361dd406be7f403dc5855a7c24bef5bdebe7b3ebdfa78ec372e98c7cfc63bc"
 dependencies = [
  "collection-kernels",
 ]

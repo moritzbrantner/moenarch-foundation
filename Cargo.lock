@@ -344,7 +344,8 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 [[package]]
 name = "collection-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "967563c46ecaa4ba9c27ed2cfb584e49a81c83364535201e15f5c3189b49d2ef"
 
 [[package]]
 name = "colorchoice"
@@ -965,7 +966,8 @@ checksum = "37bfe73dc8ec21f54d181e5a60554327ec3f1c600c455a75ccbfc65d2106a6c4"
 [[package]]
 name = "graph-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48705ad17509a83d65ea83012c66bb854a600c41526bd7bdec5ac5fc79c9510d"
 dependencies = [
  "collection-kernels",
 ]
@@ -2815,7 +2817,8 @@ dependencies = [
 [[package]]
 name = "search-kernels"
 version = "0.1.0"
-source = "git+https://github.com/moritzbrantner/rust-kernels?rev=51ef7878165b83db0d10ad7420fee6b4aba97099#51ef7878165b83db0d10ad7420fee6b4aba97099"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2361dd406be7f403dc5855a7c24bef5bdebe7b3ebdfa78ec372e98c7cfc63bc"
 dependencies = [
  "collection-kernels",
 ]

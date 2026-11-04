@@ -67,7 +67,7 @@ def historical_workspace(metadata: dict, versions: dict[str, str], root: Path) -
             if str(dependency.get("req", "")).startswith("="):
                 dependency["req"] = f"={fixture_versions[dependency['name']]}"
     shutil.copyfile(live_root / "release-gate.toml", root / "release-gate.toml")
-    # Wave 1 predates the workspace's verification-only kernel patches.
+    # Historical manifests validate against a minimal workspace root.
     (root / "Cargo.toml").write_text("[workspace]\n", encoding="utf-8")
     return metadata
 
@@ -439,19 +439,57 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
     def test_exact_wave_matches_live_workspace(self) -> None:
         self.assertEqual(self.errors(self.manifest), [])
 
-    def test_rust_kernels_are_external_registry_prerequisites(self) -> None:
+    def test_rust_kernels_use_registry_requirements_without_patches(self) -> None:
         prerequisites = external_prerequisites(
             self.manifest, self.ownership, self.metadata
         )
+        self.assertEqual(prerequisites, [])
+        kernel_dependencies = {
+            (package["name"], dependency["name"]): dependency
+            for package in self.metadata["packages"]
+            for dependency in package["dependencies"]
+            if dependency["name"] in {"graph-kernels", "search-kernels"}
+        }
         self.assertEqual(
-            prerequisites,
-            [
-                {"name": "graph-kernels", "version": "0.1.0", "external": True},
-                {"name": "search-kernels", "version": "0.1.0", "external": True},
-            ],
+            set(kernel_dependencies),
+            {
+                ("moenarch-graph-analysis-core", "graph-kernels"),
+                ("moenarch-vector-analysis-index", "search-kernels"),
+                ("moenarch-math-sparse-data", "search-kernels"),
+            },
         )
+        self.assertNotIn("patch", tomllib.loads((ROOT / "Cargo.toml").read_text()))
+        for dependency in kernel_dependencies.values():
+            self.assertEqual(dependency["req"], "=0.1.0")
+            self.assertIsNone(dependency["path"])
+            self.assertTrue(dependency["source"].startswith("registry+"))
 
-    def test_registry_absent_patched_kernels_are_rejected(self) -> None:
+    def test_kernel_lockfiles_resolve_only_published_crates(self) -> None:
+        kernel_names = {"collection-kernels", "graph-kernels", "search-kernels"}
+        sources = []
+        for lockfile in (
+            ROOT / "Cargo.lock",
+            ROOT / "scripts/fixtures/media_core_0_2_consumer/Cargo.lock",
+        ):
+            lock = tomllib.loads(lockfile.read_text(encoding="utf-8"))
+            kernel_packages = {
+                package["name"]: package
+                for package in lock["package"]
+                if package["name"] in kernel_names
+            }
+            self.assertEqual(set(kernel_packages), kernel_names)
+            for name, package in kernel_packages.items():
+                self.assertEqual(package["version"], "0.1.0", name)
+                self.assertEqual(
+                    package["source"], "registry+https://github.com/rust-lang/crates.io-index"
+                )
+                self.assertRegex(package["checksum"], r"^[0-9a-f]{64}$")
+            sources.append(
+                {name: package["checksum"] for name, package in kernel_packages.items()}
+            )
+        self.assertEqual(*sources)
+
+    def test_registry_lookup_is_not_needed_without_kernel_patches(self) -> None:
         errors = validate_release_manifest(
             self.manifest,
             self.ownership,
@@ -459,38 +497,7 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
             Path(MEDIA_CORE_0_2_PATH),
             registry_version=lambda _name, _version: None,
         )
-        self.assertEqual(len(errors), 2, errors)
-        self.assertTrue(all("absent from crates.io" in error for error in errors), errors)
-
-    def test_registry_present_patched_kernels_pass(self) -> None:
-        errors = validate_release_manifest(
-            self.manifest,
-            self.ownership,
-            self.metadata,
-            Path(MEDIA_CORE_0_2_PATH),
-            registry_version=lambda name, version: {
-                "crate": name,
-                "num": version,
-                "yanked": False,
-            },
-        )
         self.assertEqual(errors, [])
-
-    def test_yanked_patched_kernel_is_rejected(self) -> None:
-        errors = validate_release_manifest(
-            self.manifest,
-            self.ownership,
-            self.metadata,
-            Path(MEDIA_CORE_0_2_PATH),
-            registry_version=lambda name, version: {
-                "crate": name,
-                "num": version,
-                "yanked": name == "graph-kernels",
-            },
-        )
-        self.assertEqual(
-            errors, ["graph-kernels 0.1.0 is not a usable crates.io version"]
-        )
 
     def test_every_published_media_core_dependent_is_in_the_wave(self) -> None:
         wave = {name for name, _ in MEDIA_CORE_0_2}
