@@ -48,6 +48,7 @@ write_patch() {
   write_patch moenarch-math-sparse-data crates/math/math-sparse-data
   write_patch moenarch-math-statistics crates/math/math-statistics
   write_patch moenarch-dense-data crates/data/dense-data
+  echo 'graph-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }'
   echo 'search-kernels = { git = "https://github.com/moritzbrantner/rust-kernels", rev = "51ef7878165b83db0d10ad7420fee6b4aba97099" }'
 } >"$patch_config"
 

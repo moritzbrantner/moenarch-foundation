@@ -17,6 +17,7 @@ from check_release_plan import (
     MEDIA_CORE_0_2_CONSUMER_CHECKS,
     MEDIA_CORE_0_2_ISSUE,
     MEDIA_CORE_0_2_PATH,
+    external_prerequisites,
     validate,
     validate_control_binding,
     validate_release_manifest,
@@ -66,6 +67,8 @@ def historical_workspace(metadata: dict, versions: dict[str, str], root: Path) -
             if str(dependency.get("req", "")).startswith("="):
                 dependency["req"] = f"={fixture_versions[dependency['name']]}"
     shutil.copyfile(live_root / "release-gate.toml", root / "release-gate.toml")
+    # Wave 1 predates the workspace's verification-only kernel patches.
+    (root / "Cargo.toml").write_text("[workspace]\n", encoding="utf-8")
     return metadata
 
 
@@ -433,15 +436,60 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
             manifest, self.ownership, self.metadata, Path(MEDIA_CORE_0_2_PATH)
         )
 
-    def test_exact_wave_is_blocked_only_by_unpublished_graph_kernels(self) -> None:
-        # Issue #143 blocker: graph-kernels (and search-kernels, which the
-        # static validator cannot see because the workspace patches it) are
-        # not on crates.io yet. When the kernels are published and
-        # graph-analysis-core uses a registry requirement, this must become
-        # assertEqual(self.errors(self.manifest), []) before any manifest binds.
+    def test_exact_wave_matches_live_workspace(self) -> None:
+        self.assertEqual(self.errors(self.manifest), [])
+
+    def test_rust_kernels_are_external_registry_prerequisites(self) -> None:
+        prerequisites = external_prerequisites(
+            self.manifest, self.ownership, self.metadata
+        )
         self.assertEqual(
-            self.errors(self.manifest),
-            ["moenarch-graph-analysis-core: Git dependency graph-kernels is not publishable"],
+            prerequisites,
+            [
+                {"name": "graph-kernels", "version": "0.1.0", "external": True},
+                {"name": "search-kernels", "version": "0.1.0", "external": True},
+            ],
+        )
+
+    def test_registry_absent_patched_kernels_are_rejected(self) -> None:
+        errors = validate_release_manifest(
+            self.manifest,
+            self.ownership,
+            self.metadata,
+            Path(MEDIA_CORE_0_2_PATH),
+            registry_version=lambda _name, _version: None,
+        )
+        self.assertEqual(len(errors), 2, errors)
+        self.assertTrue(all("absent from crates.io" in error for error in errors), errors)
+
+    def test_registry_present_patched_kernels_pass(self) -> None:
+        errors = validate_release_manifest(
+            self.manifest,
+            self.ownership,
+            self.metadata,
+            Path(MEDIA_CORE_0_2_PATH),
+            registry_version=lambda name, version: {
+                "crate": name,
+                "num": version,
+                "yanked": False,
+            },
+        )
+        self.assertEqual(errors, [])
+
+    def test_yanked_patched_kernel_is_rejected(self) -> None:
+        errors = validate_release_manifest(
+            self.manifest,
+            self.ownership,
+            self.metadata,
+            Path(MEDIA_CORE_0_2_PATH),
+            registry_version=lambda name, version: {
+                "crate": name,
+                "num": version,
+                "yanked": name == "graph-kernels",
+            },
+        )
+        self.assertEqual(
+            errors, ["graph-kernels 0.1.0 is not a usable crates.io version"]
         )
 
     def test_every_published_media_core_dependent_is_in_the_wave(self) -> None:
