@@ -1,6 +1,8 @@
 # Repository context
 
-This is the domain-neutral foundation layer of the Moenarch Rust ecosystem. It must not depend on NLP, audio-analysis implementation, visual-analysis, spatial-analysis, application, prototype, Bun/npm, or compatibility-facade repositories.
+This is the domain-neutral foundation layer of the Moenarch Rust ecosystem. It must not depend on NLP, audio-analysis implementation, visual-analysis, spatial-analysis, application, prototype, Bun/npm, or compatibility-facade repositories. That boundary is declared in
+`.repository.toml` and enforced by `scripts/check_repository_boundaries.py`
+(see `docs/CLEAN_CHECKOUT.md`).
 
 The workspace owns the 60 extraction packages plus the approved post-extraction
 `moenarch-math-geometry-3d` package recorded in

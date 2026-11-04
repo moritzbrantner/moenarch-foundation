@@ -15,3 +15,7 @@ Source mode changes dependency resolution only. It does not authorize
 publication, tags, releases, removal of historical compatibility/provenance
 source from `rust-packages`, or new package boundaries. It also does not
 transfer source or release authority back to that historical checkout.
+
+Foundation's own validation never requires source mode or a sibling checkout:
+`scripts/check-clean-checkout.sh` verifies a fresh clone on its own, as
+described in [CLEAN_CHECKOUT.md](CLEAN_CHECKOUT.md).
