@@ -448,7 +448,9 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
             (package["name"], dependency["name"]): dependency
             for package in self.metadata["packages"]
             for dependency in package["dependencies"]
-            if dependency["name"] in {"graph-kernels", "search-kernels"}
+            if dependency["name"] in {
+                "collection-kernels", "graph-kernels", "search-kernels"
+            }
         }
         self.assertEqual(
             set(kernel_dependencies),
@@ -456,6 +458,7 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
                 ("moenarch-graph-analysis-core", "graph-kernels"),
                 ("moenarch-vector-analysis-index", "search-kernels"),
                 ("moenarch-math-sparse-data", "search-kernels"),
+                ("moenarch-priority-queue", "collection-kernels"),
             },
         )
         self.assertNotIn("patch", tomllib.loads((ROOT / "Cargo.toml").read_text()))

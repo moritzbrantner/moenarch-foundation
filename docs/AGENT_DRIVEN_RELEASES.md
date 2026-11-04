@@ -141,7 +141,9 @@ and the CLI/server/WASM adapters follow the new pins without a release.
 `graph-kernels`, and `search-kernels`) were published from `rust-kernels`
 `9bbbc71e1d5d2a76e14034a5a06d78767303d14e`. Foundation's workspace and
 candidate-consumer fixture resolve these exact registry versions without Git
-source overrides. The release checker and publisher still reject registry-absent
+source overrides. The `moenarch-priority-queue` compatibility facade also
+resolves `collection-kernels = "=0.1.0"` from the registry. The release checker
+and publisher still reject registry-absent
 dependencies hidden behind any future workspace patch before publication.
 
 The source and manifest use two commits to avoid a self-referential commit
