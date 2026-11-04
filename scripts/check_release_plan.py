@@ -11,9 +11,17 @@ import subprocess
 import tempfile
 import tomllib
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
-from publish_release import CONTROL_REPAIR_SCRIPT_PATHS, ReleaseError, validate_manifest
+from publish_release import (
+    CONTROL_REPAIR_SCRIPT_PATHS,
+    CommandEffects,
+    ReleaseError,
+    validate_manifest,
+)
+
+RegistryLookup = Callable[[str, str], "dict | None"]
 
 from repository_split import (
     DESTINATION_REPOSITORY,
@@ -374,8 +382,13 @@ def validate_release_manifest(
     metadata: dict,
     path: Path,
     root: Path = ROOT,
+    registry_version: RegistryLookup | None = None,
 ) -> list[str]:
-    """Validate checked publisher-schema TOML without performing release effects."""
+    """Validate checked publisher-schema TOML without performing release effects.
+
+    With ``registry_version``, patched external prerequisites must also exist
+    on crates.io at their exact version.
+    """
 
     errors: list[str] = []
     relative_path = _relative_plan_path(path, root)
@@ -453,9 +466,50 @@ def validate_release_manifest(
                 "media-core 0.2 wave consumer checks do not match its release contract"
             )
     try:
-        validate_manifest(root, manifest, metadata, ownership)
+        _packages, _releases, prerequisites = validate_manifest(
+            root, manifest, metadata, ownership
+        )
     except ReleaseError as error:
         errors.append(str(error))
+        return errors
+    if registry_version is not None:
+        errors.extend(external_prerequisite_errors(prerequisites, registry_version))
+    return errors
+
+
+def external_prerequisites(
+    manifest: dict, ownership: dict, metadata: dict, root: Path = ROOT
+) -> list[dict]:
+    """Registry dependencies the workspace root hides behind ``[patch.crates-io]``."""
+
+    _packages, _releases, prerequisites = validate_manifest(
+        root, manifest, metadata, ownership
+    )
+    return [prerequisite for prerequisite in prerequisites if prerequisite.get("external")]
+
+
+def external_prerequisite_errors(
+    prerequisites: list[dict], registry_version: RegistryLookup
+) -> list[str]:
+    """Reject patched external dependencies whose exact version crates.io lacks."""
+
+    errors: list[str] = []
+    for prerequisite in prerequisites:
+        if not prerequisite.get("external"):
+            continue
+        name, version = prerequisite["name"], prerequisite["version"]
+        try:
+            record = registry_version(name, version)
+        except ReleaseError as error:
+            errors.append(f"{name} {version}: {error}")
+            continue
+        if record is None:
+            errors.append(
+                f"{name} {version} is patched at the workspace root but absent from "
+                "crates.io; publish it before this release"
+            )
+        elif record.get("yanked") is not False or record.get("num") != version:
+            errors.append(f"{name} {version} is not a usable crates.io version")
     return errors
 
 
@@ -596,7 +650,13 @@ def main() -> int:
         except ValueError as error:
             print(f"error: {error}", file=sys.stderr)
             return 1
-        errors = validate_release_manifest(plan, ownership, metadata, args.plan)
+        errors = validate_release_manifest(
+            plan,
+            ownership,
+            metadata,
+            args.plan,
+            registry_version=CommandEffects(ROOT).registry_version,
+        )
         if not errors:
             errors.extend(_git_control_binding(plan, args.plan, ROOT))
     elif args.plan.suffix == ".json":
