@@ -10,6 +10,24 @@ Normal implementation work may be validated by downstream repositories against a
 
 See [docs/SOURCE_DEVELOPMENT.md](docs/SOURCE_DEVELOPMENT.md).
 
+## Purpose and boundary
+
+The machine-readable purpose, owned capabilities, explicit exclusions,
+consumers, bootstrap and Pages status live in [`.repository.toml`](.repository.toml).
+Capability and product repositories consume Foundation; the boundary check
+rejects any dependency from Foundation into them. Pages is not applicable: this
+repository has no site. See [docs/CLEAN_CHECKOUT.md](docs/CLEAN_CHECKOUT.md).
+
+## Clean-checkout verification
+
+A fresh clone verifies without any sibling repository or source-development
+mode:
+
+```bash
+cargo fetch --locked
+bash scripts/check-clean-checkout.sh
+```
+
 ## Local verification
 
 ```bash

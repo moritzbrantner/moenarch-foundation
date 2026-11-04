@@ -1,0 +1,68 @@
+schema_version = 1
+id = "moritzbrantner/moenarch-foundation"
+kind = "library"
+status = "active"
+# The one-sentence purpose read by coding-tooling (`summary`).
+summary = "Domain-neutral Rust contracts and mechanisms for corpus identity and provenance, media time and timed-text interchange, runtime, jobs, model, vector, data, and math primitives that Moenarch capability and product repositories consume."
+# Upstream implementation dependencies. Only registry crates from these
+# repositories may enter the dependency graph; see
+# scripts/check_repository_boundaries.py.
+depends_on = ["moritzbrantner/rust-kernels"]
+# Capability and product repositories consume Foundation. They are never
+# Foundation implementation dependencies: the boundary check rejects any Cargo
+# edge into them.
+consumed_by = [
+  "moritzbrantner/audio-analysis",
+  "moritzbrantner/visual-analysis",
+  "moritzbrantner/nlp-stack",
+  "moritzbrantner/scenedetect-rs",
+  "moritzbrantner/belief-lab",
+  "moritzbrantner/media-intelligence",
+  "moritzbrantner/media-similarity",
+  "moritzbrantner/native-whisperx",
+  "moritzbrantner/philosophy-extractor",
+  "moritzbrantner/spatial-media-explorer",
+  "moritzbrantner/speedreader",
+  "moritzbrantner/vox",
+  "moritzbrantner/youtube-corpus",
+]
+supersedes = []
+replaced_by = []
+
+[architecture]
+owns = [
+  "moenarch-foundation/corpus-identity",
+  "moenarch-foundation/corpus-provenance",
+  "moenarch-foundation/media-time",
+  "moenarch-foundation/timed-text-interchange",
+  "moenarch-foundation/media-annotation-envelope",
+  "moenarch-foundation/audio-contracts",
+  "moenarch-foundation/runtime",
+  "moenarch-foundation/model-runtime",
+  "moenarch-foundation/jobs",
+  "moenarch-foundation/semantic-claims",
+  "moenarch-foundation/vector-math",
+  "moenarch-foundation/data-primitives",
+  "moenarch-foundation/math-primitives",
+]
+consumes = ["rust-kernels/kernel-public-contracts"]
+must_not_own = [
+  "media/asr",
+  "media/ocr",
+  "media/scene-detection",
+  "nlp/interpretation",
+  "product/workflow",
+  "corpus/policy",
+  "interpretation/belief-semantics",
+  "interpretation/philosophy-semantics",
+  "consumer-domain-semantics",
+]
+
+[bootstrap]
+command = ["cargo", "fetch", "--locked"]
+check = ["bash", "scripts/check-clean-checkout.sh"]
+timeout_seconds = 1800
+
+[pages]
+status = "not-applicable"
+reason = "Foundation has no Pages workflow or site; Pages stays not applicable until a real Foundation site is intentionally introduced."
