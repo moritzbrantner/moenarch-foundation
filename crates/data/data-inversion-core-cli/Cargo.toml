@@ -23,4 +23,4 @@ path = "src/main.rs"
 runtime-core.workspace = true
 clap.workspace = true
 serde_json.workspace = true
-data-inversion-core = { package = "moenarch-data-inversion-core", version = "0.1.0", path = "../data-inversion-core" }
+data-inversion-core = { package = "moenarch-data-inversion-core", version = "0.2.0", path = "../data-inversion-core" }

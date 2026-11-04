@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import copy
+import shutil
+import tempfile
 import tomllib
 import unittest
 from pathlib import Path
@@ -11,14 +13,109 @@ from pathlib import Path
 from check_release_plan import (
     FOUNDATION_WAVE_1_CONSUMER_CHECKS,
     FOUNDATION_WAVE_1_VERSIONS,
+    MEDIA_CORE_0_2,
+    MEDIA_CORE_0_2_CONSUMER_CHECKS,
+    MEDIA_CORE_0_2_ISSUE,
+    MEDIA_CORE_0_2_PATH,
+    external_prerequisites,
     validate,
     validate_control_binding,
     validate_release_manifest,
 )
-from repository_split import OWNERSHIP_PATH, RELEASE_PLAN_PATH, cargo_metadata, load_json
+from repository_split import (
+    OWNERSHIP_PATH,
+    RELEASE_PLAN_PATH,
+    ROOT,
+    cargo_metadata,
+    load_json,
+)
 
 
 FIXTURES = Path(__file__).with_name("fixtures") / "release_plans"
+
+
+def historical_workspace(metadata: dict, versions: dict[str, str], root: Path) -> dict:
+    """Mirror workspace package manifests under ``root`` at historical versions.
+
+    Only the fields the release-manifest validator reads are reproduced: each
+    package's ``[package].version``, its manifest location, and the exact
+    ``=version`` requirements of internal path dependencies.
+    """
+
+    metadata = copy.deepcopy(metadata)
+    live_root = ROOT.resolve()
+    moved: dict[Path, Path] = {}
+    for package in metadata["packages"]:
+        live_manifest = Path(package["manifest_path"]).resolve()
+        mirrored = root / live_manifest.relative_to(live_root)
+        version = versions.get(package["name"], package["version"])
+        mirrored.parent.mkdir(parents=True, exist_ok=True)
+        mirrored.write_text(
+            f'[package]\nname = "{package["name"]}"\nversion = "{version}"\n',
+            encoding="utf-8",
+        )
+        moved[live_manifest.parent] = mirrored.parent
+        package["manifest_path"] = str(mirrored)
+        package["version"] = version
+    fixture_versions = {package["name"]: package["version"] for package in metadata["packages"]}
+    for package in metadata["packages"]:
+        for dependency in package.get("dependencies", []):
+            path = dependency.get("path")
+            if path is None or Path(path).resolve() not in moved:
+                continue
+            dependency["path"] = str(moved[Path(path).resolve()])
+            if str(dependency.get("req", "")).startswith("="):
+                dependency["req"] = f"={fixture_versions[dependency['name']]}"
+    shutil.copyfile(live_root / "release-gate.toml", root / "release-gate.toml")
+    # Historical manifests validate against a minimal workspace root.
+    (root / "Cargo.toml").write_text("[workspace]\n", encoding="utf-8")
+    return metadata
+
+
+def candidate_manifest(
+    ownership_document: dict,
+    metadata_document: dict,
+    wave: list[tuple[str, str]],
+    *,
+    issue: int,
+    required_checks: list[str],
+    required_consumer_checks: list[str],
+) -> dict:
+    ownership = {
+        package["current_package_name"]: package
+        for package in ownership_document["packages"]
+    }
+    metadata = {package["name"]: package for package in metadata_document["packages"]}
+    packages = []
+    for name, version in wave:
+        dependencies = {
+            dependency["name"]
+            for dependency in metadata[name]["dependencies"]
+            if dependency["kind"] != "dev" and dependency["name"] in metadata
+        }
+        packages.append(
+            {
+                "name": name,
+                "version": version,
+                "owner": "moritzbrantner/moenarch-foundation",
+                "manifest_path": ownership[name]["manifest_path"],
+                "dependencies": sorted(dependencies),
+                "tag": f"{name}-v{version}",
+            }
+        )
+    return {
+        "schema_version": 1,
+        "repository": "moritzbrantner/moenarch-foundation",
+        "issue": issue,
+        "source_sha": "a" * 40,
+        "registry": "crates.io",
+        "dependency_order": [name for name, _ in wave],
+        "expected_tags": [package["tag"] for package in packages],
+        "required_checks": required_checks,
+        "required_consumer_checks": required_consumer_checks,
+        "packages": packages,
+        "github_releases": [],
+    }
 
 
 class ReleasePlanTests(unittest.TestCase):
@@ -178,55 +275,36 @@ class CheckedReleaseManifestTests(unittest.TestCase):
         ("moenarch-math-sparse-data", "0.1.1"),
     ]
 
+    # Wave 1 published against media-core 0.1.0; later waves moved the live
+    # workspace past these versions, so the historical contract is validated
+    # against a manifest-only mirror of the workspace at its own versions.
+    HISTORICAL_VERSIONS = {"moenarch-media-core": "0.1.0"}
+
     def setUp(self) -> None:
         self.ownership = load_json(OWNERSHIP_PATH)
         self.metadata = cargo_metadata()
         self.manifest = self.wave_manifest()
+        self._mirror = tempfile.TemporaryDirectory()
+        self.addCleanup(self._mirror.cleanup)
+        self.root = Path(self._mirror.name)
+        self.metadata = historical_workspace(
+            self.metadata,
+            self.HISTORICAL_VERSIONS | dict(self.WAVE),
+            self.root,
+        )
 
     def wave_manifest(self) -> dict:
-        order = [name for name, _ in self.WAVE]
-        versions = dict(self.WAVE)
-        ownership = {
-            package["current_package_name"]: package
-            for package in self.ownership["packages"]
-        }
-        metadata = {package["name"]: package for package in self.metadata["packages"]}
-        packages = []
-        for name in order:
-            dependencies = {
-                dependency["name"]
-                for dependency in metadata[name]["dependencies"]
-                if dependency["kind"] != "dev" and dependency["name"] in metadata
-            }
-            packages.append(
-                {
-                    "name": name,
-                    "version": versions[name],
-                    "owner": "moritzbrantner/moenarch-foundation",
-                    "manifest_path": ownership[name]["manifest_path"],
-                    "dependencies": sorted(dependencies),
-                    "tag": f"{name}-v{versions[name]}",
-                }
-            )
         checks = tomllib.loads(
-            (
-                OWNERSHIP_PATH.parents[2]
-                / "releases/foundation-wave-1.toml"
-            ).read_text(encoding="utf-8")
+            (ROOT / "releases/foundation-wave-1.toml").read_text(encoding="utf-8")
         )["required_checks"]
-        return {
-            "schema_version": 1,
-            "repository": "moritzbrantner/moenarch-foundation",
-            "issue": 8,
-            "source_sha": "a" * 40,
-            "registry": "crates.io",
-            "dependency_order": order,
-            "expected_tags": [package["tag"] for package in packages],
-            "required_checks": checks,
-            "required_consumer_checks": list(FOUNDATION_WAVE_1_CONSUMER_CHECKS),
-            "packages": packages,
-            "github_releases": [],
-        }
+        return candidate_manifest(
+            self.ownership,
+            self.metadata,
+            self.WAVE,
+            issue=8,
+            required_checks=checks,
+            required_consumer_checks=list(FOUNDATION_WAVE_1_CONSUMER_CHECKS),
+        )
 
     def errors(self, manifest: dict) -> list[str]:
         return validate_release_manifest(
@@ -234,6 +312,7 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             self.ownership,
             self.metadata,
             Path("releases/foundation-wave-1.toml"),
+            self.root,
         )
 
     def test_exact_foundation_wave_is_valid(self) -> None:
@@ -334,6 +413,129 @@ class CheckedReleaseManifestTests(unittest.TestCase):
             workspace,
         )
         self.assertEqual(errors, [])
+
+
+class MediaCoreModelRequiredWaveTests(unittest.TestCase):
+    """The issue #143 contract validates against the live workspace."""
+
+    def setUp(self) -> None:
+        self.ownership = load_json(OWNERSHIP_PATH)
+        self.metadata = cargo_metadata()
+        gate = tomllib.loads((ROOT / "release-gate.toml").read_text(encoding="utf-8"))
+        self.manifest = candidate_manifest(
+            self.ownership,
+            self.metadata,
+            MEDIA_CORE_0_2,
+            issue=MEDIA_CORE_0_2_ISSUE,
+            required_checks=list(gate["verification"]["commands"]),
+            required_consumer_checks=list(MEDIA_CORE_0_2_CONSUMER_CHECKS),
+        )
+
+    def errors(self, manifest: dict) -> list[str]:
+        return validate_release_manifest(
+            manifest, self.ownership, self.metadata, Path(MEDIA_CORE_0_2_PATH)
+        )
+
+    def test_exact_wave_matches_live_workspace(self) -> None:
+        self.assertEqual(self.errors(self.manifest), [])
+
+    def test_rust_kernels_use_registry_requirements_without_patches(self) -> None:
+        prerequisites = external_prerequisites(
+            self.manifest, self.ownership, self.metadata
+        )
+        self.assertEqual(prerequisites, [])
+        kernel_dependencies = {
+            (package["name"], dependency["name"]): dependency
+            for package in self.metadata["packages"]
+            for dependency in package["dependencies"]
+            if dependency["name"] in {
+                "collection-kernels", "graph-kernels", "search-kernels"
+            }
+        }
+        self.assertEqual(
+            set(kernel_dependencies),
+            {
+                ("moenarch-graph-analysis-core", "graph-kernels"),
+                ("moenarch-vector-analysis-index", "search-kernels"),
+                ("moenarch-math-sparse-data", "search-kernels"),
+                ("moenarch-priority-queue", "collection-kernels"),
+            },
+        )
+        self.assertNotIn("patch", tomllib.loads((ROOT / "Cargo.toml").read_text()))
+        for dependency in kernel_dependencies.values():
+            self.assertEqual(dependency["req"], "=0.1.0")
+            self.assertIsNone(dependency.get("path"))
+            self.assertTrue(dependency["source"].startswith("registry+"))
+
+    def test_kernel_lockfiles_resolve_only_published_crates(self) -> None:
+        kernel_names = {"collection-kernels", "graph-kernels", "search-kernels"}
+        sources = []
+        for lockfile in (
+            ROOT / "Cargo.lock",
+            ROOT / "scripts/fixtures/media_core_0_2_consumer/Cargo.lock",
+        ):
+            lock = tomllib.loads(lockfile.read_text(encoding="utf-8"))
+            kernel_packages = {
+                package["name"]: package
+                for package in lock["package"]
+                if package["name"] in kernel_names
+            }
+            self.assertEqual(set(kernel_packages), kernel_names)
+            for name, package in kernel_packages.items():
+                self.assertEqual(package["version"], "0.1.0", name)
+                self.assertEqual(
+                    package["source"], "registry+https://github.com/rust-lang/crates.io-index"
+                )
+                self.assertRegex(package["checksum"], r"^[0-9a-f]{64}$")
+            sources.append(
+                {name: package["checksum"] for name, package in kernel_packages.items()}
+            )
+        self.assertEqual(*sources)
+
+    def test_registry_lookup_is_not_needed_without_kernel_patches(self) -> None:
+        errors = validate_release_manifest(
+            self.manifest,
+            self.ownership,
+            self.metadata,
+            Path(MEDIA_CORE_0_2_PATH),
+            registry_version=lambda _name, _version: None,
+        )
+        self.assertEqual(errors, [])
+
+    def test_every_published_media_core_dependent_is_in_the_wave(self) -> None:
+        wave = {name for name, _ in MEDIA_CORE_0_2}
+        for package in self.metadata["packages"]:
+            if package["name"] in wave or package.get("publish") == []:
+                continue
+            uses_media_core = any(
+                dependency["name"] == "moenarch-media-core"
+                and dependency["kind"] != "dev"
+                for dependency in package["dependencies"]
+            )
+            if uses_media_core:
+                # Unpublished packages may follow the pin without a release.
+                self.assertIn(
+                    package["name"],
+                    {"moenarch-math-probability"},
+                    f"{package['name']} depends on media-core but is not in the wave",
+                )
+
+    def test_wrong_issue_is_rejected(self) -> None:
+        self.manifest["issue"] = 17
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("issue 143" in error for error in errors), errors)
+
+    def test_wrong_version_is_rejected(self) -> None:
+        self.manifest["packages"][0]["version"] = "0.1.1"
+        self.manifest["packages"][0]["tag"] = "moenarch-media-core-v0.1.1"
+        self.manifest["expected_tags"][0] = "moenarch-media-core-v0.1.1"
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("versions" in error for error in errors), errors)
+
+    def test_missing_consumer_gate_is_rejected(self) -> None:
+        self.manifest["required_consumer_checks"] = []
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("consumer checks" in error for error in errors), errors)
 
 
 if __name__ == "__main__":

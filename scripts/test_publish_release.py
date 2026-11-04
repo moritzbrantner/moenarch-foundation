@@ -677,6 +677,68 @@ class PublishReleaseTests(unittest.TestCase):
 
             self.assertIn("foundation-a", effects.last_package_patches)
 
+    @staticmethod
+    def _add_patched_external(
+        root: Path, effects: FakeEffects, requirement: str
+    ) -> None:
+        (root / "Cargo.toml").write_text(
+            "[workspace]\n\n[patch.crates-io]\n"
+            'kernel = { git = "https://example.invalid/kernels", '
+            'rev = "0123456789abcdef0123456789abcdef01234567" }\n',
+            encoding="utf-8",
+        )
+        effects.metadata["packages"][0]["dependencies"].append(
+            {
+                "name": "kernel",
+                "kind": None,
+                "req": requirement,
+                "path": None,
+                "source": "registry+https://github.com/rust-lang/crates.io-index",
+            }
+        )
+
+    def test_patched_external_dependency_needs_an_exact_requirement(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _packages, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            self._add_patched_external(root, effects, "^0.1.0")
+            manifest = tomllib.loads(
+                (root / "releases/release.toml").read_text(encoding="utf-8")
+            )
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError, "exact =version requirement"
+            ):
+                publish_release.validate_manifest(root, manifest, effects.metadata)
+
+    def test_registry_absent_patched_external_stops_before_any_effect(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _packages, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            self._add_patched_external(root, effects, "=0.1.0")
+
+            with self.assertRaisesRegex(
+                publish_release.ReleaseError,
+                "release prerequisite is not registry-visible: kernel 0.1.0",
+            ):
+                publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertIn("registry:kernel@0.1.0", effects.calls)
+            self.assertFalse(
+                any(call.startswith(("package:", "publish:", "verify:")) for call in effects.calls),
+                effects.calls,
+            )
+
+    def test_registry_present_patched_external_is_not_a_packaging_path_patch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _packages, effects = write_fixture(root, [("foundation-a", "1.0.0", ())])
+            self._add_patched_external(root, effects, "=0.1.0")
+            effects.registry["kernel"] = registry_record("kernel", "0.1.0")
+
+            publish_release.run_release(root, ENVIRONMENT, effects)
+
+            self.assertNotIn("kernel", effects.last_package_patches)
+
     def test_registry_conflict_and_non_prefix_partial_state_are_refused(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

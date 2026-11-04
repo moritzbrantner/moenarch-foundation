@@ -1,6 +1,6 @@
 [package]
 name = "moenarch-vector-analysis-index"
-version = "0.1.1"
+version = "0.2.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -18,7 +18,7 @@ name = "vector_analysis_index"
 [dependencies]
 media-core.workspace = true
 runtime-core.workspace = true
-search-kernels = "0.1.0"
+search-kernels = "=0.1.0"
 serde_json.workspace = true
 serde.workspace = true
 vector-analysis-core.workspace = true

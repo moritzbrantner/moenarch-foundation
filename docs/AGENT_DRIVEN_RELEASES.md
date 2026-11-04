@@ -123,6 +123,29 @@ exact-head-bound, rebase it after wave 2 if that merge changes either commit.
 Keep issue #17 unapproved and without control-head authorization until that
 ordering requirement and the shared crates.io-capacity constraint are clear.
 
+## Media-core 0.2 wave
+
+Destination issue #143 prepares the breaking `moenarch-media-core` 0.2.0
+change (`DetectError::ModelRequired`, `DetectError` now `#[non_exhaustive]`)
+and re-releases at 0.2.0 every published crate whose public API exposes
+media-core's `DetectError`/`Result` through its exact pin. Its contract is
+`releases/media-core-model-required.toml` with the current recurring
+`release-gate.toml` gate, the
+`scripts/check_media_core_0_2_candidate_consumer.sh` candidate consumer, and a
+locked package listing for every wave crate. Unpublished `moenarch-math-probability`
+and the CLI/server/WASM adapters follow the new pins without a release.
+
+`moenarch-graph-analysis-core` requires `graph-kernels = "=0.1.0"` and
+`moenarch-vector-analysis-index`/`moenarch-math-sparse-data` require
+`search-kernels = "=0.1.0"`. All three kernel crates (`collection-kernels`,
+`graph-kernels`, and `search-kernels`) were published from `rust-kernels`
+`9bbbc71e1d5d2a76e14034a5a06d78767303d14e`. Foundation's workspace and
+candidate-consumer fixture resolve these exact registry versions without Git
+source overrides. The `moenarch-priority-queue` compatibility facade also
+resolves `collection-kernels = "=0.1.0"` from the registry. The release checker
+and publisher still reject registry-absent
+dependencies hidden behind any future workspace patch before publication.
+
 The source and manifest use two commits to avoid a self-referential commit
 hash: first commit the exact release source, then add only the release manifest
 in a second commit. `source_sha` names the first commit. Publication runs from

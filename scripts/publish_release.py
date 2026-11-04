@@ -582,6 +582,8 @@ def validate_manifest(
     positions = {name: index for index, name in enumerate(names)}
     selected = set(names)
     prerequisite_names: set[str] = set()
+    patched_registry_names = _workspace_crates_io_patch_names(root)
+    external_prerequisites: dict[str, str] = {}
     for package in packages:
         name = package["name"]
         ownership = owned.get(name)
@@ -629,6 +631,26 @@ def validate_manifest(
                     f"{name}: Git dependency {dependency_name} is not publishable"
                 )
             dependency_path = dependency.get("path")
+            if (
+                dependency_path is None
+                and dependency_name not in cargo_packages
+                and dependency_name in patched_registry_names
+            ):
+                # The workspace patch hides whether crates.io can resolve this
+                # requirement; publication must prove that exact version first.
+                requirement = str(dependency.get("req", ""))
+                match = re.fullmatch(r"=(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.+-]+)?)", requirement)
+                if match is None:
+                    raise ReleaseError(
+                        f"{name}: {dependency_name} is patched at the workspace root and "
+                        f"must use an exact =version requirement, not {requirement!r}"
+                    )
+                previous = external_prerequisites.setdefault(dependency_name, match.group(1))
+                if previous != match.group(1):
+                    raise ReleaseError(
+                        f"{dependency_name}: conflicting exact requirements across the release"
+                    )
+                continue
             if dependency_path is None:
                 continue
             resolved_dependency = Path(dependency_path).resolve()
@@ -703,7 +725,31 @@ def validate_manifest(
         }
         for name in sorted(prerequisite_names)
     ]
+    prerequisites.extend(
+        {"name": name, "version": version, "external": True}
+        for name, version in sorted(external_prerequisites.items())
+    )
     return packages, releases, prerequisites
+
+
+def _workspace_crates_io_patch_names(root: Path) -> set[str]:
+    """Package names the workspace root overrides in ``[patch.crates-io]``."""
+
+    if not (root / "Cargo.toml").is_file():
+        return set()
+    try:
+        workspace = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as error:
+        raise ReleaseError(f"cannot read workspace Cargo.toml: {error}") from error
+    patches = workspace.get("patch", {}).get("crates-io", {})
+    if not isinstance(patches, dict):
+        return set()
+    return {
+        specification.get("package", alias)
+        if isinstance(specification, dict)
+        else alias
+        for alias, specification in patches.items()
+    }
 
 
 def _revalidate_exact_checkout(
@@ -1005,6 +1051,7 @@ def run_release(
         {
             prerequisite["name"]: str(Path(prerequisite["manifest_path"]).parent)
             for prerequisite in prerequisites
+            if not prerequisite.get("external")
         }
     )
     candidate_checksums: list[str] = []
