@@ -24,6 +24,10 @@ The crate owns only:
   with inline-timestamp, cue-start or interpolated timing and the cue that
   introduced it. Raw cues stay untouched; passage building, persistence and
   retrieval stay with consumers;
+- `annotations`, the media-located annotation envelope (`MediaAnnotation`,
+  `AnnotationSelector`, `AnnotationTiming`, `AnnotationValue`,
+  `AnnotationProvenance`) that lets findings from any domain coexist on one
+  exact media timeline;
 - `PixelFormat` and `AudioSampleFormat`, compact stream-format identifiers
   without frame or buffer ownership;
 - `DetectError` and `Result`, the shared media error identity used across
@@ -74,6 +78,50 @@ excluded. Its ordering, containment, and overlap operations use exact timestamp
 semantics. `MediaTimeRange` remains the narrower finite-seconds interchange DTO
 used by timed text and other established seconds-based wire contracts; it is
 not the authority for exact rational media arithmetic.
+
+## Annotations
+
+`media_core::annotations` restores the media-located annotation envelope that
+the deleted `rust-packages` copy of this crate carried
+(`rust-packages@6c7f909`, `src/annotations.rs`, added by rust-packages#165) and
+that a source-mode application consumer imports as
+`media_core::annotations::{AnnotationProvenance, AnnotationSelector,
+AnnotationValue, MediaAnnotation, MediaSourceRef}` (foundation issue #141).
+
+It answers *where in a source*, *when on the media timeline*, *what was found*,
+and *which producer found it*. `moenarch-semantic-core` answers a different
+question, *which concept an entity belongs to and why*, so it does not
+supersede this envelope:
+
+| `rust-packages` media annotation concept | `semantic-core` counterpart | Covered there? | Foundation owner now |
+| --- | --- | --- | --- |
+| `MediaAnnotation { id, kind, label }` | `Annotation { subject: EntityId, concept: ConceptId }` | Partly: a concept claim about an entity, not a located media finding | `media_core::annotations::MediaAnnotation` |
+| `AnnotationTiming::{Instant, Range}` over exact `Timestamp`/`MediaRange` | none | No | `media_core::annotations::AnnotationTiming` |
+| `AnnotationSelector::{Frame, TextSegment, TextSpan, Region2d, Track, Custom}` | `Evidence::Reference { selector: Option<String> }` (opaque string) | No: no typed or validated selector | `media_core::annotations::AnnotationSelector` |
+| `MediaSourceRef` (source id, kind, URI, attributes) | `EvidenceRef` (opaque string) | No | crate-root `MediaSourceRef`, re-exported from `annotations` |
+| `AnnotationProvenance { analyzer, operation, model_id, runtime, version }` | `Producer { id, version }` | Partly: no operation/model/runtime | `media_core::annotations::AnnotationProvenance` |
+| `score: Option<f32>`, finite, unbounded | `Confidence`, finite in `[0, 1]` | No: different scale contract | `MediaAnnotation::score` |
+| `AnnotationValue::{Text, Number, Integer, Boolean, Labels, Json}` | `EvidenceValue::{Text, Boolean, Integer, Number}` | Partly: no labels or structured payload | `media_core::annotations::AnnotationValue` |
+| `MediaAnnotation::from_analysis_event` | none | No | `media_core::annotations` |
+| `AnnotationDataset`, merge, time queries, JSON/JSONL file I/O | none | No | Not ported: no consumer uses it; persistence stays with consumers |
+| `video-analysis-storage` legacy-dataset adapter | none | No | Not foundation: owned by `visual-analysis` |
+
+Consumers that need both layers compose them: a `MediaAnnotation` locates a
+finding, and a `semantic-core` `Annotation` can cite it through
+`Evidence::Reference`.
+
+Deliberate differences from the deleted copy:
+
+- `MediaSourceRef` is the crate-root type shared with timed text. The old
+  annotation-only `stream_id` field is not reintroduced; use
+  `AnnotationSelector::TextSegment` or `AnnotationSelector::Track` for
+  stream-level location. Unknown legacy `streamId` keys are ignored on input.
+- `AnnotationTiming` serializes timestamps with the crate's canonical
+  decimal-string `pts` wire; legacy numeric `pts` is accepted only inside the
+  JavaScript safe-integer range, as for `Timestamp` itself.
+- `AnnotationError` implements `std::error::Error` directly instead of through
+  `thiserror`, and carries no I/O or JSON variants because storage is not
+  ported.
 
 ## Ownership boundary
 
