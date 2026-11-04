@@ -1,7 +1,7 @@
 schema_version = 1
 repository = "moritzbrantner/moenarch-foundation"
 issue = 143
-source_sha = "0018cbc2dbe6edceb74ecdb407b873ed0b225802"
+source_sha = "d257917b4d72da581e3de707ea4c94d07afe6cfd"
 registry = "crates.io"
 dependency_order = [
   "moenarch-media-core",
