@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub mod annotations;
 pub mod rolling_captions;
 mod time;
 pub mod timed_text;
