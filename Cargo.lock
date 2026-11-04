@@ -240,6 +240,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cdflib"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10aeabc33690bd8f69450ed1ba720f675ab5998a7c6d0a8db2323d3b6dd9858c"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1664,6 +1673,7 @@ dependencies = [
 name = "moenarch-math-probability"
 version = "0.1.0"
 dependencies = [
+ "cdflib",
  "criterion",
  "moenarch-math-linear",
  "moenarch-math-sparse-data",

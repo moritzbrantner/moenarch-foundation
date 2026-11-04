@@ -1,11 +1,14 @@
 #![doc = include_str!("../README.md")]
 
+use cdflib::special::{cumnor, try_beta_inc, try_gamma_inc};
 use media_core::{DetectError, Result};
-use statrs::distribution::{
-    Binomial as StatrsBinomial, ContinuousCDF, DiscreteCDF, Normal as StatrsNormal,
-    Poisson as StatrsPoisson,
-};
 use std::f64::consts::PI;
+
+/// Standardized scores beyond this magnitude have a normal CDF that rounds to
+/// exactly `0.0` or `1.0` in `f64` (the lower tail underflows below
+/// `z ≈ -38.5`). Clamping keeps overflowed standardizations such as
+/// `(f64::MAX - (-f64::MAX)) / 1.0 = +inf` inside the backend's domain.
+const NORMAL_SATURATED_Z: f64 = 40.0;
 
 fn invalid_argument(message: impl Into<String>) -> DetectError {
     DetectError::InvalidArgument(message.into())
@@ -200,14 +203,15 @@ impl Normal {
         Ok(-0.5 * z * z - self.std_dev.ln() - 0.5 * (2.0 * PI).ln())
     }
 
-    /// Returns cumulative probability using statrs' error-function implementation.
+    /// Returns cumulative probability using cdflib's `cumnor` (Cody's
+    /// rational Chebyshev approximations).
     pub fn cdf(self, x: f64) -> Result<f64> {
         validate_finite(x, "normal evaluation point")?;
-        // These parameters were validated in Normal::new; statrs does not apply
-        // Foundation's stricter finite-variance rule, which remains authoritative.
-        let backend = StatrsNormal::new(self.mean, self.std_dev)
-            .expect("validated Foundation normal parameters are valid for statrs");
-        Ok(backend.cdf(x).clamp(0.0, 1.0))
+        // Finite inputs can still overflow the standardization; the CDF is
+        // saturated far before NORMAL_SATURATED_Z, so clamping is exact.
+        let z = ((x - self.mean) / self.std_dev).clamp(-NORMAL_SATURATED_Z, NORMAL_SATURATED_Z);
+        let (lower, _upper) = cumnor(z);
+        Ok(lower.clamp(0.0, 1.0))
     }
 
     /// Returns the distribution mean.
@@ -286,8 +290,11 @@ impl Binomial {
 
     /// Returns cumulative probability through `k` successes.
     ///
-    /// The non-degenerate calculation is delegated to statrs' regularized
-    /// incomplete beta function instead of an O(k) or O(n - k) recurrence.
+    /// The non-degenerate calculation is delegated to cdflib's regularized
+    /// incomplete beta ratio `I_{1-p}(n - k, k + 1)` (DiDonato & Morris, ACM
+    /// TOMS 708). Its regime dispatch uses bounded series, continued
+    /// fractions and asymptotic expansions, so the work does not grow with
+    /// `k` or `n`. Counts above 2^53 are evaluated at their nearest `f64`.
     #[must_use]
     pub fn cdf(self, k: u64) -> f64 {
         if k >= self.trials || self.probability == 0.0 {
@@ -296,9 +303,15 @@ impl Binomial {
         if self.probability == 1.0 {
             return 0.0;
         }
-        let backend = StatrsBinomial::new(self.probability, self.trials)
-            .expect("validated Foundation binomial parameters are valid for statrs");
-        backend.cdf(k).clamp(0.0, 1.0)
+        // Passing p as the complement argument avoids forming 1 - (1 - p).
+        let (lower, _upper) = try_beta_inc(
+            (self.trials - k) as f64,
+            k as f64 + 1.0,
+            1.0 - self.probability,
+            self.probability,
+        )
+        .expect("validated Foundation binomial parameters are valid for cdflib");
+        lower.clamp(0.0, 1.0)
     }
 
     /// Returns the distribution mean.
@@ -353,17 +366,21 @@ impl Poisson {
 
     /// Returns cumulative probability through event count `k`.
     ///
-    /// For positive rates this uses statrs' regularized incomplete gamma
-    /// function, avoiding the previous O(k) recurrence. The zero-rate case
-    /// remains a valid Foundation distribution even though statrs rejects it.
+    /// For positive rates this is cdflib's upper regularized incomplete gamma
+    /// ratio `Q(k + 1, lambda)` (DiDonato & Morris, ACM TOMS 654), which
+    /// switches to Temme's uniform asymptotic expansion for large arguments.
+    /// The work is bounded independently of `k` and `lambda`. The zero-rate
+    /// case remains a valid Foundation distribution handled locally.
     #[must_use]
     pub fn cdf(self, k: u64) -> f64 {
         if self.lambda == 0.0 {
             return 1.0;
         }
-        let backend = StatrsPoisson::new(self.lambda)
-            .expect("validated positive Foundation Poisson rate is valid for statrs");
-        backend.cdf(k).clamp(0.0, 1.0)
+        // cdflib reports an indeterminate result only for a > 6.6e28, far
+        // beyond u64::MAX + 1, and never for positive finite arguments.
+        let (_lower, upper) = try_gamma_inc(k as f64 + 1.0, self.lambda)
+            .expect("validated positive Foundation Poisson rate is valid for cdflib");
+        upper.clamp(0.0, 1.0)
     }
 
     /// Returns the distribution mean.

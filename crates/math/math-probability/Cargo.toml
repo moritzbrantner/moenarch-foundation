@@ -16,8 +16,8 @@ categories.workspace = true
 name = "math_probability"
 
 [dependencies]
+cdflib.workspace = true
 media-core.workspace = true
-statrs.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
@@ -25,6 +25,7 @@ proptest.workspace = true
 math-linear.workspace = true
 math-sparse-data.workspace = true
 math-statistics.workspace = true
+statrs.workspace = true
 
 [[bench]]
 name = "cdf_reference"
