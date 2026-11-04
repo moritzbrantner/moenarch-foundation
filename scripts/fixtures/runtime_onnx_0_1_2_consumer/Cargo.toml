@@ -1,0 +1,10 @@
+[package]
+name = "runtime-onnx-0-1-2-candidate-consumer"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+moenarch-runtime-onnx = { version = "=0.1.2", features = ["onnxruntime"] }

@@ -106,11 +106,26 @@ MEDIA_CORE_0_2_CONSUMER_CHECKS = [
     "bash scripts/check_media_core_0_2_candidate_consumer.sh",
     *[f"cargo package -p {name} --locked --list" for name, _version in MEDIA_CORE_0_2],
 ]
+# Issue #149: the runtime-onnx 0.1.2 patch release carrying #139 (ort
+# 2.0.0-rc.15; typed RuntimeUnavailable/RuntimeTooOld instead of a hang). No
+# workspace crate depends on runtime-onnx, so it is released alone.
+RUNTIME_ONNX_0_1_2_ISSUE = 149
+RUNTIME_ONNX_0_1_2 = [("moenarch-runtime-onnx", "0.1.2")]
+RUNTIME_ONNX_0_1_2_PATH = "releases/runtime-onnx-0.1.2.toml"
+RUNTIME_ONNX_0_1_2_VERSIONS = dict(RUNTIME_ONNX_0_1_2)
+RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS = [
+    "bash scripts/check_runtime_onnx_0_1_2_candidate_consumer.sh",
+    *[
+        f"cargo package -p {name} --locked --list"
+        for name, _version in RUNTIME_ONNX_0_1_2
+    ],
+]
 AUTHORIZED_WAVE_VERSIONS = (
     FOUNDATION_WAVE_1_VERSIONS,
     FOUNDATION_WAVE_2_VERSIONS,
     FOUNDATION_AUDIO_CONTRACTS_VERSIONS,
     MEDIA_CORE_0_2_VERSIONS,
+    RUNTIME_ONNX_0_1_2_VERSIONS,
 )
 
 
@@ -464,6 +479,30 @@ def validate_release_manifest(
         if manifest.get("required_consumer_checks") != MEDIA_CORE_0_2_CONSUMER_CHECKS:
             errors.append(
                 "media-core 0.2 wave consumer checks do not match its release contract"
+            )
+    elif relative_path == RUNTIME_ONNX_0_1_2_PATH:
+        expected_order = [name for name, _ in RUNTIME_ONNX_0_1_2]
+        if manifest.get("issue") != RUNTIME_ONNX_0_1_2_ISSUE:
+            errors.append(
+                "runtime-onnx 0.1.2 release must bind destination issue "
+                f"{RUNTIME_ONNX_0_1_2_ISSUE}"
+            )
+        if manifest.get("dependency_order") != expected_order:
+            errors.append(
+                "runtime-onnx 0.1.2 release package order does not match its release contract"
+            )
+        actual_versions = {
+            package.get("name"): package.get("version")
+            for package in manifest.get("packages", [])
+            if isinstance(package, dict)
+        }
+        if actual_versions != RUNTIME_ONNX_0_1_2_VERSIONS:
+            errors.append(
+                "runtime-onnx 0.1.2 release package versions do not match its release contract"
+            )
+        if manifest.get("required_consumer_checks") != RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS:
+            errors.append(
+                "runtime-onnx 0.1.2 release consumer checks do not match its release contract"
             )
     try:
         _packages, _releases, prerequisites = validate_manifest(

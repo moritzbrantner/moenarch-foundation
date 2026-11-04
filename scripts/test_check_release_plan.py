@@ -17,6 +17,10 @@ from check_release_plan import (
     MEDIA_CORE_0_2_CONSUMER_CHECKS,
     MEDIA_CORE_0_2_ISSUE,
     MEDIA_CORE_0_2_PATH,
+    RUNTIME_ONNX_0_1_2,
+    RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS,
+    RUNTIME_ONNX_0_1_2_ISSUE,
+    RUNTIME_ONNX_0_1_2_PATH,
     external_prerequisites,
     validate,
     validate_control_binding,
@@ -529,6 +533,90 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
         self.manifest["packages"][0]["version"] = "0.1.1"
         self.manifest["packages"][0]["tag"] = "moenarch-media-core-v0.1.1"
         self.manifest["expected_tags"][0] = "moenarch-media-core-v0.1.1"
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("versions" in error for error in errors), errors)
+
+    def test_missing_consumer_gate_is_rejected(self) -> None:
+        self.manifest["required_consumer_checks"] = []
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("consumer checks" in error for error in errors), errors)
+
+
+class RuntimeOnnxPatchReleaseTests(unittest.TestCase):
+    """The issue #149 contract validates against the live workspace."""
+
+    def setUp(self) -> None:
+        self.ownership = load_json(OWNERSHIP_PATH)
+        self.metadata = cargo_metadata()
+        gate = tomllib.loads((ROOT / "release-gate.toml").read_text(encoding="utf-8"))
+        self.manifest = candidate_manifest(
+            self.ownership,
+            self.metadata,
+            RUNTIME_ONNX_0_1_2,
+            issue=RUNTIME_ONNX_0_1_2_ISSUE,
+            required_checks=list(gate["verification"]["commands"]),
+            required_consumer_checks=list(RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS),
+        )
+
+    def errors(self, manifest: dict) -> list[str]:
+        return validate_release_manifest(
+            manifest, self.ownership, self.metadata, Path(RUNTIME_ONNX_0_1_2_PATH)
+        )
+
+    def test_exact_release_matches_live_workspace(self) -> None:
+        self.assertEqual(self.errors(self.manifest), [])
+
+    def test_registry_dependencies_need_no_external_prerequisite(self) -> None:
+        self.assertEqual(
+            external_prerequisites(self.manifest, self.ownership, self.metadata), []
+        )
+        runtime_onnx = next(
+            package
+            for package in self.metadata["packages"]
+            if package["name"] == "moenarch-runtime-onnx"
+        )
+        ort = next(
+            dependency
+            for dependency in runtime_onnx["dependencies"]
+            if dependency["name"] == "ort"
+        )
+        self.assertEqual(ort["req"], "=2.0.0-rc.15")
+        self.assertIsNone(ort.get("path"))
+        self.assertTrue(ort["source"].startswith("registry+"))
+
+    def test_no_workspace_crate_depends_on_runtime_onnx(self) -> None:
+        dependents = sorted(
+            package["name"]
+            for package in self.metadata["packages"]
+            if any(
+                dependency["name"] == "moenarch-runtime-onnx"
+                for dependency in package["dependencies"]
+            )
+        )
+        self.assertEqual(dependents, [])
+
+    def test_consumer_fixture_pins_the_exact_candidate(self) -> None:
+        fixture = ROOT / "scripts/fixtures/runtime_onnx_0_1_2_consumer"
+        manifest = tomllib.loads((fixture / "Cargo.toml").read_text(encoding="utf-8"))
+        self.assertEqual(
+            manifest["dependencies"]["moenarch-runtime-onnx"]["version"], "=0.1.2"
+        )
+        lock = tomllib.loads((fixture / "Cargo.lock").read_text(encoding="utf-8"))
+        ort = next(package for package in lock["package"] if package["name"] == "ort")
+        self.assertEqual(ort["version"], "2.0.0-rc.15")
+        self.assertEqual(
+            ort["source"], "registry+https://github.com/rust-lang/crates.io-index"
+        )
+
+    def test_wrong_issue_is_rejected(self) -> None:
+        self.manifest["issue"] = MEDIA_CORE_0_2_ISSUE
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("issue 149" in error for error in errors), errors)
+
+    def test_wrong_version_is_rejected(self) -> None:
+        self.manifest["packages"][0]["version"] = "0.1.1"
+        self.manifest["packages"][0]["tag"] = "moenarch-runtime-onnx-v0.1.1"
+        self.manifest["expected_tags"][0] = "moenarch-runtime-onnx-v0.1.1"
         errors = self.errors(self.manifest)
         self.assertTrue(any("versions" in error for error in errors), errors)
 
