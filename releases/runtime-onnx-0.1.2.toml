@@ -1,0 +1,41 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+issue = 149
+source_sha = "a65812c4bfca0910eab9bf1cf8c437945b384495"
+registry = "crates.io"
+dependency_order = [
+  "moenarch-runtime-onnx",
+]
+expected_tags = [
+  "moenarch-runtime-onnx-v0.1.2",
+]
+required_checks = [
+  "cargo metadata --locked --format-version 1 --no-deps",
+  "python3 scripts/check_repository_boundaries.py --check",
+  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+  "python3 -m unittest discover -s scripts -p 'test_*.py'",
+  "cargo fmt --all -- --check",
+  "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings",
+  "cargo test --locked --workspace --all-features",
+  "cargo test --locked --workspace --no-default-features",
+  "cargo doc --locked --workspace --no-deps",
+  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+  "python3 scripts/check_numerical_package_tests.py",
+]
+required_consumer_checks = [
+  "bash scripts/check_runtime_onnx_0_1_2_candidate_consumer.sh",
+  "cargo package -p moenarch-runtime-onnx --locked --list",
+]
+
+[[packages]]
+name = "moenarch-runtime-onnx"
+version = "0.1.2"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/runtime/runtime-onnx/Cargo.toml"
+dependencies = []
+tag = "moenarch-runtime-onnx-v0.1.2"
+
+[[github_releases]]
+tag = "moenarch-runtime-onnx-v0.1.2"
+title = "Release moenarch-runtime-onnx 0.1.2"
+notes = "Move to ort 2.0.0-rc.15 and report a missing or too-old ONNX Runtime dylib as OnnxRuntimeError::RuntimeUnavailable/RuntimeTooOld instead of hanging."
