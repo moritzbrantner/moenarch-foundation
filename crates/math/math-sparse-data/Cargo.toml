@@ -27,7 +27,12 @@ vector-analysis-core.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+sprs.workspace = true
 
 [[bench]]
 name = "sparse"
+harness = false
+
+[[bench]]
+name = "csr_product"
 harness = false
