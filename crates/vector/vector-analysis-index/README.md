@@ -54,6 +54,8 @@ assert!(report.candidate_count <= 256);
 
 `hash_bits` controls bucket width. `probe_radius` controls how many nearby signatures are visited, while `max_candidates` is a hard bound on the number of vectors scored exactly. Search reports expose both candidate and bucket counts so approximation effort is evidence rather than hidden policy.
 
+The query cost model has distinct dimensions: vector dimensions `D`, signature bits `B` (at most 32), Hamming radius `R` (at most 3), and exact-candidate budget `C`. Constructing the query signature takes `O(B * D)` arithmetic; at most `sum(combinations(B, i), i = 0..R)` bucket signatures are visited (5,489 at `B=32, R=3`), and no more than `C` record vectors are ranked exactly. Probe signatures are generated lazily and are not allocated as one whole list when the candidate cap terminates a query early. Bucket lookups, result selection, and legitimate dense buckets have their own costs; this is a bounded-scoring guarantee, **not** a claim of guaranteed sublinear search time or exact nearest-neighbor recall.
+
 ## Package surface
 
 Primary workflow: `vector.index.search`.
