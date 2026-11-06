@@ -280,36 +280,32 @@ fn splitmix64(mut value: u64) -> u64 {
     value ^ (value >> 31)
 }
 
-fn signatures_within_radius(signature: u64, hash_bits: u8, radius: u8) -> Vec<u64> {
-    let mut signatures = vec![signature];
-    if radius == 0 {
-        return signatures;
-    }
+/// Probe exact, one-bit, two-bit, then three-bit neighbors in stable order.
+///
+/// Iteration stops as soon as the caller has enough candidates; in particular,
+/// a query capped in its first bucket never materializes the other signatures.
+fn signatures_within_radius(
+    signature: u64,
+    hash_bits: u8,
+    radius: u8,
+) -> impl Iterator<Item = u64> {
+    let one_bit_limit = if radius >= 1 { hash_bits } else { 0 };
+    let two_bit_limit = if radius >= 2 { hash_bits } else { 0 };
+    let three_bit_limit = if radius >= 3 { hash_bits } else { 0 };
 
-    for first in 0..hash_bits {
-        signatures.push(signature ^ (1u64 << first));
-    }
-    if radius == 1 {
-        return signatures;
-    }
-
-    for first in 0..hash_bits {
-        for second in (first + 1)..hash_bits {
-            signatures.push(signature ^ (1u64 << first) ^ (1u64 << second));
-        }
-    }
-    if radius == 2 {
-        return signatures;
-    }
-
-    for first in 0..hash_bits {
-        for second in (first + 1)..hash_bits {
-            for third in (second + 1)..hash_bits {
-                signatures.push(signature ^ (1u64 << first) ^ (1u64 << second) ^ (1u64 << third));
-            }
-        }
-    }
-    signatures
+    std::iter::once(signature)
+        .chain((0..one_bit_limit).map(move |first| signature ^ (1u64 << first)))
+        .chain((0..two_bit_limit).flat_map(move |first| {
+            ((first + 1)..two_bit_limit)
+                .map(move |second| signature ^ (1u64 << first) ^ (1u64 << second))
+        }))
+        .chain((0..three_bit_limit).flat_map(move |first| {
+            ((first + 1)..three_bit_limit).flat_map(move |second| {
+                ((second + 1)..three_bit_limit).map(move |third| {
+                    signature ^ (1u64 << first) ^ (1u64 << second) ^ (1u64 << third)
+                })
+            })
+        }))
 }
 
 #[cfg(test)]
@@ -432,6 +428,73 @@ mod tests {
 
         assert!(report.candidate_count <= 24);
         assert_eq!(report.total_record_count, 256);
+    }
+
+    #[test]
+    fn probe_signatures_preserve_radius_order_and_combinatorial_bounds() {
+        assert_eq!(
+            signatures_within_radius(0, 4, 2).collect::<Vec<_>>(),
+            [0, 1, 2, 4, 8, 3, 5, 9, 6, 10, 12]
+        );
+
+        for bits in [1_u8, 8, 16, 32] {
+            for radius in 0..=bits.min(3) {
+                let signatures = signatures_within_radius(0, bits, radius).collect::<Vec<_>>();
+                let expected = (0..=u64::from(radius))
+                    .map(|chosen| {
+                        (0..chosen).fold(1_u64, |count, index| {
+                            count * (u64::from(bits) - index) / (index + 1)
+                        }) as usize
+                    })
+                    .sum::<usize>();
+                assert_eq!(signatures.len(), expected, "bits={bits}, radius={radius}");
+                assert_eq!(
+                    signatures.iter().copied().collect::<BTreeSet<_>>().len(),
+                    expected,
+                    "duplicate probe with bits={bits}, radius={radius}"
+                );
+            }
+        }
+        assert_eq!(signatures_within_radius(0, 32, 3).count(), 5_489);
+    }
+
+    #[test]
+    fn dense_bucket_search_work_stays_capped_as_corpus_grows() {
+        let query = DenseVector::new([1.0, 0.0, 0.0, 0.0]).unwrap();
+        let mut index = CosineLshIndex::new(CosineLshConfig {
+            hash_bits: 32,
+            ..CosineLshConfig::default()
+        })
+        .unwrap();
+
+        for corpus_size in [64, 256, 1_024, 4_096] {
+            for record_index in index.records().len()..corpus_size {
+                index
+                    .add(VectorRecord::new(
+                        format!("record-{record_index:05}"),
+                        query.clone(),
+                    ))
+                    .unwrap();
+            }
+
+            for max_candidates in [8, 16, 32] {
+                let report = index
+                    .search(
+                        &query,
+                        CosineLshSearchConfig {
+                            limit: 4,
+                            probe_radius: 3,
+                            max_candidates,
+                        },
+                    )
+                    .unwrap();
+
+                assert_eq!(report.total_record_count, corpus_size);
+                assert_eq!(report.candidate_count, max_candidates);
+                assert_eq!(report.probed_bucket_count, 1);
+                assert_eq!(report.results.len(), 4);
+            }
+        }
     }
 
     #[test]
