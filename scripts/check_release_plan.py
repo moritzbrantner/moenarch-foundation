@@ -120,12 +120,26 @@ RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS = [
         for name, _version in RUNTIME_ONNX_0_1_2
     ],
 ]
+# native-whisperx#438: registry-mode release. runtime-core 0.2.2 adds
+# CancellationToken; every crate in the audio-analysis graph that pins it
+# exactly is republished with the new pin. model-runtime 0.2.0 drops `jobs`.
+NWX_438_REGISTRY = [
+    ("moenarch-runtime-core", "0.2.2"),
+    ("moenarch-numbers-core", "0.2.1"),
+    ("moenarch-tensor-data", "0.2.1"),
+    ("moenarch-math-signal-core", "0.2.1"),
+    ("moenarch-data-inversion-core", "0.2.1"),
+    ("moenarch-jobs-core", "0.1.3"),
+    ("moenarch-model-runtime", "0.2.0"),
+]
+NWX_438_REGISTRY_VERSIONS = dict(NWX_438_REGISTRY)
 AUTHORIZED_WAVE_VERSIONS = (
     FOUNDATION_WAVE_1_VERSIONS,
     FOUNDATION_WAVE_2_VERSIONS,
     FOUNDATION_AUDIO_CONTRACTS_VERSIONS,
     MEDIA_CORE_0_2_VERSIONS,
     RUNTIME_ONNX_0_1_2_VERSIONS,
+    NWX_438_REGISTRY_VERSIONS,
 )
 
 

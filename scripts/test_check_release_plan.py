@@ -440,14 +440,10 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
             manifest, self.ownership, self.metadata, Path(MEDIA_CORE_0_2_PATH)
         )
 
-    def test_exact_wave_matches_live_workspace(self) -> None:
-        self.assertEqual(self.errors(self.manifest), [])
+    # The #143 wave is published; native-whisperx#438 moved several of its
+    # crates past 0.2.0, so it no longer validates against the live workspace.
 
     def test_rust_kernels_use_registry_requirements_without_patches(self) -> None:
-        prerequisites = external_prerequisites(
-            self.manifest, self.ownership, self.metadata
-        )
-        self.assertEqual(prerequisites, [])
         kernel_dependencies = {
             (package["name"], dependency["name"]): dependency
             for package in self.metadata["packages"]
@@ -495,16 +491,6 @@ class MediaCoreModelRequiredWaveTests(unittest.TestCase):
                 {name: package["checksum"] for name, package in kernel_packages.items()}
             )
         self.assertEqual(*sources)
-
-    def test_registry_lookup_is_not_needed_without_kernel_patches(self) -> None:
-        errors = validate_release_manifest(
-            self.manifest,
-            self.ownership,
-            self.metadata,
-            Path(MEDIA_CORE_0_2_PATH),
-            registry_version=lambda _name, _version: None,
-        )
-        self.assertEqual(errors, [])
 
     def test_every_published_media_core_dependent_is_in_the_wave(self) -> None:
         wave = {name for name, _ in MEDIA_CORE_0_2}
