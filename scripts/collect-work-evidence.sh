@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Collector for the `performance:work` capability: runs the vector-search work-complexity tests
+# with the test-only work counters and prints one `coding-tooling/work-evidence/v1` document.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+contract=".performance/contract.json"
+evidence_dir="$(mktemp -d)"
+trap 'rm -rf "$evidence_dir"' EXIT
+export FOUNDATION_WORK_EVIDENCE_DIR="$evidence_dir"
+cargo test --quiet --release --locked -p moenarch-vector-analysis-index \
+  --features work-counters --test work_complexity -- --test-threads 1 >&2
+mapfile -t operations < <(jq -r '.operations[].id' "$contract")
+fragments=()
+for operation in "${operations[@]}"; do
+  fragment="$evidence_dir/$operation.json"
+  if [[ ! -s "$fragment" ]]; then
+    printf 'missing work evidence for %s\n' "$operation" >&2
+    exit 1
+  fi
+  fragments+=("$(<"$fragment")")
+done
+contract_sha="$(sha256sum "$contract" | cut -d' ' -f1)"
+joined="$(IFS=,; printf '%s' "${fragments[*]}")"
+printf '{"schemaVersion":"coding-tooling/work-evidence/v1","suite":"moenarch-foundation","contractSha256":"%s","operations":[%s]}\n' "$contract_sha" "$joined"

@@ -4,6 +4,10 @@ pub mod approximate;
 #[cfg(feature = "hnsw")]
 pub mod hnsw;
 pub mod surface;
+#[cfg(feature = "work-counters")]
+pub mod work;
+#[cfg(not(feature = "work-counters"))]
+mod work;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -265,6 +269,11 @@ impl VectorSearchIndex {
         }
         top_k_fallible(
             self.records.iter().map(|record| {
+                work::add(work::Counter::SimilarityEvaluations, 1);
+                work::add(
+                    work::Counter::SimilarityComponents,
+                    record.vector.dimensions(),
+                );
                 let distance =
                     metric_distance(config.metric, query.as_slice(), record.vector.as_slice())?;
                 Ok(SearchResult {

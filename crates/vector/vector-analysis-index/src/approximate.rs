@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use media_core::Result;
 use vector_analysis_core::{cosine_similarity, DenseVector};
 
+use super::work::{self, Counter};
 use super::{invalid_argument, top_k_fallible, SearchResult, VectorRecord};
 
 const DEFAULT_SEED: u64 = 0x6a09_e667_f3bc_c909;
@@ -176,11 +177,13 @@ impl CosineLshIndex {
         let mut probed_bucket_count = 0usize;
 
         'probes: for candidate_signature in probe_signatures {
+            work::add(Counter::SignatureProbes, 1);
             let Some(bucket) = self.buckets.get(&candidate_signature) else {
                 continue;
             };
             probed_bucket_count += 1;
             for record_index in bucket {
+                work::add(Counter::BucketEntryVisits, 1);
                 candidate_indices.insert(*record_index);
                 if candidate_indices.len() >= config.max_candidates {
                     break 'probes;
@@ -191,6 +194,8 @@ impl CosineLshIndex {
         let results = top_k_fallible(
             candidate_indices.iter().copied().map(|record_index| {
                 let record = &self.records[record_index];
+                work::add(Counter::SimilarityEvaluations, 1);
+                work::add(Counter::SimilarityComponents, record.vector.dimensions());
                 let score = cosine_similarity(query.as_slice(), record.vector.as_slice())?;
                 Ok(SearchResult {
                     id: record.id.clone(),
@@ -247,6 +252,10 @@ fn validate_search_config(build: CosineLshConfig, search: CosineLshSearchConfig)
 }
 
 fn signature(values: &[f32], hash_bits: u8, seed: u64) -> u64 {
+    work::add(
+        Counter::ProjectionTerms,
+        usize::from(hash_bits) * values.len(),
+    );
     let mut signature = 0u64;
     for bit in 0..hash_bits {
         let projection = values

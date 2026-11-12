@@ -10,6 +10,7 @@ This crate owns vector records, metric/filter semantics, exact and approximate i
 
 ## Feature flags
 
+- `work-counters`: test-only deterministic work counters (`work` module) for the complexity contracts in `.performance/contract.json` (#153); every counter call is a no-op without it.
 - `hnsw`: enables `hnsw::CosineHnswIndex` over the external `hnsw_rs` crate (#119). Off by default; it pulls a native-only dependency graph (`rayon`, `mmap-rs`, `parking_lot`, `env_logger`, `cpu-time`, `num_cpus`, ...) and is not part of the WASM bindings.
 
 ## Exact search

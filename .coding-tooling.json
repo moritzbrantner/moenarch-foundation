@@ -12,14 +12,15 @@
       "benchmark:smoke"
     ],
     "integration": ["test:integration"],
-    "performance": ["benchmark:smoke", "benchmark"]
+    "performance": ["benchmark:smoke", "benchmark", "performance:work"]
   },
   "requiredCapabilities": ["format:check", "lint", "build", "test:unit"],
-  "optionalCapabilities": ["test:integration", "benchmark:smoke", "benchmark"],
+  "optionalCapabilities": ["test:integration", "benchmark:smoke", "benchmark", "performance:work"],
   "capabilityCommands": {
     ".": {
       "benchmark": ["cargo", "bench", "--locked", "-p", "moenarch-vector-analysis-core", "--bench", "metrics"],
-      "benchmark:smoke": ["bash", "scripts/benchmark-smoke.sh"]
+      "benchmark:smoke": ["bash", "scripts/benchmark-smoke.sh"],
+      "performance:work": ["bash", "scripts/collect-work-evidence.sh"]
     }
   }
 }
