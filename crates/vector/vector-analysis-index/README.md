@@ -2,7 +2,7 @@
 
 Exact and deterministic approximate in-memory vector search for `moritzbrantner-video-analysis`.
 
-The exact `VectorSearchIndex` remains the reference implementation for arbitrary supported metrics. `approximate::CosineLshIndex` adds bounded candidate selection for cosine search using deterministic seeded random-hyperplane LSH; candidates are still ranked with exact cosine similarity.
+The exact `VectorSearchIndex` remains the reference implementation for arbitrary supported metrics. `approximate::CosineLshIndex` adds bounded candidate selection for cosine search using deterministic seeded random-hyperplane LSH; candidates are still ranked with exact cosine similarity. The optional `hnsw` feature adds `hnsw::CosineHnswIndex`, which selects candidates with the external [`hnsw_rs`](https://docs.rs/hnsw_rs) graph and ranks them the same exact way.
 
 ## Ownership boundary
 
@@ -10,7 +10,7 @@ This crate owns vector records, metric/filter semantics, exact and approximate i
 
 ## Feature flags
 
-- No optional feature flags today.
+- `hnsw`: enables `hnsw::CosineHnswIndex` over the external `hnsw_rs` crate (#119). Off by default; it pulls a native-only dependency graph (`rayon`, `mmap-rs`, `parking_lot`, `env_logger`, `cpu-time`, `num_cpus`, ...) and is not part of the WASM bindings.
 
 ## Exact search
 
@@ -55,6 +55,26 @@ assert!(report.candidate_count <= 256);
 `hash_bits` controls bucket width. `probe_radius` controls how many nearby signatures are visited, while `max_candidates` is a hard bound on the number of vectors scored exactly. Search reports expose both candidate and bucket counts so approximation effort is evidence rather than hidden policy.
 
 The query cost model has distinct dimensions: vector dimensions `D`, signature bits `B` (at most 32), Hamming radius `R` (at most 3), and exact-candidate budget `C`. Constructing the query signature takes `O(B * D)` arithmetic; at most `sum(combinations(B, i), i = 0..R)` bucket signatures are visited (5,489 at `B=32, R=3`), and no more than `C` record vectors are ranked exactly. Probe signatures are generated lazily and are not allocated as one whole list when the candidate cap terminates a query early. Bucket lookups, result selection, and legitimate dense buckets have their own costs; this is a bounded-scoring guarantee, **not** a claim of guaranteed sublinear search time or exact nearest-neighbor recall.
+
+## External HNSW cosine search (`hnsw` feature)
+
+```rust,ignore
+use vector_analysis_index::hnsw::{CosineHnswConfig, CosineHnswIndex, CosineHnswSearchConfig};
+
+let index = CosineHnswIndex::from_records(CosineHnswConfig::default(), records)?;
+let report = index.search(&query, CosineHnswSearchConfig { limit: 10, ef_search: 64 })?;
+assert!(report.candidate_count <= 64);
+```
+
+`hnsw_rs` types stay private. The graph only proposes `ef_search` candidates; each is re-scored with exact cosine similarity and ordered by `(distance, id)`, so whenever the candidate set contains the exact top-K the output is identical to `VectorSearchIndex` (scores, order and ties). The index is immutable and built serially in record order; `hnsw_rs` seeds node levels with a fixed internal seed, so rebuilding from the same records and configuration reproduces the same results on the same build and target (checked by the unit tests and the parity example). Parallel insertion is not exposed because it depends on thread scheduling, and no cross-target bit-identity is claimed. Zero-norm records and queries are rejected because cosine is undefined for them. Metadata filters are not supported here; filtered search stays on the exact index.
+
+The three-way exact/LSH/HNSW parity and cost report is repeatable:
+
+```bash
+cargo run --release -p moenarch-vector-analysis-index --features hnsw --example ann_three_way [corpus sizes...]
+```
+
+Measured results, the keep/external decision, deployment costs and the fallback are recorded in [`docs/specs/vector-ann-backend.md`](../../../docs/specs/vector-ann-backend.md).
 
 ## Package surface
 

@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
 
 pub mod approximate;
+#[cfg(feature = "hnsw")]
+pub mod hnsw;
 pub mod surface;
 use std::collections::BTreeMap;
 use std::fmt;
