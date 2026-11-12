@@ -16,6 +16,7 @@ categories.workspace = true
 name = "vector_analysis_index"
 
 [dependencies]
+hnsw_rs = { version = "0.3.5", optional = true }
 media-core.workspace = true
 runtime-core.workspace = true
 search-kernels = "=0.1.0"
@@ -23,9 +24,18 @@ serde_json.workspace = true
 serde.workspace = true
 vector-analysis-core.workspace = true
 
+[features]
+default = []
+# Optional external HNSW candidate selection (#119); native-only dependency graph.
+hnsw = ["dep:hnsw_rs"]
+
 [dev-dependencies]
 criterion.workspace = true
 
 [[bench]]
 name = "search"
 harness = false
+
+[[example]]
+name = "ann_three_way"
+required-features = ["hnsw"]
