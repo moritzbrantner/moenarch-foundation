@@ -28,9 +28,15 @@ vector-analysis-core.workspace = true
 default = []
 # Optional external HNSW candidate selection (#119); native-only dependency graph.
 hnsw = ["dep:hnsw_rs"]
+# Test-only deterministic work counters for the complexity contracts (#153); no-ops otherwise.
+work-counters = []
 
 [dev-dependencies]
 criterion.workspace = true
+
+[[test]]
+name = "work_complexity"
+required-features = ["work-counters"]
 
 [[bench]]
 name = "search"

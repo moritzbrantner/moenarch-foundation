@@ -1,0 +1,464 @@
+{
+  "schemaVersion": 2,
+  "suite": "moenarch-foundation",
+  "description": "Deterministic work contracts for Foundation-owned vector-search composition (#153), measured by crates/vector/vector-analysis-index/tests/work_complexity.rs with the test-only work-counters feature. Wall-clock and instruction counts stay with the Iai-Callgrind smoke and the Criterion/Divan lanes; generic top-K retention work belongs to search-kernels and is not counted here.",
+  "scenarios": [
+    {
+      "id": "performance-smoke",
+      "kind": "micro",
+      "description": "Existing Iai-Callgrind smoke (scripts/benchmark-smoke.sh) over fixed workloads of vector-analysis-core, numbers-core and math-geometry-3d, compared against the pull-request base. Not part of the work contract.",
+      "dimensions": {},
+      "metrics": [
+        {
+          "name": "instructions",
+          "unit": "instructions",
+          "direction": "lower",
+          "signal": "instruction-count",
+          "blocking": false
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "id": "exact-search",
+      "description": "VectorSearchIndex::search with the cosine metric, limit 10, over a uniform deterministic corpus (larger corpora extend smaller ones); totals over 16 queries. Exact results; the reference for every approximate mode.",
+      "publicContract": "vector_analysis_index::VectorSearchIndex::search",
+      "dimensions": {
+        "records": {
+          "description": "indexed records N"
+        },
+        "dimensions": {
+          "description": "vector dimensions D"
+        }
+      },
+      "scalePoints": [
+        {
+          "records": 256,
+          "dimensions": 32
+        },
+        {
+          "records": 512,
+          "dimensions": 32
+        },
+        {
+          "records": 1024,
+          "dimensions": 32
+        },
+        {
+          "records": 2048,
+          "dimensions": 32
+        },
+        {
+          "records": 4096,
+          "dimensions": 32
+        },
+        {
+          "records": 1024,
+          "dimensions": 8
+        },
+        {
+          "records": 1024,
+          "dimensions": 16
+        },
+        {
+          "records": 1024,
+          "dimensions": 64
+        },
+        {
+          "records": 1024,
+          "dimensions": 128
+        }
+      ],
+      "metrics": [
+        {
+          "name": "similarity-evaluations",
+          "unit": "evaluations",
+          "signal": "operation-count",
+          "notes": "Cost model: exactly N per query, independent of D.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "linear"
+            },
+            {
+              "dimension": "dimensions",
+              "bound": "constant"
+            }
+          ]
+        },
+        {
+          "name": "similarity-components",
+          "unit": "components",
+          "signal": "operation-count",
+          "notes": "Cost model: N * D per query.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "linear"
+            },
+            {
+              "dimension": "dimensions",
+              "bound": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lsh-search",
+      "description": "CosineLshIndex::search with B = 8 signature bits over the same uniform corpus family, limit 10; totals over 16 queries. Probes P = sum(C(8, i), i = 0..R) for probe radius R; cap C = max_candidates. Corpora start where the buckets fill the cap. Approximate results: recall is measured by the tests, never guaranteed.",
+      "publicContract": "vector_analysis_index::approximate::CosineLshIndex::search",
+      "dimensions": {
+        "records": {
+          "description": "indexed records N"
+        },
+        "dimensions": {
+          "description": "vector dimensions D"
+        },
+        "probes": {
+          "description": "probe signatures P within the Hamming radius"
+        },
+        "cap": {
+          "description": "exact-score cap C (max_candidates)"
+        }
+      },
+      "scalePoints": [
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 8192,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 16384,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 32768,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 8,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 16,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 64,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 128,
+          "probes": 9,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 1,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 37,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 93,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 16
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 32
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 128
+        },
+        {
+          "records": 4096,
+          "dimensions": 32,
+          "probes": 9,
+          "cap": 256
+        }
+      ],
+      "metrics": [
+        {
+          "name": "exact-similarity-evaluations",
+          "unit": "evaluations",
+          "signal": "operation-count",
+          "notes": "Cost model: at most C per query (asserted per query, and equal to candidate_count), independent of N and D once the buckets fill the cap. Budget: 16 queries * the largest declared C (256).",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "dimensions",
+              "bound": "constant"
+            },
+            {
+              "dimension": "cap",
+              "bound": "linear"
+            }
+          ],
+          "budget": {
+            "max": 4096
+          }
+        },
+        {
+          "name": "similarity-components",
+          "unit": "components",
+          "signal": "operation-count",
+          "notes": "Cost model: at most C * D per query.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "dimensions",
+              "bound": "linear"
+            },
+            {
+              "dimension": "cap",
+              "bound": "linear"
+            }
+          ]
+        },
+        {
+          "name": "projection-terms",
+          "unit": "terms",
+          "signal": "operation-count",
+          "notes": "Cost model: B * D per query signature; independent of N, P and C.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "dimensions",
+              "bound": "linear"
+            },
+            {
+              "dimension": "probes",
+              "bound": "constant"
+            },
+            {
+              "dimension": "cap",
+              "bound": "constant"
+            }
+          ]
+        },
+        {
+          "name": "signature-probes",
+          "unit": "lookups",
+          "signal": "operation-count",
+          "notes": "Cost model: at most P bucket-map lookups per query (asserted per query); denser buckets fill the cap sooner. Lookups are traversal, not scoring.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "probes",
+              "bound": "linear"
+            }
+          ]
+        },
+        {
+          "name": "bucket-entry-visits",
+          "unit": "entries",
+          "signal": "operation-count",
+          "notes": "Each record lives in exactly one bucket and traversal stops at the cap, so this equals the exact evaluations (asserted).",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "cap",
+              "bound": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lsh-search-uncapped",
+      "description": "lsh-search with the cap at the corpus size (C = N), B = 8, R = 1 (P = 9); totals over 16 queries. Documents that LSH bucket traversal is a fraction of the corpus that grows with it: no sublinear-traversal claim.",
+      "publicContract": "vector_analysis_index::approximate::CosineLshIndex::search",
+      "dimensions": {
+        "records": {
+          "description": "indexed records N (and cap C = N)"
+        }
+      },
+      "scalePoints": [
+        {
+          "records": 1024
+        },
+        {
+          "records": 2048
+        },
+        {
+          "records": 4096
+        },
+        {
+          "records": 8192
+        },
+        {
+          "records": 16384
+        }
+      ],
+      "metrics": [
+        {
+          "name": "bucket-entry-visits",
+          "unit": "entries",
+          "signal": "operation-count",
+          "notes": "Cost model: about P * N / 2^B per query, linear in N on a uniform corpus (judged with the default tolerance).",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "polynomial",
+              "degree": 1
+            }
+          ]
+        },
+        {
+          "name": "signature-probes",
+          "unit": "lookups",
+          "signal": "operation-count",
+          "notes": "Every one of the P probe signatures is looked up once.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lsh-search-collisions",
+      "description": "CosineLshIndex::search with B = 16, R = 1 over a collision-heavy corpus whose records all share the query's bucket; one query.",
+      "publicContract": "vector_analysis_index::approximate::CosineLshIndex::search",
+      "dimensions": {
+        "records": {
+          "description": "records, all in one bucket"
+        },
+        "cap": {
+          "description": "exact-score cap C (max_candidates)"
+        }
+      },
+      "scalePoints": [
+        {
+          "records": 1024,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "cap": 64
+        },
+        {
+          "records": 16384,
+          "cap": 64
+        },
+        {
+          "records": 4096,
+          "cap": 16
+        },
+        {
+          "records": 4096,
+          "cap": 256
+        },
+        {
+          "records": 4096,
+          "cap": 1024
+        }
+      ],
+      "metrics": [
+        {
+          "name": "exact-similarity-evaluations",
+          "unit": "evaluations",
+          "signal": "operation-count",
+          "notes": "Exactly C however large the shared bucket is.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "cap",
+              "bound": "linear"
+            }
+          ]
+        },
+        {
+          "name": "signature-probes",
+          "unit": "lookups",
+          "signal": "operation-count",
+          "notes": "The first probe fills the cap.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "cap",
+              "bound": "constant"
+            }
+          ]
+        },
+        {
+          "name": "bucket-entry-visits",
+          "unit": "entries",
+          "signal": "operation-count",
+          "notes": "Traversal of the dense bucket stops at the cap.",
+          "growth": [
+            {
+              "dimension": "records",
+              "bound": "constant"
+            },
+            {
+              "dimension": "cap",
+              "bound": "linear"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,18 @@ Run the broader existing Criterion evidence with:
 cargo bench --locked -p moenarch-vector-analysis-core --bench metrics
 ```
 
+## Work-complexity contracts
+
+`.performance/contract.json` declares deterministic operation counts for Foundation-owned vector-search composition (#153), separate from wall-clock and instruction evidence. `crates/vector/vector-analysis-index/tests/work_complexity.rs` (test-only `work-counters` feature) builds deterministic corpora, changes one dimension at a time and records the counters in `vector_analysis_index::work`:
+
+- `exact-search`: `VectorSearchIndex::search` scores every record, `N` similarity evaluations of `D` components each.
+- `lsh-search`: `CosineLshIndex::search` costs `B * D` projection terms for the query signature, at most `P` signature probes (`P = sum(C(B, i), i = 0..R)`) and at most `C = max_candidates` exact similarity evaluations, equal to `candidate_count`. Bucket traversal stops at the cap.
+- `lsh-search-uncapped` and `lsh-search-collisions` show that traversal follows the corpus when the cap does not bind (no sublinear claim) and that a collision-heavy bucket is still scored only up to `C`.
+
+Controls in the same test cover the empty index, a warm repeated query, full-probe LSH against the exact oracle, and recall that is measured (monotone in the probe radius) rather than guaranteed. Top-K retention work belongs to `search-kernels` and is not counted here.
+
+Without an evidence directory the test checks the exact `constant`/`linear` bounds itself; `bash scripts/collect-work-evidence.sh` (the `performance:work` capability) prints a `coding-tooling/work-evidence/v1` document for `coding-tooling performance work`, which also judges the tolerant bounds and budgets.
+
 ## Reproducibility
 
 Smoke evidence is written to `.artifacts/performance-smoke/` together with a fingerprint containing candidate and baseline revisions, Rust/Cargo versions, `RUSTFLAGS`, Cargo lock hash, Valgrind and Iai-Callgrind runner versions, and host architecture.
