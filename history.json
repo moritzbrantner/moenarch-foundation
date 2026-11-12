@@ -17611,6 +17611,63 @@
         "status": "comparable",
         "comparable": true
       }
+    },
+    {
+      "commit": "d4ffa6c1a255c7bee0642e2512ff3cfabf7fa355",
+      "timestamp": "2026-11-12T17:35:47.000Z",
+      "scoreProfileVersion": "coding-tooling/repository-score-profile/v1",
+      "definitionFingerprint": null,
+      "provenance": {
+        "producerCommit": "d4ffa6c1a255c7bee0642e2512ff3cfabf7fa355",
+        "workflowRunId": "43271122735",
+        "workflowRunAttempt": 1,
+        "validationTier": "full"
+      },
+      "score": null,
+      "rating": "unavailable",
+      "completeness": "unavailable",
+      "structuralScore": null,
+      "verificationScore": null,
+      "categories": {},
+      "audits": [],
+      "verification": {
+        "status": "error",
+        "score": null,
+        "plannedChecks": 0,
+        "passedChecks": 0,
+        "failedChecks": 0,
+        "errorChecks": 0,
+        "blockedChecks": 0,
+        "missingRequiredCapabilities": 0
+      },
+      "findings": {
+        "active": 0,
+        "suppressed": 0,
+        "verified": 0
+      },
+      "diagnostics": [
+        {
+          "code": "repository-score-failed",
+          "message": "Unknown capability: performance:work"
+        }
+      ],
+      "change": {
+        "priorCommit": "042d7e7162249d0c8e260ef0bf6d427454474813",
+        "scoreDelta": null,
+        "structuralScoreDelta": null,
+        "verification": {
+          "scoreDelta": null,
+          "passedChecksDelta": 0,
+          "failedChecksDelta": 0,
+          "errorChecksDelta": 0,
+          "blockedChecksDelta": -332,
+          "missingRequiredCapabilitiesDelta": 0
+        },
+        "categoryDeltas": [],
+        "auditDeltas": [],
+        "status": "definition-unknown",
+        "comparable": false
+      }
     }
   ]
 }
