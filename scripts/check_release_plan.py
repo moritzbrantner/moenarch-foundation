@@ -133,6 +133,24 @@ NWX_438_REGISTRY = [
     ("moenarch-model-runtime", "0.2.0"),
 ]
 NWX_438_REGISTRY_VERSIONS = dict(NWX_438_REGISTRY)
+# Issue #160: vector-analysis-index 0.2.1 carries the optional additive `hnsw`
+# feature (#158) for nlp-stack. vector-analysis-core 0.2.1 only carries the
+# runtime-core 0.2.2 / numbers-core 0.2.1 pins: published core 0.2.0 pins
+# runtime-core =0.2.1, which cannot resolve beside the index's =0.2.2 pin.
+VECTOR_INDEX_HNSW_ISSUE = 160
+VECTOR_INDEX_HNSW = [
+    ("moenarch-vector-analysis-core", "0.2.1"),
+    ("moenarch-vector-analysis-index", "0.2.1"),
+]
+VECTOR_INDEX_HNSW_PATH = "releases/vector-analysis-index-hnsw.toml"
+VECTOR_INDEX_HNSW_VERSIONS = dict(VECTOR_INDEX_HNSW)
+VECTOR_INDEX_HNSW_CONSUMER_CHECKS = [
+    "bash scripts/check_vector_index_hnsw_candidate_consumer.sh",
+    *[
+        f"cargo package -p {name} --locked --list"
+        for name, _version in VECTOR_INDEX_HNSW
+    ],
+]
 AUTHORIZED_WAVE_VERSIONS = (
     FOUNDATION_WAVE_1_VERSIONS,
     FOUNDATION_WAVE_2_VERSIONS,
@@ -140,6 +158,7 @@ AUTHORIZED_WAVE_VERSIONS = (
     MEDIA_CORE_0_2_VERSIONS,
     RUNTIME_ONNX_0_1_2_VERSIONS,
     NWX_438_REGISTRY_VERSIONS,
+    VECTOR_INDEX_HNSW_VERSIONS,
 )
 
 
@@ -517,6 +536,30 @@ def validate_release_manifest(
         if manifest.get("required_consumer_checks") != RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS:
             errors.append(
                 "runtime-onnx 0.1.2 release consumer checks do not match its release contract"
+            )
+    elif relative_path == VECTOR_INDEX_HNSW_PATH:
+        expected_order = [name for name, _ in VECTOR_INDEX_HNSW]
+        if manifest.get("issue") != VECTOR_INDEX_HNSW_ISSUE:
+            errors.append(
+                "vector-analysis-index hnsw release must bind destination issue "
+                f"{VECTOR_INDEX_HNSW_ISSUE}"
+            )
+        if manifest.get("dependency_order") != expected_order:
+            errors.append(
+                "vector-analysis-index hnsw release package order does not match its release contract"
+            )
+        actual_versions = {
+            package.get("name"): package.get("version")
+            for package in manifest.get("packages", [])
+            if isinstance(package, dict)
+        }
+        if actual_versions != VECTOR_INDEX_HNSW_VERSIONS:
+            errors.append(
+                "vector-analysis-index hnsw release package versions do not match its release contract"
+            )
+        if manifest.get("required_consumer_checks") != VECTOR_INDEX_HNSW_CONSUMER_CHECKS:
+            errors.append(
+                "vector-analysis-index hnsw release consumer checks do not match its release contract"
             )
     try:
         _packages, _releases, prerequisites = validate_manifest(

@@ -1,0 +1,11 @@
+[package]
+name = "vector-index-hnsw-candidate-consumer"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+moenarch-vector-analysis-core = "=0.2.1"
+moenarch-vector-analysis-index = { version = "=0.2.1", features = ["hnsw"] }

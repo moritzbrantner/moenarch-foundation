@@ -21,6 +21,10 @@ from check_release_plan import (
     RUNTIME_ONNX_0_1_2_CONSUMER_CHECKS,
     RUNTIME_ONNX_0_1_2_ISSUE,
     RUNTIME_ONNX_0_1_2_PATH,
+    VECTOR_INDEX_HNSW,
+    VECTOR_INDEX_HNSW_CONSUMER_CHECKS,
+    VECTOR_INDEX_HNSW_ISSUE,
+    VECTOR_INDEX_HNSW_PATH,
     external_prerequisites,
     validate,
     validate_control_binding,
@@ -603,6 +607,68 @@ class RuntimeOnnxPatchReleaseTests(unittest.TestCase):
         self.manifest["packages"][0]["version"] = "0.1.1"
         self.manifest["packages"][0]["tag"] = "moenarch-runtime-onnx-v0.1.1"
         self.manifest["expected_tags"][0] = "moenarch-runtime-onnx-v0.1.1"
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("versions" in error for error in errors), errors)
+
+    def test_missing_consumer_gate_is_rejected(self) -> None:
+        self.manifest["required_consumer_checks"] = []
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("consumer checks" in error for error in errors), errors)
+
+
+
+class VectorIndexHnswReleaseTests(unittest.TestCase):
+    """The issue #160 contract validates against the live workspace."""
+
+    def setUp(self) -> None:
+        self.ownership = load_json(OWNERSHIP_PATH)
+        self.metadata = cargo_metadata()
+        gate = tomllib.loads((ROOT / "release-gate.toml").read_text(encoding="utf-8"))
+        self.manifest = candidate_manifest(
+            self.ownership,
+            self.metadata,
+            VECTOR_INDEX_HNSW,
+            issue=VECTOR_INDEX_HNSW_ISSUE,
+            required_checks=list(gate["verification"]["commands"]),
+            required_consumer_checks=list(VECTOR_INDEX_HNSW_CONSUMER_CHECKS),
+        )
+
+    def errors(self, manifest: dict) -> list[str]:
+        return validate_release_manifest(
+            manifest, self.ownership, self.metadata, Path(VECTOR_INDEX_HNSW_PATH)
+        )
+
+    def test_exact_release_matches_live_workspace(self) -> None:
+        self.assertEqual(self.errors(self.manifest), [])
+
+    def test_index_carries_the_optional_hnsw_feature(self) -> None:
+        index = next(
+            package
+            for package in self.metadata["packages"]
+            if package["name"] == "moenarch-vector-analysis-index"
+        )
+        self.assertEqual(index["features"]["hnsw"], ["dep:hnsw_rs"])
+        self.assertNotIn("hnsw", index["features"].get("default", []))
+
+    def test_consumer_fixture_pins_the_exact_candidates(self) -> None:
+        fixture = ROOT / "scripts/fixtures/vector_index_hnsw_consumer"
+        manifest = tomllib.loads((fixture / "Cargo.toml").read_text(encoding="utf-8"))
+        dependencies = manifest["dependencies"]
+        self.assertEqual(dependencies["moenarch-vector-analysis-core"], "=0.2.1")
+        self.assertEqual(
+            dependencies["moenarch-vector-analysis-index"],
+            {"version": "=0.2.1", "features": ["hnsw"]},
+        )
+
+    def test_wrong_issue_is_rejected(self) -> None:
+        self.manifest["issue"] = RUNTIME_ONNX_0_1_2_ISSUE
+        errors = self.errors(self.manifest)
+        self.assertTrue(any("issue 160" in error for error in errors), errors)
+
+    def test_index_alone_is_rejected(self) -> None:
+        self.manifest["packages"] = self.manifest["packages"][1:]
+        self.manifest["dependency_order"] = self.manifest["dependency_order"][1:]
+        self.manifest["expected_tags"] = self.manifest["expected_tags"][1:]
         errors = self.errors(self.manifest)
         self.assertTrue(any("versions" in error for error in errors), errors)
 
