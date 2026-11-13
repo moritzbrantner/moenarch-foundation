@@ -2194,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-vector-analysis-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "criterion",
  "iai-callgrind",
@@ -2240,7 +2240,7 @@ dependencies = [
 
 [[package]]
 name = "moenarch-vector-analysis-index"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "criterion",
  "hnsw_rs",

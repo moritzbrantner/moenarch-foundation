@@ -1,0 +1,57 @@
+schema_version = 1
+repository = "moritzbrantner/moenarch-foundation"
+issue = 160
+source_sha = "487c49809451f13c4e1a90b6c1977805744c7e0e"
+registry = "crates.io"
+dependency_order = [
+  "moenarch-vector-analysis-core",
+  "moenarch-vector-analysis-index",
+]
+expected_tags = [
+  "moenarch-vector-analysis-core-v0.2.1",
+  "moenarch-vector-analysis-index-v0.2.1",
+]
+required_checks = [
+  "cargo metadata --locked --format-version 1 --no-deps",
+  "python3 scripts/check_repository_boundaries.py --check",
+  "python3 scripts/check_release_plan.py --check docs/repository-split/release-plan.json",
+  "python3 -m unittest discover -s scripts -p 'test_*.py'",
+  "cargo fmt --all -- --check",
+  "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings",
+  "cargo test --locked --workspace --all-features",
+  "cargo test --locked --workspace --no-default-features",
+  "cargo doc --locked --workspace --no-deps",
+  "python3 scripts/check_release_plan.py --package-all docs/repository-split/release-plan.json",
+  "python3 scripts/check_numerical_package_tests.py",
+]
+required_consumer_checks = [
+  "bash scripts/check_vector_index_hnsw_candidate_consumer.sh",
+  "cargo package -p moenarch-vector-analysis-core --locked --list",
+  "cargo package -p moenarch-vector-analysis-index --locked --list",
+]
+
+[[packages]]
+name = "moenarch-vector-analysis-core"
+version = "0.2.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/vector/vector-analysis-core/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-numbers-core", "moenarch-runtime-core"]
+tag = "moenarch-vector-analysis-core-v0.2.1"
+
+[[packages]]
+name = "moenarch-vector-analysis-index"
+version = "0.2.1"
+owner = "moritzbrantner/moenarch-foundation"
+manifest_path = "crates/vector/vector-analysis-index/Cargo.toml"
+dependencies = ["moenarch-media-core", "moenarch-runtime-core", "moenarch-vector-analysis-core"]
+tag = "moenarch-vector-analysis-index-v0.2.1"
+
+[[github_releases]]
+tag = "moenarch-vector-analysis-core-v0.2.1"
+title = "Release moenarch-vector-analysis-core 0.2.1"
+notes = "Pin-only patch release: carry the runtime-core 0.2.2 and numbers-core 0.2.1 pins so core resolves beside vector-analysis-index 0.2.1. No API change."
+
+[[github_releases]]
+tag = "moenarch-vector-analysis-index-v0.2.1"
+title = "Release moenarch-vector-analysis-index 0.2.1"
+notes = "Add the optional, additive `hnsw` feature: a deterministic cosine HNSW index backed by hnsw_rs whose candidates are re-scored with exact cosine ordering (#158). Adds the test-only `work-counters` feature (#153)."

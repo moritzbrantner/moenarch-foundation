@@ -120,5 +120,5 @@ priority-queue = { package = "moenarch-priority-queue", version = "=0.1.0", path
 runtime-core = { package = "moenarch-runtime-core", version = "=0.2.2", path = "crates/runtime/runtime-core" }
 semantic-core = { package = "moenarch-semantic-core", version = "=0.1.0", path = "crates/semantic/semantic-core" }
 tensor-data = { package = "moenarch-tensor-data", version = "=0.2.1", path = "crates/data/tensor-data" }
-vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.2.0", path = "crates/vector/vector-analysis-core" }
-vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.2.0", path = "crates/vector/vector-analysis-index" }
+vector-analysis-core = { package = "moenarch-vector-analysis-core", version = "=0.2.1", path = "crates/vector/vector-analysis-core" }
+vector-analysis-index = { package = "moenarch-vector-analysis-index", version = "=0.2.1", path = "crates/vector/vector-analysis-index" }

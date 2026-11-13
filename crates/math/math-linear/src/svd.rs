@@ -207,8 +207,7 @@ impl F64MatrixView<'_> {
             cols,
             &svd.singular_values,
         )?;
-        for component in 0..thin {
-            let singular = svd.singular_values[component];
+        for (component, &singular) in svd.singular_values.iter().enumerate().take(thin) {
             if singular <= tolerance {
                 continue;
             }
